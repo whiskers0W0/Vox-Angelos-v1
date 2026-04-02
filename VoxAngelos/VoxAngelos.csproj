@@ -21,6 +21,7 @@
   <ItemGroup>
     <Folder Include="Areas\Identity\Data\" />
     <Folder Include="Data\Migrations\" />
+    <Folder Include="FaceApi\temp_uploads\" />
     <Folder Include="wwwroot\uploads\selfies\" />
   </ItemGroup>
 
