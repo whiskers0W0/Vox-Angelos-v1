@@ -1,0 +1,106 @@
+﻿@page
+@model VoxAngelos.Pages.Admin.UserApplicationsModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Applications — Vox Angelos Admin</title>
+    <link rel="stylesheet" href="~/css/dashboard_admin.css" />
+</head>
+<body>
+    <div class="admin-wrapper">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-icon">🦅</span>
+                <span class="logo-text">Vox Angelos</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/Admin/Index" class="nav-item">Dashboard</a>
+                <a href="/Admin/UserApplications" class="nav-item active">User Applications</a>
+                <a href="/Admin/OfficeManagement" class="nav-item">Office Management</a>
+                <a href="/Admin/ReviewProjects" class="nav-item">Review Projects</a>
+            </nav>
+            <form method="post" action="/Identity/Account/Logout" class="logout-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="/Admin/Login" />
+                <button type="submit" class="btn-logout">⬛ Log Out</button>
+            </form>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>User (Citizen) Applications</h1>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <a href="?filterStatus=All"
+                       class="filter-btn @(Model.FilterStatus == "All" ? "active" : "")">All</a>
+                    <a href="?filterStatus=Pending"
+                       class="filter-btn @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
+                    <a href="?filterStatus=Approved"
+                       class="filter-btn @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
+                    <a href="?filterStatus=Rejected"
+                       class="filter-btn @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
+                </div>
+            </div>
+
+            <!-- Applications Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Contact No.</th>
+                            <th>Date Applied</th>
+                            <th>Face Match</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Applications.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="empty-row">No applications found.</td>
+                            </tr>
+                        }
+                        @foreach (var app in Model.Applications)
+                        {
+                            <tr>
+                                <td>@app.FullName</td>
+                                <td>@app.Email</td>
+                                <td>@app.ContactNumber</td>
+                                <td>@app.DateApplied.ToString("MM/dd/yyyy")</td>
+                                <td>
+                                    <span class="confidence @(app.FaceMatchConfidence >= 0.6m ? "high" : "low")">
+                                        @((app.FaceMatchConfidence * 100).ToString("F1"))%
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-@app.ApprovalStatus.ToLower()">
+                                        @app.ApprovalStatus
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="/Admin/ReviewApplication?userId=@app.UserId"
+                                       class="btn-review">Review</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

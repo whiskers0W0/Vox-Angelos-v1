@@ -1,0 +1,183 @@
+﻿@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Log in";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vox Angelos — Log In</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Syne+Mono&family=Barlow:wght@300;400&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="bg"></div>
+    <div class="bg-grid"></div>
+    <div class="corner c-tl"></div>
+    <div class="corner c-tr"></div>
+    <div class="corner c-bl"></div>
+    <div class="corner c-br"></div>
+
+    <!-- Notification Modal -->
+    <div id="notifModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,30,0.85); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:rgba(0,0,77,0.97); border:1px solid rgba(0,179,230,0.3); padding:2rem; max-width:400px; width:90%; text-align:center; box-shadow:0 0 40px rgba(0,102,204,0.3);">
+            <div id="notifIcon" style="font-size:2.5rem; margin-bottom:1rem;"></div>
+            <h3 id="notifTitle" style="font-family:'Oswald',sans-serif; letter-spacing:0.1em; text-transform:uppercase; color:#ccf2ff; margin-bottom:0.5rem;"></h3>
+            <p id="notifMessage" style="font-family:'Barlow',sans-serif; color:rgba(204,242,255,0.6); font-size:0.85rem; margin-bottom:1.5rem; line-height:1.7;"></p>
+            <button onclick="closeNotifModal()" style="background:transparent; border:1px solid rgba(0,179,230,0.5); color:rgba(0,210,255,0.9); font-family:'Syne Mono',monospace; font-size:0.75rem; letter-spacing:0.15em; padding:0.5rem 2rem; cursor:pointer; text-transform:uppercase;">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <div class="tech-wrapper">
+        <div class="row g-0">
+            <div class="col-lg-5 panel-left">
+                <div class="eyebrow mb-2">Vox Angelos</div>
+                <h1 class="title mb-3">Citizen<br />Portal</h1>
+                <p class="tagline mb-0">
+                    Secure access for<br />
+                    <strong>authorized personnel</strong>
+                </p>
+            </div>
+
+            <div class="col-lg-7 panel-right">
+                <section>
+                    <div class="eyebrow mb-3">Secure Sign-In</div>
+                    <form id="account" method="post" autocomplete="off">
+
+                        <!-- Hidden validation summary — errors shown via modal -->
+                        <div asp-validation-summary="ModelOnly" class="d-none"
+                             id="validationSummary" role="alert"></div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label asp-for="Input.Email" class="form-text-label d-block mb-1">Email Address</label>
+                            <input asp-for="Input.Email"
+                                   class="form-control tech-input w-100"
+                                   autocomplete="off"
+                                   autocorrect="off"
+                                   autocapitalize="off"
+                                   spellcheck="false"
+                                   aria-required="true"
+                                   placeholder="name@example.com" />
+                            <span asp-validation-for="Input.Email" class="text-danger" style="font-size:0.72rem; font-family:'Syne Mono',monospace;"></span>
+                        </div>
+
+                        <!-- Password with eye toggle -->
+                        <div class="mb-4">
+                            <label asp-for="Input.Password" class="form-text-label d-block mb-1">Password</label>
+                            <div class="pw-wrapper">
+                                <input asp-for="Input.Password"
+                                       id="loginPassword"
+                                       class="form-control tech-input w-100"
+                                       type="password"
+                                       autocomplete="off"
+                                       aria-required="true"
+                                       placeholder="••••••••" />
+                                <button type="button" class="pw-toggle" onclick="togglePw('loginPassword', this)" tabindex="-1">
+                                    <svg id="loginPassword-eye" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.Password" class="text-danger" style="font-size:0.72rem; font-family:'Syne Mono',monospace;"></span>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="mb-4">
+                            <button id="login-submit" type="submit" class="cta w-100">
+                                Enter Portal
+                                <span class="cta-arr ms-2"></span>
+                            </button>
+                        </div>
+
+                        <!-- Links -->
+                        <div class="d-flex flex-column gap-1" style="font-family:'Syne Mono',monospace; font-size:0.7rem; letter-spacing:0.1em;">
+                            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="tech-link">Register as a new user</a>
+                            <a href="/Identity/Account/ForgotPassword" class="tech-link">Forgot your password?</a>
+                        </div>
+                    </form>
+                </section>
+
+                <div class="my-4" style="border-top:1px solid rgba(0,179,230,0.15);"></div>
+
+                <section>
+                    <div class="eyebrow mb-3">External Authentication</div>
+                    @{
+                        if ((Model.ExternalLogins?.Count ?? 0) == 0)
+                        {
+                            <p style="font-family:'Syne Mono',monospace; font-size:0.7rem; color:rgba(128,223,255,0.35); letter-spacing:0.08em;">
+                                No external authentication services configured.
+                            </p>
+                        }
+                    }
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        window.addEventListener('load', function () {
+        setTimeout(function () {
+        const summary = document.getElementById('validationSummary');
+        if (summary) {
+        const errors = Array.from(summary.querySelectorAll('li'))
+        .map(li => li.textContent.trim())
+        .filter(t => t.length > 0);
+
+        if (errors.length > 0) {
+        const msg = errors.join(' ');
+        const isPending = msg.toLowerCase().includes('pending') ||
+        msg.toLowerCase().includes('approval');
+
+        if (isPending) {
+        showNotifModal(
+        'ℹ️',
+        'Account Under Review',
+        'Your account is currently pending admin approval. This process may take a few hours to a few days. Please check back later or wait for an email notification.'
+        );
+        } else {
+        showNotifModal('❌', 'Login Failed', msg);
+        }
+        }
+        }
+
+        // Clear fields to prevent autofill
+        document.querySelectorAll('input').forEach(i => {
+        if (i.type !== 'hidden' && i.type !== 'submit') i.value = '';
+        });
+        }, 100);
+        });
+
+        function showNotifModal(icon, title, message) {
+        document.getElementById('notifIcon').textContent = icon;
+        document.getElementById('notifTitle').textContent = title;
+        document.getElementById('notifMessage').textContent = message;
+        document.getElementById('notifModal').style.display = 'flex';
+        }
+
+        function closeNotifModal() {
+        document.getElementById('notifModal').style.display = 'none';
+        }
+
+        function togglePw(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const eye = document.getElementById(inputId + '-eye');
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        eye.innerHTML = isHidden
+        ? `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />`
+        : `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />`;
+        }
+    </script>
+</body>
+</html>

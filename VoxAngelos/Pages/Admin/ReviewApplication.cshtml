@@ -1,0 +1,266 @@
+﻿@page
+@model VoxAngelos.Pages.Admin.ReviewApplicationModel
+@{
+    Layout = null;
+    var citizen = Model.Citizen;
+    var profile = Model.Profile;
+    var doc = Model.IdentityDocument;
+    var face = Model.FaceVerification;
+    var ocr = Model.OcrVerification;
+    var confidence = face?.MatchConfidence ?? 0;
+    var status = citizen?.ApprovalStatus ?? "Pending";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Review Application — Vox Angelos Admin</title>
+    <link rel="stylesheet" href="~/css/dashboard_admin.css" />
+</head>
+<body>
+    <div class="admin-wrapper">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-icon">🦅</span>
+                <span class="logo-text">Vox Angelos</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/Admin/Index" class="nav-item">Dashboard</a>
+                <a href="/Admin/UserApplications" class="nav-item active">User Applications</a>
+                <a href="/Admin/OfficeManagement" class="nav-item">Office Management</a>
+                <a href="/Admin/ReviewProjects" class="nav-item">Review Projects</a>
+            </nav>
+            <form method="post" action="/Identity/Account/Logout" class="logout-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="/Admin/Login" />
+                <button type="submit" class="btn-logout">⬛ Log Out</button>
+            </form>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="review-header">
+                <div>
+                    <h1>Review Citizen Application</h1>
+                    <p class="review-meta">
+                        Applied: @citizen?.CreatedAt.ToString("MMMM dd, yyyy")
+                        &bull; User ID: @citizen?.Id.Substring(0, 8).ToUpper()
+                    </p>
+                </div>
+                <span class="status-badge status-@status.ToLower()">@status</span>
+            </div>
+
+            <div class="review-grid">
+
+                <!-- Left Column -->
+                <div class="review-left">
+
+                    <!-- Account Information -->
+                    <div class="review-card">
+                        <h3 class="card-section-title">ACCOUNT INFORMATION</h3>
+                        <div class="info-row">
+                            <span class="info-label">NAME</span>
+                            <span class="info-value">
+                                @(profile != null
+                                    ? $"{profile.FirstName} {profile.MiddleName} {profile.LastName}".Trim()
+                                    : "N/A")
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">EMAIL</span>
+                            <span class="info-value">@citizen?.Email</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">CONTACT NUMBER</span>
+                            <span class="info-value">@(citizen?.PhoneNumber ?? "N/A")</span>
+                        </div>
+                    </div>
+
+                    <!-- ID Information -->
+                    <div class="review-card">
+                        <h3 class="card-section-title">ID INFORMATION</h3>
+                        <div class="info-row">
+                            <span class="info-label">ID TYPE</span>
+                            <span class="info-value">@(doc?.IdType ?? "N/A")</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">BIRTHDAY</span>
+                            <span class="info-value">@(ocr?.DetectedBirthDate ?? "Not extracted yet")</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">LOCALITY</span>
+                            <span class="info-value">@(ocr?.DetectedLocality ?? "Not extracted yet")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="review-right">
+
+                    <!-- Identity Verification -->
+                    <div class="review-card">
+                        <h3 class="card-section-title">IDENTITY VERIFICATION</h3>
+                        <div class="photos-grid">
+                            <div class="photo-box">
+                                <p class="photo-label">ID PHOTO</p>
+                                @if (doc?.IdPhotoPath != null)
+                                {
+                                    <img src="/uploads/ids/@doc.IdPhotoPath"
+                                         class="review-photo"
+                                         onclick="openModal(this.src)"
+                                         title="Click to enlarge" />
+                                }
+                                else
+                                {
+                                    <div class="photo-placeholder">No photo</div>
+                                }
+                            </div>
+                            <div class="photo-box">
+                                <p class="photo-label">LIVE SELFIE</p>
+                                @if (face?.LiveSelfiePath != null)
+                                {
+                                    <img src="/uploads/selfies/@face.LiveSelfiePath"
+                                         class="review-photo"
+                                         onclick="openModal(this.src)"
+                                         title="Click to enlarge" />
+                                }
+                                else
+                                {
+                                    <div class="photo-placeholder">No selfie</div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Face Match Confidence -->
+                        <div class="confidence-bar-container" style="margin-top:16px;">
+                            <p class="photo-label">FACE MATCH CONFIDENCE</p>
+                            @{
+                                var faceConfidence = face?.MatchConfidence ?? 0;
+                                var faceClass = faceConfidence >= 0.6m ? "high" : "low";
+                                var faceWidth = (faceConfidence * 100).ToString("F0");
+                                var facePercent = (faceConfidence * 100).ToString("F1");
+                            }
+                            <div class="confidence-bar">
+                                <div class="confidence-fill @faceClass" style="width:@faceWidth%"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                                <span class="confidence-value @faceClass">@facePercent%</span>
+                                <span style="font-size:11px; color:#888;">
+                                    @(faceConfidence >= 0.6m ? "✓ Match" : "✗ No Match")
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- OCR Locality Confidence -->
+                        <div class="confidence-bar-container" style="margin-top:16px;">
+                            <p class="photo-label">ANGELES CITY RESIDENCY MATCH</p>
+                            @{
+                                var ocrConfidence = ocr?.OcrConfidence ?? 0;
+                                var localityMatched = ocr?.LocalityMatched ?? false;
+                                var ocrClass = localityMatched ? "high" : "low";
+                                var ocrWidth = (ocrConfidence * 100).ToString("F0");
+                                var ocrPercent = (ocrConfidence * 100).ToString("F1");
+                                var detectedLocality = ocr?.DetectedLocality ?? "Not detected";
+                            }
+                            <div class="confidence-bar">
+                                <div class="confidence-fill @ocrClass" style="width:@ocrWidth%"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                                <span class="confidence-value @ocrClass">@ocrPercent%</span>
+                                <span style="font-size:11px; color:#888;">
+                                    @(localityMatched ? "✓ Verified — " : "✗ Not verified — ")@detectedLocality
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    @if (status == "Pending")
+                    {
+                        <div class="action-buttons">
+                            <a href="/Admin/UserApplications" class="btn-cancel">Cancel</a>
+                            <button onclick="showRejectModal()" class="btn-reject">Reject</button>
+                            <button onclick="showApproveModal()" class="btn-approve">Verify Citizen</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="action-buttons">
+                            <a href="/Admin/UserApplications" class="btn-cancel">Cancel</a>
+                            @if (status == "Approved")
+                            {
+                                <p class="status-message approved">This user has been verified.</p>
+                            }
+                            else
+                            {
+                                <p class="status-message rejected">This user has been rejected.</p>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Approve Modal -->
+    <div id="approveModal" class="modal-overlay" style="display:none">
+        <div class="modal-box">
+            <h3>VERIFY CITIZEN?</h3>
+            <p>Are you sure you want to verify this citizen? This action is not reversible.</p>
+            <div class="modal-actions">
+                <button onclick="closeModals()" class="btn-cancel">Cancel</button>
+                <form method="post" asp-page-handler="Approve">
+                    <input type="hidden" name="userId" value="@citizen?.Id" />
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn-approve">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div id="rejectModal" class="modal-overlay" style="display:none">
+        <div class="modal-box">
+            <h3>REJECT CITIZEN?</h3>
+            <p>Are you sure you want to reject this citizen? This action is not reversible.</p>
+            <div class="modal-actions">
+                <button onclick="closeModals()" class="btn-cancel">Cancel</button>
+                <form method="post" asp-page-handler="Reject">
+                    <input type="hidden" name="userId" value="@citizen?.Id" />
+                    <input type="hidden" name="rejectionReason" value="Does not meet verification requirements." />
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn-reject">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal-overlay" style="display:none" onclick="closeModals()">
+        <div class="image-modal-box">
+            <img id="modalImage" src="" style="max-width:100%; max-height:80vh;" />
+        </div>
+    </div>
+
+    <script>
+            function showApproveModal() {
+                document.getElementById('approveModal').style.display = 'flex';
+            }
+            function showRejectModal() {
+                document.getElementById('rejectModal').style.display = 'flex';
+            }
+            function closeModals() {
+                document.getElementById('approveModal').style.display = 'none';
+                document.getElementById('rejectModal').style.display = 'none';
+                document.getElementById('imageModal').style.display = 'none';
+            }
+            function openModal(src) {
+                document.getElementById('modalImage').src = src;
+                document.getElementById('imageModal').style.display = 'flex';
+            }
+    </script>
+</body>
+</html>

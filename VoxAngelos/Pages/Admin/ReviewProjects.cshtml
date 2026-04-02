@@ -1,0 +1,44 @@
+﻿@page
+@model VoxAngelos.Pages.Admin.ReviewProjectsModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Review Projects — Vox Angelos Admin</title>
+    <link rel="stylesheet" href="~/css/dashboard_admin.css" />
+</head>
+<body>
+    <div class="admin-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-icon">🦅</span>
+                <span class="logo-text">Vox Angelos</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/Admin/Index" class="nav-item">Dashboard</a>
+                <a href="/Admin/UserApplications" class="nav-item">User Applications</a>
+                <a href="/Admin/OfficeManagement" class="nav-item">Office Management</a>
+                <a href="/Admin/ReviewProjects" class="nav-item active">Review Projects</a>
+            </nav>
+            <form method="post" action="/Identity/Account/Logout" class="logout-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="/Admin/Login" />
+                <button type="submit" class="btn-logout">⬛ Log Out</button>
+            </form>
+        </aside>
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Review Project Recommendations</h1>
+            </div>
+            <div class="empty-state">
+                <p>No project recommendations to review yet.</p>
+                <p class="muted">This section will be available once citizens begin submitting proposals.</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

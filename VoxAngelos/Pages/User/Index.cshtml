@@ -1,0 +1,218 @@
+﻿@page
+@model VoxAngelos.Pages.User.IndexModel
+@{
+    ViewData["Title"] = "Citizen Dashboard";
+    Layout = null;
+
+    var rawName = User.Identity?.Name ?? "";
+    var displayName = rawName.Contains('@') ? rawName.Split('@')[0] : rawName;
+    if (string.IsNullOrWhiteSpace(displayName)) displayName = "Citizen";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vox Angelos — Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/dashboard_citizen.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/themes/df-messenger-default.css">
+    <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
+    <df-messenger project-id="project-f1ec1946-b42e-49fe-b06"
+                  agent-id="217dac9a-a573-4bfa-af02-96e011e06558"
+                  language-code="en"
+                  max-query-length="-1">
+        <df-messenger-chat-bubble chat-title="vox-angelos-helper">
+        </df-messenger-chat-bubble>
+    </df-messenger>
+    <style>
+        df-messenger {
+            z-index: 999;
+            position: fixed;
+            --df-messenger-font-color: #000;
+            --df-messenger-font-family: Google Sans;
+            --df-messenger-chat-background: #f3f6fc;
+            --df-messenger-message-user-background: #d3e3fd;
+            --df-messenger-message-bot-background: #fff;
+            bottom: 16px;
+            right: 16px;
+        }
+    </style>
+</head>
+<body>
+
+
+
+    <div class="app-shell" id="appShell">
+
+        <!-- ── SIDEBAR ── -->
+        <nav class="side-nav" id="sideNav">
+
+            <!-- Toggle button -->
+            <button class="side-nav__toggle" id="navToggle" type="button" title="Toggle sidebar">
+                <span class="toggle-bar"></span>
+                <span class="toggle-bar"></span>
+                <span class="toggle-bar"></span>
+            </button>
+
+            <!-- Brand -->
+            <div class="side-nav__brand">
+                <div class="side-nav__brand-logo">
+                    <img src="~/assets/logo-no-name.svg" alt="Vox Angelos" />
+                </div>
+                <div class="side-nav__brand-text">
+                    <div class="side-nav__brand-name">Vox Angelos</div>
+                    <div class="side-nav__brand-sub">Citizen Portal</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="side-nav__menu">
+                <button type="button" class="side-nav__item active">
+                    <svg class="side-nav__icon" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1" /><rect x="11" y="2" width="7" height="7" rx="1" /><rect x="2" y="11" width="7" height="7" rx="1" /><rect x="11" y="11" width="7" height="7" rx="1" /></svg>
+                    <span class="side-nav__label">Dashboard</span>
+                </button>
+                <button type="button" class="side-nav__item">
+                    <svg class="side-nav__icon" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4h12a1 1 0 011 1v8a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zm1 2v6h10V6H5zm0 2h10v1H5V8z" /></svg>
+                    <span class="side-nav__label">My Requests</span>
+                </button>
+                <button type="button" class="side-nav__item">
+                    <svg class="side-nav__icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 11H9v-2h2v2zm0-4H9V5h2v4z" /></svg>
+                    <span class="side-nav__label">Submit Concern</span>
+                </button>
+                <button type="button" class="side-nav__item">
+                    <svg class="side-nav__icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 016 6c0 2.5-1 4.5-2.5 6H6.5C5 14.5 4 12.5 4 8a6 6 0 016-6zm-1 14h2a1 1 0 01-2 0z" /></svg>
+                    <span class="side-nav__label">Announcements</span>
+                </button>
+                <button type="button" class="side-nav__item">
+                    <svg class="side-nav__icon" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="7" r="3" /><path d="M3 17a7 7 0 0114 0H3z" /></svg>
+                    <span class="side-nav__label">My Profile</span>
+                </button>
+            </div>
+
+            <!-- Logout -->
+            <div class="side-nav__footer">
+                <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })">
+                    <button type="submit" class="side-nav__logout">
+                        <svg class="side-nav__icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3h8v2H5v10h6v2H3V3zm10 4l4 3-4 3v-2H7V9h6V7z" /></svg>
+                        <span class="side-nav__label">Log Out</span>
+                    </button>
+                </form>
+            </div>
+
+        </nav>
+
+        <!-- ── MAIN CONTENT ── -->
+        <main class="main-content">
+
+            <!-- Header -->
+            <div class="dash-header">
+                <div class="dash-header__left">
+                    <h1>Welcome, @displayName!</h1>
+                    <p class="dash-subtitle">Here's an overview of your account and recent activity.</p>
+                </div>
+                <div class="dash-header__right">
+                    <div class="dash-status">
+                        <span class="status-pip"></span>
+                        <span class="status-text">Secure Session Active</span>
+                    </div>
+                    <div class="dash-date">@DateTime.Now.ToString("dddd, MMMM d yyyy")</div>
+                </div>
+            </div>
+
+            <hr />
+
+            <!-- Stat Cards -->
+            <div class="stat-grid">
+                <div class="stat-card stat-card--blue">
+                    <div class="stat-card__icon">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4h12a1 1 0 011 1v8a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" /></svg>
+                    </div>
+                    <div class="stat-card__body">
+                        <div class="stat-card__label">Total Requests</div>
+                        <div class="stat-card__value">0</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--amber">
+                    <div class="stat-card__icon">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="8" /><path d="M10 6v4l3 3" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" /></svg>
+                    </div>
+                    <div class="stat-card__body">
+                        <div class="stat-card__label">Pending</div>
+                        <div class="stat-card__value">0</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--green">
+                    <div class="stat-card__icon">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 10l4 4 7-7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                    </div>
+                    <div class="stat-card__body">
+                        <div class="stat-card__label">Resolved</div>
+                        <div class="stat-card__value">0</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--cyan">
+                    <div class="stat-card__icon">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 016 6c0 2.5-1 4.5-2.5 6H6.5C5 14.5 4 12.5 4 8a6 6 0 016-6zm-1 14h2a1 1 0 01-2 0z" /></svg>
+                    </div>
+                    <div class="stat-card__body">
+                        <div class="stat-card__label">Announcements</div>
+                        <div class="stat-card__value">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom panels -->
+            <div class="dash-panels">
+
+                <!-- Recent Activity -->
+                <div class="dash-section">
+                    <div class="dash-section__header">
+                        <span class="dash-section__title">Recent Activity</span>
+                        <span class="dash-section__badge">0 items</span>
+                    </div>
+                    <div class="dash-empty">
+                        <svg class="dash-empty__icon" viewBox="0 0 40 40" fill="none">
+                            <circle cx="20" cy="20" r="18" stroke="rgba(0,179,230,0.2)" stroke-width="1.5" />
+                            <path d="M13 20h14M20 13v14" stroke="rgba(0,179,230,0.3)" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                        <p>No recent activity to display.</p>
+                        <span class="dash-empty__sub">Your submitted requests will appear here.</span>
+                    </div>
+                </div>
+
+                <!-- Announcements -->
+                <div class="dash-section">
+                    <div class="dash-section__header">
+                        <span class="dash-section__title">Latest Announcements</span>
+                        <span class="dash-section__badge">0 new</span>
+                    </div>
+                    <div class="dash-empty">
+                        <svg class="dash-empty__icon" viewBox="0 0 40 40" fill="none">
+                            <circle cx="20" cy="20" r="18" stroke="rgba(0,179,230,0.2)" stroke-width="1.5" />
+                            <path d="M20 12v10M20 27v1" stroke="rgba(0,179,230,0.3)" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                        <p>No announcements at this time.</p>
+                        <span class="dash-empty__sub">Official LGU announcements will appear here.</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const toggle = document.getElementById('navToggle');
+        const shell  = document.getElementById('appShell');
+        // Collapsed by default on load
+        shell.classList.add('sidebar-collapsed');
+        toggle.addEventListener('click', () => {
+        shell.classList.toggle('sidebar-collapsed');
+        });
+    </script>
+</body>
+</html>

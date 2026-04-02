@@ -1,0 +1,164 @@
+﻿@page
+@model VoxAngelos.Pages.Admin.OfficeManagementModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Office Management — Vox Angelos Admin</title>
+    <link rel="stylesheet" href="~/css/dashboard_admin.css" />
+</head>
+<body>
+    <div class="admin-wrapper">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-icon">🦅</span>
+                <span class="logo-text">Vox Angelos</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/Admin/Index" class="nav-item">Dashboard</a>
+                <a href="/Admin/UserApplications" class="nav-item">User Applications</a>
+                <a href="/Admin/OfficeManagement" class="nav-item active">Office Management</a>
+                <a href="/Admin/ReviewProjects" class="nav-item">Review Projects</a>
+            </nav>
+            <form method="post" action="/Identity/Account/Logout" class="logout-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="/Admin/Login" />
+                <button type="submit" class="btn-logout">⬛ Log Out</button>
+            </form>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Office Management</h1>
+                <button onclick="showCreateModal()" class="btn-create">+ Create</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert-error">@Model.ErrorMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+            {
+                <div class="alert-success">@Model.SuccessMessage</div>
+            }
+
+            <!-- LGU Accounts Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Department/Office</th>
+                            <th>Employee ID</th>
+                            <th>Office Email</th>
+                            <th>Created</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.LguAccounts.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="empty-row">No LGU accounts found.</td>
+                            </tr>
+                        }
+                        @foreach (var account in Model.LguAccounts)
+                        {
+                            <tr>
+                                <td>@account.Department</td>
+                                <td>@account.EmployeeId</td>
+                                <td>@account.Email</td>
+                                <td>@account.CreatedAt.ToString("MM/dd/yyyy")</td>
+                                <td>
+                                    <span class="status-badge @(account.IsActive ? "status-approved" : "status-rejected")">
+                                        @(account.IsActive ? "Active" : "Disabled")
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="post" asp-page-handler="ToggleStatus" style="display:inline">
+                                        <input type="hidden" name="userId" value="@account.UserId" />
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-review">
+                                            @(account.IsActive ? "Disable" : "Enable")
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create LGU Account Modal -->
+    <div id="createModal" class="modal-overlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Create LGU Office Account</h3>
+                <button onclick="closeModals()" class="modal-close">✕</button>
+            </div>
+            <form method="post" asp-page-handler="Create">
+                @Html.AntiForgeryToken()
+
+                <div class="form-group">
+                    <label>Department/Office</label>
+                    <select name="NewDepartment" class="form-control" required>
+                        <option value="">-- Select Department --</option>
+                        <option value="Health Office">Health Office</option>
+                        <option value="Engineering Office">Engineering Office</option>
+                        <option value="Social Welfare">Social Welfare</option>
+                        <option value="Public Safety">Public Safety</option>
+                        <option value="Agriculture">Agriculture</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Employee ID</label>
+                    <input type="text" name="NewEmployeeId"
+                           class="form-control"
+                           placeholder="e.g. LGU-HLT-002"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label>Office Email</label>
+                    <input type="email" name="NewEmail"
+                           class="form-control"
+                           placeholder="e.g. health@voxangelos.gov.ph"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="NewPassword"
+                           class="form-control"
+                           placeholder="Set a strong password"
+                           required />
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModals()" class="btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-approve">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+            function showCreateModal() {
+                document.getElementById('createModal').style.display = 'flex';
+            }
+            function closeModals() {
+                document.getElementById('createModal').style.display = 'none';
+            }
+    </script>
+</body>
+</html>

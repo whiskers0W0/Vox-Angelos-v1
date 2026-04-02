@@ -1,0 +1,616 @@
+﻿@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Register";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vox Angelos — Register</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Syne+Mono&family=Barlow:wght@300;400&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/register.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="bg"></div>
+    <div class="bg-grid"></div>
+    <div class="corner c-tl"></div>
+    <div class="corner c-tr"></div>
+    <div class="corner c-bl"></div>
+    <div class="corner c-br"></div>
+
+    <!-- Verification Loading Modal -->
+    <div id="loadingModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,30,0.85); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
+        <div style="width:52px; height:52px; border:3px solid rgba(0,179,230,0.2); border-top-color:var(--glow); border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+        <p style="font-family:'Syne Mono',monospace; font-size:0.75rem; letter-spacing:0.2em; color:rgba(128,223,255,0.7); text-transform:uppercase;">Verifying Identity...</p>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="resultModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,30,0.85); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:rgba(0,0,77,0.97); border:1px solid rgba(0,179,230,0.3); padding:2rem; max-width:380px; width:90%; text-align:center; box-shadow:0 0 40px rgba(0,102,204,0.3);">
+            <div id="resultIcon" style="font-size:2.5rem; margin-bottom:1rem;"></div>
+            <h3 id="resultTitle" style="font-family:'Oswald',sans-serif; letter-spacing:0.1em; text-transform:uppercase; color:#ccf2ff; margin-bottom:0.5rem;"></h3>
+            <p id="resultMessage" style="font-family:'Barlow',sans-serif; color:rgba(204,242,255,0.6); font-size:0.85rem; margin-bottom:1.5rem; line-height:1.5;"></p>
+            <button onclick="closeResultModal()" class="cta" style="width:auto; padding:0.5rem 2rem;">OK</button>
+        </div>
+    </div>
+
+    <div class="tech-wrapper">
+        <div class="row g-0">
+            <!-- LEFT PANEL -->
+            <div class="col-lg-5 panel-left d-none d-lg-flex">
+                <div class="eyebrow mb-2">Vox Angelos</div>
+                <h1 class="title mb-3">Citizen<br />Registration</h1>
+                <p class="tagline mb-4">
+                    Join the platform where<br />
+                    <strong>Citizens</strong> meet <strong>Governance</strong>
+                </p>
+                <div class="step-indicator">
+                    <div class="step-indicator__item active" id="si-step1">
+                        <div class="step-indicator__dot">1</div>
+                        <div class="step-indicator__text">Personal Info</div>
+                    </div>
+                    <div class="step-indicator__line"></div>
+                    <div class="step-indicator__item" id="si-step2">
+                        <div class="step-indicator__dot">2</div>
+                        <div class="step-indicator__text">Verification</div>
+                    </div>
+                    <div class="step-indicator__line"></div>
+                    <div class="step-indicator__item" id="si-step3">
+                        <div class="step-indicator__dot">3</div>
+                        <div class="step-indicator__text">Security</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL -->
+            <div class="col-lg-7 panel-right">
+                <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" enctype="multipart/form-data" autocomplete="off">
+
+                    <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
+                    <input type="file" id="selfieHiddenInput" name="Input.SelfiePhoto" style="display:none;" accept="image/*" />
+
+                    <!-- STEP 1 -->
+                    <div id="step1">
+                        <div class="eyebrow mb-1">Step 1 of 3</div>
+                        <div class="step-title mb-3">Personal Information</div>
+
+                        <div class="mb-2">
+                            <label asp-for="Input.FirstName" class="form-text-label">First Name</label>
+                            <input asp-for="Input.FirstName" class="form-control tech-input" placeholder="Juan" autocomplete="off" />
+                            <span asp-validation-for="Input.FirstName" class="tech-validation"></span>
+                        </div>
+
+                        <div class="mb-2">
+                            <label asp-for="Input.MiddleName" class="form-text-label">
+                                Middle Name <span class="optional-tag">Optional</span>
+                            </label>
+                            <input asp-for="Input.MiddleName" class="form-control tech-input" placeholder="Santos" autocomplete="off" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label asp-for="Input.LastName" class="form-text-label">Last Name</label>
+                            <input asp-for="Input.LastName" class="form-control tech-input" placeholder="dela Cruz" autocomplete="off" />
+                            <span asp-validation-for="Input.LastName" class="tech-validation"></span>
+                        </div>
+
+                        <div class="mb-2">
+                            <label asp-for="Input.PhoneNumber" class="form-text-label">Phone Number</label>
+                            <div class="phone-wrapper">
+                                <span class="phone-prefix">+63</span>
+                                <input asp-for="Input.PhoneNumber"
+                                       class="form-control tech-input"
+                                       placeholder="9XXXXXXXXX"
+                                       autocomplete="off"
+                                       maxlength="10"
+                                       inputmode="numeric"
+                                       oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                            </div>
+                            <span asp-validation-for="Input.PhoneNumber" class="tech-validation"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Email" class="form-text-label">Email Address</label>
+                            <input asp-for="Input.Email" class="form-control tech-input" placeholder="name@example.com" autocomplete="off" />
+                            <span asp-validation-for="Input.Email" class="tech-validation"></span>
+                        </div>
+
+                        <button type="button" id="nextStepButton" class="cta w-100">
+                            Next Step <span class="cta-arr ms-2"></span>
+                        </button>
+
+                        <div class="mt-2 text-center sign-in-note">
+                            Already registered?
+                            <a asp-area="Identity" asp-page="/Account/Login" class="tech-link ms-1">Sign in here</a>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2 -->
+                    <div id="step2" style="display:none;">
+                        <div class="eyebrow mb-1">Step 2 of 3</div>
+                        <div class="step-title mb-3">Identity Verification</div>
+
+                        <div class="mb-2">
+                            <label asp-for="Input.IdType" class="form-text-label">ID Type</label>
+                            <select asp-for="Input.IdType" id="idTypeSelect" class="form-select tech-input tech-select" onchange="onIdTypeChange()">
+                                <option value="">— Select ID Type —</option>
+                                <option value="National ID">National ID</option>
+                                <option value="Driver's License">Driver's License</option>
+                                <option value="Passport">Passport</option>
+                                <option value="Voter's ID">Voter's ID</option>
+                            </select>
+                            <span asp-validation-for="Input.IdType" class="tech-validation"></span>
+                        </div>
+
+                        <!-- ID Photo upload — hidden until ID type is selected -->
+                        <div class="mb-2" id="idPhotoSection" style="display:none;">
+                            <label asp-for="Input.IdPhoto" class="form-text-label">Upload ID Photo</label>
+                            <div class="file-drop-zone" id="fileDropZone">
+                                <input asp-for="Input.IdPhoto"
+                                       type="file"
+                                       class="file-input"
+                                       id="idPhotoInput"
+                                       accept=".jpg,.jpeg,.png" />
+                                <div class="file-drop-zone__inner">
+                                    <svg class="file-drop-zone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M12 16V8m0 0-3 3m3-3 3 3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="file-drop-zone__text" id="fileLabel">
+                                        Click to upload &nbsp;·&nbsp; JPG or PNG
+                                    </span>
+                                </div>
+                            </div>
+                            <span asp-validation-for="Input.IdPhoto" class="tech-validation"></span>
+                        </div>
+
+                        <!-- Live Camera -->
+                        <div class="mb-2">
+                            <label class="form-text-label">Live Selfie</label>
+                            <div id="cameraContainer">
+                                <video id="cameraFeed" autoplay playsinline></video>
+                                <canvas id="capturedCanvas"></canvas>
+                            </div>
+                            <div class="camera-controls" id="cameraControls">
+                                <button type="button" id="btnStartCamera" onclick="startCamera()" class="btn-camera-text">
+                                    ▶ Open Camera
+                                </button>
+                                <button type="button" id="btnCapture" onclick="capturePhoto()" class="btn-capture-round" style="display:none;" title="Take Photo">
+                                    <div class="inner"></div>
+                                </button>
+                                <button type="button" id="btnRetake" onclick="retakePhoto()" class="btn-camera-text" style="display:none;">
+                                    ↺ Retake
+                                </button>
+                            </div>
+                            <div id="selfieStatus" class="selfie-status"></div>
+                        </div>
+
+                        <div class="d-flex gap-3 mt-3">
+                            <button type="button" class="cta-back" onclick="goToStep1()">
+                                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M13 15l-5-5 5-5" />
+                                </svg>
+                                Back
+                            </button>
+                            <button type="button" id="step2NextBtn" class="cta flex-grow-1" onclick="goToStep3()">
+                                Next Step <span class="cta-arr ms-2"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3 -->
+                    <div id="step3" style="display:none;">
+                        <div class="eyebrow mb-1">Step 3 of 3</div>
+                        <div class="step-title mb-3">Account Security</div>
+
+                        <div class="mb-2">
+                            <label asp-for="Input.Password" class="form-text-label">Password</label>
+                            <div class="pw-wrapper">
+                                <input asp-for="Input.Password"
+                                       id="regPassword"
+                                       class="form-control tech-input"
+                                       type="password"
+                                       autocomplete="new-password"
+                                       placeholder="••••••••"
+                                       oninput="checkPasswordRules()" />
+                                <button type="button" class="pw-toggle" onclick="togglePw('regPassword', this)" tabindex="-1">
+                                    <svg id="regPassword-eye" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.Password" class="tech-validation"></span>
+                            <div class="pw-guidelines">
+                                <div class="pw-rule" id="rule-length"><span class="pw-rule-icon">✕</span> At least 6 characters</div>
+                                <div class="pw-rule" id="rule-upper"><span class="pw-rule-icon">✕</span> At least one uppercase letter</div>
+                                <div class="pw-rule" id="rule-lower"><span class="pw-rule-icon">✕</span> At least one lowercase letter</div>
+                                <div class="pw-rule" id="rule-digit"><span class="pw-rule-icon">✕</span> At least one number</div>
+                                <div class="pw-rule" id="rule-special"><span class="pw-rule-icon">✕</span> At least one special character</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.ConfirmPassword" class="form-text-label">Confirm Password</label>
+                            <div class="pw-wrapper">
+                                <input asp-for="Input.ConfirmPassword"
+                                       id="regConfirmPassword"
+                                       class="form-control tech-input"
+                                       type="password"
+                                       autocomplete="new-password"
+                                       placeholder="••••••••"
+                                       oninput="checkMatch()" />
+                                <button type="button" class="pw-toggle" onclick="togglePw('regConfirmPassword', this)" tabindex="-1">
+                                    <svg id="regConfirmPassword-eye" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Input.ConfirmPassword" class="tech-validation"></span>
+                            <div class="pw-rule mt-1" id="rule-match" style="display:none;"><span class="pw-rule-icon">✕</span> Passwords match</div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button type="button" class="cta-back" onclick="goBackToStep2()">
+                                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M13 15l-5-5 5-5" />
+                                </svg>
+                                Back
+                            </button>
+                            <button id="registerSubmit" type="submit" class="cta flex-grow-1">
+                                Create Account <span class="cta-arr ms-2"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="copyright">&copy; 2025 Vox Angelos &nbsp;·&nbsp; Authorized Personnel Only</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.20.0/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+
+    <script>
+    let cameraStream = null;
+    let selfieCaptured = false;
+
+    // ── ID Type gate ──────────────────────────────────────────────
+    function onIdTypeChange() {
+        const val = document.getElementById('idTypeSelect').value;
+        document.getElementById('idPhotoSection').style.display = val ? 'block' : 'none';
+    }
+
+    // ── File upload — single click only ──────────────────────────
+    document.getElementById('idPhotoInput').addEventListener('change', function() {
+        const label = document.getElementById('fileLabel');
+        label.textContent = this.files.length > 0 ? this.files[0].name : 'Click to upload · JPG or PNG';
+    });
+
+    document.getElementById('fileDropZone').addEventListener('click', function(e) {
+        if (e.target !== document.getElementById('idPhotoInput')) {
+            document.getElementById('idPhotoInput').click();
+        }
+    });
+
+    // ── Step navigation ───────────────────────────────────────────
+    async function goToStep2() {
+        let isValid = true;
+        ['#Input_FirstName','#Input_LastName','#Input_Email','#Input_PhoneNumber'].forEach(f => {
+            if (!$(f).valid()) isValid = false;
+        });
+        if (!isValid) return;
+
+        const email = $('#Input_Email').val();
+        const phone = '+63' + $('#Input_PhoneNumber').val();
+        const btn = document.getElementById('nextStepButton');
+        btn.disabled = true;
+        btn.innerHTML = 'Checking...';
+
+        try {
+            const res = await fetch(`?handler=CheckDuplicates&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
+            const data = await res.json();
+            $('.custom-duplicate-error').remove();
+            if (data.success) {
+                showStep(1, 2);
+            } else {
+                for (const [id, msg] of Object.entries(data.errors)) {
+                    $(`#${id}`).after(`<span class="text-danger custom-duplicate-error tech-validation">${msg}</span>`);
+                }
+            }
+        } catch(e) { console.error(e); }
+        finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Next Step <span class="cta-arr ms-2"></span>';
+        }
+    }
+
+    document.getElementById('nextStepButton').addEventListener('click', e => { e.preventDefault(); goToStep2(); });
+
+    function goToStep1() {
+        stopCamera();
+        showStep(2, 1);
+    }
+
+        async function goToStep3() {
+        // FIX: use correct element id
+        const idType = document.getElementById('idTypeSelect').value;
+
+        if (!idType) {
+        showResultModal('error', 'ID Type Required', 'Please select your ID type before proceeding.');
+        return;
+        }
+
+        const idInput = document.getElementById('idPhotoInput');
+        if (!idInput.files || idInput.files.length === 0) {
+        showResultModal('error', 'ID Photo Required', 'Please upload a photo of your ID before proceeding.');
+        return;
+        }
+
+        if (!selfieCaptured) {
+        setStatus('Please take a live selfie before proceeding.', 'error');
+        return;
+        }
+
+        // ── Philippine ID dimension validation ──────────────────────
+        const idDimensions = {
+        "Driver's License":  { minW: 856, minH: 540, ratio: 1.585, label: "Driver's License (CR80 card)" },
+        "National ID":       { minW: 856, minH: 540, ratio: 1.585, label: "Philippine National ID (CR80 card)" },
+        "Voter's ID":        { minW: 856, minH: 540, ratio: 1.585, label: "Voter's ID (CR80 card)" },
+        "Passport":          { minW: 900, minH: 1200, ratio: 0.75,  label: "Passport (portrait)" },
+        };
+
+        const idFile = idInput.files[0];
+        const dimensionOk = await checkIdDimensions(idFile, idType, idDimensions);
+        if (!dimensionOk) return; // error modal already shown inside
+
+        // ── Proceed with server-side verification ───────────────────
+        const formData = new FormData();
+        formData.append('idPhoto', idFile);
+        formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        const btn = document.getElementById('step2NextBtn');
+        btn.disabled = true;
+
+        const loadingModal = document.getElementById('loadingModal');
+        loadingModal.classList.add('active');
+
+        try {
+        const res = await fetch('?handler=VerifyIdentity', {
+        method: 'POST',
+        body: formData,
+        headers: { 'RequestVerificationToken': token }
+        });
+        const data = await res.json();
+        loadingModal.classList.remove('active');
+
+        if (data.success) {
+        stopCamera();
+        showResultModal('success', 'Verification Successful',
+        'Your identity has been verified. Proceeding to account setup...', function() {
+        showStep(2, 3);
+        });
+        } else {
+        showResultModal('error', 'Verification Failed', data.error || 'Please try again.');
+        }
+        } catch(e) {
+        loadingModal.classList.remove('active');
+        showResultModal('error', 'Network Error', 'A network error occurred. Please try again.');
+        } finally {
+        btn.disabled = false;
+        }
+        }
+
+        // ── ID dimension checker ──────────────────────────────────────
+        function checkIdDimensions(file, idType, rules) {
+        return new Promise((resolve) => {
+        const rule = rules[idType];
+        if (!rule) { resolve(true); return; } // unknown type, skip
+
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = function() {
+        URL.revokeObjectURL(url);
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const actualRatio = w / h;
+        const expectedRatio = rule.ratio;
+        const tolerance = 0.20; // 20% tolerance
+
+        const ratioDiff = Math.abs(actualRatio - expectedRatio) / expectedRatio;
+
+        if (ratioDiff > tolerance) {
+        const expected = expectedRatio > 1 ? 'landscape (wider than tall)' : 'portrait (taller than wide)';
+        showResultModal('error', 'Wrong ID Format',
+        `The uploaded image does not match the expected format for a ${rule.label}. ` +
+        `Please upload a ${expected} photo of your actual ID card.`);
+        resolve(false);
+        } else {
+        resolve(true);
+        }
+        };
+        img.onerror = function() {
+        URL.revokeObjectURL(url);
+        showResultModal('error', 'Invalid Image', 'Could not read the uploaded image. Please try a different file.');
+        resolve(false);
+        };
+        img.src = url;
+        });
+        }
+
+    function goBackToStep2() { showStep(3, 2); }
+
+    function showStep(from, to) {
+        document.getElementById(`step${from}`).style.display = 'none';
+        document.getElementById(`step${to}`).style.display = 'block';
+        const siFrom = document.getElementById(`si-step${from}`);
+        const siTo = document.getElementById(`si-step${to}`);
+        if (from < to) {
+            siFrom.classList.remove('active');
+            siFrom.classList.add('done');
+            siTo.classList.add('active');
+        } else {
+            siFrom.classList.remove('active', 'done');
+            siTo.classList.remove('done');
+            siTo.classList.add('active');
+        }
+    }
+
+    // ── Modals ────────────────────────────────────────────────────
+    let onModalClose = null;
+
+    function showResultModal(type, title, message, callback) {
+        document.getElementById('resultIcon').textContent = type === 'success' ? '✅' : '❌';
+        document.getElementById('resultTitle').textContent = title;
+        document.getElementById('resultMessage').textContent = message;
+        onModalClose = callback || null;
+        document.getElementById('resultModal').classList.add('active');
+    }
+
+    function closeResultModal() {
+        document.getElementById('resultModal').classList.remove('active');
+        if (onModalClose) { onModalClose(); onModalClose = null; }
+    }
+
+    // ── Camera ────────────────────────────────────────────────────
+    async function startCamera() {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+            });
+            const video = document.getElementById('cameraFeed');
+            video.srcObject = cameraStream;
+            video.style.display = 'block';
+            document.getElementById('capturedCanvas').style.display = 'none';
+            document.getElementById('btnStartCamera').style.display = 'none';
+            document.getElementById('btnCapture').style.display = 'flex';
+            document.getElementById('btnRetake').style.display = 'none';
+            setStatus('', '');
+        } catch(err) {
+            setStatus('Camera access denied. Please allow camera permissions.', 'error');
+        }
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('cameraFeed');
+        const canvas = document.getElementById('capturedCanvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        document.getElementById('btnCapture').style.display = 'none';
+        document.getElementById('btnRetake').style.display = 'inline-flex';
+        stopCamera();
+        canvas.toBlob(function(blob) {
+            const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            document.getElementById('selfieHiddenInput').files = dt.files;
+            selfieCaptured = true;
+            setStatus('Selfie captured successfully!', 'success');
+        }, 'image/jpeg', 0.92);
+    }
+
+    function retakePhoto() {
+        selfieCaptured = false;
+        document.getElementById('btnRetake').style.display = 'none';
+        document.getElementById('btnStartCamera').style.display = 'inline-flex';
+        document.getElementById('capturedCanvas').style.display = 'none';
+        document.getElementById('selfieHiddenInput').value = '';
+        setStatus('', '');
+    }
+
+    function stopCamera() {
+        if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+    }
+
+    function setStatus(msg, type) {
+        const el = document.getElementById('selfieStatus');
+        el.textContent = msg;
+        el.className = 'selfie-status' + (type ? ' ' + type : '');
+    }
+
+    // ── Password eye toggle ───────────────────────────────────────
+    function togglePw(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const eye = document.getElementById(inputId + '-eye');
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        eye.innerHTML = isHidden
+            ? `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />`
+            : `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />`;
+    }
+
+    // ── Password guidelines ───────────────────────────────────────
+    function checkPasswordRules() {
+        const pw = document.getElementById('regPassword').value;
+        setRule('rule-length', pw.length >= 6);
+        setRule('rule-upper', /[A-Z]/.test(pw));
+        setRule('rule-lower', /[a-z]/.test(pw));
+        setRule('rule-digit', /[0-9]/.test(pw));
+        setRule('rule-special', /[^A-Za-z0-9]/.test(pw));
+        checkMatch();
+    }
+
+    function checkMatch() {
+        const pw = document.getElementById('regPassword').value;
+        const cp = document.getElementById('regConfirmPassword').value;
+        const rule = document.getElementById('rule-match');
+        if (cp.length > 0) {
+            rule.style.display = 'flex';
+            setRule('rule-match', pw === cp);
+        } else {
+            rule.style.display = 'none';
+        }
+    }
+
+    function setRule(id, met) {
+        const el = document.getElementById(id);
+        el.classList.toggle('met', met);
+        el.querySelector('.pw-rule-icon').textContent = met ? '✓' : '✕';
+    }
+
+    // ── Prevent autofill on load ──────────────────────────────────
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            document.querySelectorAll('input:not([type="hidden"]):not([type="file"])').forEach(i => i.value = '');
+        }, 100);
+    });
+
+    window.addEventListener('beforeunload', stopCamera);
+
+        // Prevent Enter key from submitting form — use step navigation instead
+        document.getElementById('registerForm').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+        e.preventDefault();
+
+        // Trigger the visible step's primary button instead
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+
+        if (step1.style.display !== 'none') {
+        document.getElementById('nextStepButton').click();
+        } else if (step2.style.display !== 'none') {
+        document.getElementById('step2NextBtn').click();
+        } else if (step3.style.display !== 'none') {
+        document.getElementById('registerSubmit').click();
+        }
+        }
+        });
+    </script>
+
+    @section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+    }
+</body>
+</html>

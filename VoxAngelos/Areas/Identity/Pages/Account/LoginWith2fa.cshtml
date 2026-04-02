@@ -1,0 +1,80 @@
+﻿@page
+@model LoginWith2faModel
+@{
+    ViewData["Title"] = "Two-factor authentication";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vox Angelos — Verify OTP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Syne+Mono&family=Barlow:wght@300;400&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/loginwith2fa.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="bg"></div>
+    <div class="bg-grid"></div>
+    <div class="corner c-tl"></div>
+    <div class="corner c-tr"></div>
+    <div class="corner c-bl"></div>
+    <div class="corner c-br"></div>
+
+    <div class="tech-wrapper">
+        <div class="row g-0">
+            <div class="col-lg-5 panel-left">
+                <div class="eyebrow mb-2">Vox Angelos</div>
+                <h1 class="title mb-3">Citizen<br />Portal</h1>
+                <p class="tagline mb-0">
+                    Secure access for<br />
+                    <strong>authorized personnel</strong>
+                </p>
+            </div>
+
+            <div class="col-lg-7 panel-right">
+                <div class="eyebrow mb-3">Identity Verification</div>
+                <h2 style="font-family:'Oswald',sans-serif; font-weight:600; font-size:1.6rem; color:#fff; letter-spacing:0.08em; margin-bottom:0.5rem;">
+                    CONFIRM OTP
+                </h2>
+                <p style="font-family:'Barlow',sans-serif; font-size:0.9rem; color:rgba(200,230,255,0.6); margin-bottom:1.5rem; line-height:1.6;">
+                    A 6-digit verification code has been sent to your email.<br />
+                    Enter it below to access <strong style="color:rgba(0,210,255,0.8);">Vox Angelos</strong>.
+                </p>
+
+                <div class="divider"></div>
+
+                <form method="post" asp-route-returnUrl="@Model.ReturnUrl" autocomplete="off">
+                    <input asp-for="RememberMe" type="hidden" />
+
+                    <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
+
+                    <div class="mb-4">
+                        <label asp-for="Input.TwoFactorCode" class="form-text-label">
+                            Verification Code
+                        </label>
+                        <input asp-for="Input.TwoFactorCode"
+                               class="form-control otp-input w-100"
+                               autocomplete="off"
+                               maxlength="6"
+                               placeholder="——————"
+                               inputmode="numeric" />
+                        <span asp-validation-for="Input.TwoFactorCode" class="tech-validation"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <button type="submit" class="cta w-100">
+                            Verify &amp; Sign In
+                            <span class="cta-arr ms-2"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+</body>
+</html>
