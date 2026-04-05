@@ -1,0 +1,432 @@
+﻿/* ── Feed header ── */
+.feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.feed-header-left h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.feed-header-left p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 2px 0 0;
+}
+
+/* ── Filter buttons ── */
+.feed-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+}
+
+    .filter-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .filter-btn.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+
+/* ── Concern card ── */
+.concern-card {
+    background: #ffffff;
+    border-radius: 30px;
+    border: 1px solid #ffffff;
+    box-shadow: inset -3px -3px 8.9px -1px rgba(0, 0, 0, 0.30);
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: opacity 0.3s;
+}
+
+.concern-card-body {
+    padding: 18px 50px 0;
+}
+
+/* ── Author row ── */
+.concern-author {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.concern-author-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.concern-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.concern-author-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.concern-timestamp-right {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* ── Category ── */
+.concern-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    font-style: italic;
+    color: #c2410c;
+    margin-bottom: 8px;
+}
+
+    .concern-category::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #f97316;
+        flex-shrink: 0;
+    }
+
+/* ── Description ── */
+.concern-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+/* ── Photo ── */
+.concern-photo {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    border-radius: 30px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.concern-photo-placeholder {
+    width: 100%;
+    height: 260px;
+    border-radius: 12px;
+    background: #f4f5f8;
+    border: 1px dashed rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+    .concern-photo-placeholder svg {
+        width: 28px;
+        height: 28px;
+        opacity: 0.25;
+    }
+
+/* ── Location ── */
+.concern-location {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+}
+
+    .concern-location svg {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        opacity: 0.5;
+    }
+
+/* ── View in Map ── */
+.view-in-map-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    text-decoration: none;
+    margin-left: auto;
+}
+
+    .view-in-map-btn:hover {
+        text-decoration: underline;
+    }
+
+    .view-in-map-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+/* ── Card footer ── */
+.concern-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ── Status badge ── */
+.concern-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+    .concern-status-badge.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .concern-status-badge.in-progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .concern-status-badge.resolved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .concern-status-badge.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+/* ── Card actions ── */
+.concern-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Choose Concern button ── */
+.btn-choose-concern {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 16px;
+    background: white;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+}
+
+    .btn-choose-concern:hover {
+        background: var(--accent-light);
+    }
+
+/* ── Update Status button ── */
+.btn-update-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: 'DM Sans', sans-serif;
+}
+
+    .btn-update-status:hover {
+        background: #2d32a8;
+    }
+
+    .btn-update-status svg {
+        width: 13px;
+        height: 13px;
+    }
+
+/* ── Empty state ── */
+.feed-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+    .feed-empty svg {
+        width: 48px;
+        height: 48px;
+        opacity: 0.2;
+        margin-bottom: 12px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .feed-empty p {
+        font-size: 14px;
+        margin: 0;
+    }
+
+/* ── Modal ── */
+.modal-va .modal-content {
+    border: 5px solid #2B45B0;
+    border-radius: 40px;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+    font-family: 'DM Sans', sans-serif;
+}
+
+.modal-va .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: none;
+}
+
+.modal-va .modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    width: 100%;
+}
+
+.modal-va .modal-body {
+    padding: 20px 24px;
+}
+
+.modal-va .modal-footer {
+    padding: 14px 24px;
+    border-top: none;
+    gap: 8px;
+}
+
+.modal-va .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.modal-va .form-select,
+.modal-va .form-control {
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-primary);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+    .modal-va .form-select:focus,
+    .modal-va .form-control:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(59, 64, 196, 0.1);
+        outline: none;
+    }
+
+.modal-va textarea.form-control {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* ── Modal buttons ── */
+.btn-va-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+    .btn-va-primary:hover {
+        background: #2d32a8;
+    }
+
+.btn-va-secondary {
+    background: white;
+    color: var(--text-secondary);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+    .btn-va-secondary:hover {
+        border-color: var(--text-secondary);
+        color: var(--text-primary);
+    }
+
+
+/* ── Selected banner ── */
+.concern-selected-banner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+}

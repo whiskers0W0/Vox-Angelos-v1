@@ -1,0 +1,181 @@
+﻿@page
+@model VoxAngelos.Pages.LGU.LeaderboardModel
+@{
+    Layout = "_LGULayout";
+    ViewData["Title"] = "Leaderboard";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/lgu_leaderboard.css" asp-append-version="true" />
+}
+
+<!-- ── Header ── -->
+<div class="leaderboard-header">
+    <h1>Top Project Recommendations</h1>
+    <div class="leaderboard-filter">
+        <span>As of:</span>
+        <select id="time-filter">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+        </select>
+    </div>
+</div>
+
+<!-- ── Leaderboard items ── -->
+<div id="leaderboard-feed">
+
+    <!-- Item 1 — trending up -->
+    <div class="leaderboard-item">
+        <div class="rank-indicator">
+            <div class="rank-arrow up"></div>
+            <div class="rank-number">1</div>
+        </div>
+        <div class="proposal-card">
+            <div class="proposal-author">
+                <div class="proposal-author-left">
+                    <div class="proposal-avatar">AC</div>
+                    <p class="proposal-author-name">Anne Curtis</p>
+                </div>
+                <span class="proposal-date">09/22/25</span>
+            </div>
+
+            <div class="proposal-category">Category: Disaster Risk Reduction</div>
+            <div class="proposal-office">Office: Disaster Office (ACDRRMO)</div>
+
+            <div class="proposal-title">
+                Project Recommendation: Flood Preparedness and Emergency Response Enhancement
+            </div>
+
+            <div class="proposal-description collapsed" id="desc-1">
+                This project recommendation addresses recurring challenges related to flood evacuations,
+                emergency rescue operations, and the dissemination of typhoon advisories. During severe
+                weather events, delays in response and limited public awareness increase risks to lives and
+                property. Strengthening preparedness and communication systems is essential to minimize
+                disaster-related impacts. The recommended solution involves improving evacuation planning,
+                enhancing early warning systems, and coordinating with local barangays for faster response.
+            </div>
+            <a href="/LGU/ProposalDetail?id=1" class="view-more-btn visible">View More</a>
+
+            <div class="proposal-attachments">
+                <div class="attachment-thumb">
+                    <img src="" alt="" onerror="this.parentElement.style.background='#e2e8f0'" />
+                </div>
+                <div class="attachment-thumb">
+                    <img src="" alt="" onerror="this.parentElement.style.background='#e2e8f0'" />
+                </div>
+                <div class="attachment-more">
+                    2+
+                    <span>Files</span>
+                </div>
+            </div>
+
+            <div class="proposal-votes">
+                <span class="vote-count upvotes">100 Upvotes</span>
+                <span class="vote-count downvotes">12 Downvotes</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item 2 — trending down -->
+    <div class="leaderboard-item">
+        <div class="rank-indicator">
+            <div class="rank-arrow down"></div>
+            <div class="rank-number">2</div>
+        </div>
+        <div class="proposal-card">
+            <div class="proposal-author">
+                <div class="proposal-author-left">
+                    <div class="proposal-avatar">MR</div>
+                    <p class="proposal-author-name">Marian Rivera</p>
+                </div>
+                <span class="proposal-date">09/22/25</span>
+            </div>
+
+            <div class="proposal-category">Category: Infrastructure</div>
+            <div class="proposal-office">Office: Engineering Office</div>
+
+            <div class="proposal-title">
+                Project Recommendation: Road Network Improvement in Barangay Pulung Bulu
+            </div>
+
+            <div class="proposal-description collapsed" id="desc-2">
+                This recommendation focuses on addressing the deteriorating road conditions in Barangay
+                Pulung Bulu which have been causing accidents and hampering the movement of goods and
+                residents. The proposed project involves repaving key road sections, installing proper
+                drainage to prevent flooding, and adding road safety signage throughout the area.
+            </div>
+            <a href="/LGU/ProposalDetail?id=2" class="view-more-btn visible">View More</a>
+
+            <div class="proposal-attachments">
+                <div class="attachment-thumb">
+                    <img src="" alt="" onerror="this.parentElement.style.background='#e2e8f0'" />
+                </div>
+            </div>
+
+            <div class="proposal-votes">
+                <span class="vote-count upvotes">85 Upvotes</span>
+                <span class="vote-count downvotes">20 Downvotes</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item 3 — trending up -->
+    <div class="leaderboard-item">
+        <div class="rank-indicator">
+            <div class="rank-arrow up"></div>
+            <div class="rank-number">3</div>
+        </div>
+        <div class="proposal-card">
+            <div class="proposal-author">
+                <div class="proposal-author-left">
+                    <div class="proposal-avatar">JD</div>
+                    <p class="proposal-author-name">Jose Dalisay</p>
+                </div>
+                <span class="proposal-date">09/22/25</span>
+            </div>
+
+            <div class="proposal-category">Category: Health</div>
+            <div class="proposal-office">Office: City Health Office</div>
+
+            <div class="proposal-title">
+                Project Recommendation: Mobile Health Clinic Expansion
+            </div>
+
+            <div class="proposal-description collapsed" id="desc-3">
+                A short description.
+            </div>
+            <a href="/LGU/ProposalDetail?id=3" class="view-more-btn visible">View More</a>
+
+            <button class="view-more-btn" data-target="desc-3">View More</button>
+
+            <div class="proposal-votes">
+                <span class="vote-count upvotes">72 Upvotes</span>
+                <span class="vote-count downvotes">8 Downvotes</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        // ── View More / View Less toggle ──
+        // Only show "View More" if text is actually clamped
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.proposal-description').forEach(desc => {
+                const btn = desc.nextElementSibling;
+                if (desc.scrollHeight > desc.clientHeight) {
+                    btn.classList.add('visible');
+                }
+
+                btn.addEventListener('click', () => {
+                    const isCollapsed = desc.classList.contains('collapsed');
+                    desc.classList.toggle('collapsed');
+                    btn.textContent = isCollapsed ? 'View Less' : 'View More';
+                });
+            });
+        });
+    </script>
+}
