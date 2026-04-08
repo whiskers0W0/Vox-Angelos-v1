@@ -1,0 +1,43 @@
+﻿@page
+@model VoxAngelos.Pages.LGU.HeatmapModel
+@{
+    Layout = "_LGULayout";
+    ViewData["Title"] = "Map View";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/lgu_heatmap.css" asp-append-version="true" />
+}
+
+<h1 class="page-title" style="margin-bottom: 16px;">Map View</h1>
+<div class="heatmap-wrapper">
+    <div id="map"></div>
+</div>
+
+@section Scripts {
+    <script>
+        function initMap() {
+            const angelesCityCenter = { lat: 15.1450, lng: 120.5887 };
+
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: angelesCityCenter,
+                zoom: 13,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+                zoomControl: true,
+                styles: [
+                    {
+                        featureType: 'poi',
+                        elementType: 'labels',
+                        stylers: [{ visibility: 'off' }]
+                    }
+                ]
+            });
+        }
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap"
+            async defer>
+    </script>
+}

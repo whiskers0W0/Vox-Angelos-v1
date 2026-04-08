@@ -1,0 +1,88 @@
+﻿@page
+@model VoxAngelos.Pages.LGU.ProposalDetailModel
+@{
+    Layout = "_LGULayout";
+    ViewData["Title"] = "View Project Recommendation";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/lgu_proposal_detail.css" asp-append-version="true" />
+}
+
+<h1 class="page-title" style="margin-bottom: 24px;">View Project Recommendation</h1>
+
+<!-- ── Back button ── -->
+<a href="/LGU/Leaderboard" class="back-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+    </svg>
+    Back to Leaderboard
+</a>
+
+<!-- ── Proposal detail card ── -->
+<div class="proposal-detail-card">
+
+    <!-- Header -->
+    <div class="detail-card-header">
+        <div class="detail-title">@Model.Proposal.Title</div>
+
+        <div class="detail-meta">
+            <div class="detail-meta-item">
+                <span class="detail-meta-label">Category</span>
+                <span class="detail-meta-value category">@Model.Proposal.Category</span>
+            </div>
+            <div class="detail-meta-item">
+                <span class="detail-meta-label">Office</span>
+                <span class="detail-meta-value">@Model.Proposal.Office</span>
+            </div>
+            <div class="detail-meta-item">
+                <span class="detail-meta-label">Submission Date</span>
+                <span class="detail-meta-value">@Model.Proposal.SubmissionDate</span>
+            </div>
+        </div>
+
+        <div class="detail-author">
+            <div class="detail-avatar">@Model.Proposal.AuthorInitials</div>
+            <span class="detail-author-name">@Model.Proposal.AuthorName</span>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="detail-card-body">
+
+        <p class="detail-description">@Model.Proposal.Description</p>
+
+        @if (Model.Proposal.Attachments.Any())
+        {
+            <div class="detail-attachments-label">Attachments</div>
+            <div class="detail-attachments">
+                @foreach (var attachment in Model.Proposal.Attachments)
+                {
+                    <div class="detail-attachment-thumb">
+                        <img src="@attachment" alt="Attachment"
+                             onerror="this.parentElement.style.background='#e2e8f0'" />
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="detail-contact">
+            <div class="detail-contact-item">
+                <strong>Contact Number:</strong>
+                <span>@Model.Proposal.ContactNumber</span>
+            </div>
+            <div class="detail-contact-item">
+                <strong>Email:</strong>
+                <a href="mailto:@Model.Proposal.AuthorEmail">@Model.Proposal.AuthorEmail</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Votes -->
+    <div class="detail-votes">
+        <span class="detail-vote-count upvotes">@Model.Proposal.Upvotes Upvotes</span>
+        <span class="detail-vote-count downvotes">@Model.Proposal.Downvotes Downvotes</span>
+    </div>
+
+</div>
