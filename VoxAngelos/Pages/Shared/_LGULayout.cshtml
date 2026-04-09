@@ -30,7 +30,7 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/dashboard_lgu.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/lgu_layout.css" asp-append-version="true" />
 
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -55,6 +55,17 @@
         <!-- Navigation -->
         <nav class="sidebar-nav">
             <div class="sidebar-nav-label">Menu</div>
+
+            <a asp-page="/LGU/Dashboard"
+                   class="sidebar-link @(IsActive("/LGU/Dashboard") ? "active" : "")">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                Dashboard
+            </a>
 
             <a asp-page="/LGU/Index"
                    class="sidebar-link @(IsActive("/LGU/Index") ? "active" : "")">
@@ -125,6 +136,17 @@
             <nav class="sidebar-nav">
                 <div class="sidebar-nav-label">Menu</div>
 
+                <a asp-page="/LGU/Dashboard"
+                       class="sidebar-link @(IsActive("/LGU/Dashboard") ? "active" : "")">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    Dashboard
+                </a>
+
                 <a asp-page="/LGU/Index"
                        class="sidebar-link @(IsActive("/LGU/Index") ? "active" : "")">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -185,7 +207,7 @@
                         <line x1="3" y1="18" x2="21" y2="18" />
                     </svg>
                 </button>
-                <div class="lgu-topbar-greeting">Hello, @departmentName</div>
+                <div class="lgu-topbar-greeting">@ViewData["Title"]</div>
             </div>
         </header>
 

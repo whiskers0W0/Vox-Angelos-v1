@@ -1,0 +1,55 @@
+﻿@page
+@model VoxAngelos.Pages.LGU.DashboardModel
+@{
+    Layout = "_LGULayout";
+    ViewData["Title"] = "Welcome, Department of " + Model.DepartmentName + "!";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard_lgu.css" asp-append-version="true" />
+}
+
+<div class="dashboard-grid">
+
+    <!-- Total Concerns -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <div class="stat-number">@Model.TotalConcerns.ToString("D2")</div>
+        <div class="stat-label">Total Concerns</div>
+    </div>
+
+    <!-- Total Unresolved -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+        <div class="stat-number">@Model.TotalUnresolved.ToString("D2")</div>
+        <div class="stat-label">Total Unresolved</div>
+    </div>
+
+    <!-- Total In Progress -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+        <div class="stat-number">@Model.TotalInProgress.ToString("D2")</div>
+        <div class="stat-label">Total In Progress</div>
+    </div>
+
+    <!-- Total Resolved -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+        <div class="stat-number">@Model.TotalResolved.ToString("D2")</div>
+        <div class="stat-label">Total Resolved</div>
+    </div>
+
+</div>
