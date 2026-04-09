@@ -88,7 +88,7 @@ namespace VoxAngelos.Pages.LGU
             _logger.LogInformation("LGU {EmployeeId} ({Department}) logged in.",
                 EmployeeId, user.Department);
 
-            return RedirectToPage("/LGU/Index");
+            return RedirectToPage("/LGU/Dashboard");
         }
     }
 }
