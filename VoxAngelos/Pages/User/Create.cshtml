@@ -1,0 +1,404 @@
+﻿@page
+@model VoxAngelos.Pages.User.CreateModel
+@{
+    Layout = "_CitizenLayout";
+    ViewData["Title"] = "Create";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/citizen-create.css" />
+}
+<div class="content-header">
+    <h1 class="page-title">Submit a Concern</h1>
+</div>
+
+<!-- Toggle Tabs -->
+<div class="tab-group">
+    <div class="tab-indicator"></div>
+    <button class="tab-btn active" data-view="concern">Concern</button>
+    <button class="tab-btn" data-view="project">Project</button>
+</div>
+
+<!-- Concern Form -->
+<div id="concernView" class="view-section active-view">
+    <div style="display:flex; justify-content:center;">
+        <div class="concern-card">
+
+            <!-- User row -->
+            <div class="concern-user-row">
+                <div class="concern-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                </div>
+                <span class="concern-username" id="concernUsername">Juan Dela Cruz</span>
+            </div>
+
+            <!-- Description -->
+            <div class="concern-form-group">
+                <label class="concern-form-label">Description:</label>
+                <textarea class="concern-textarea" id="concernDescription" placeholder="Describe your concern..."></textarea>
+            </div>
+
+            <!-- Location -->
+            <div class="concern-location-row">
+                <label class="concern-form-label">Location:</label>
+                <span class="concern-location-value" id="concernLocationText"></span>
+                <button class="use-map-link" id="useMapBtn" type="button">Use map</button>
+            </div>
+
+            <!-- Attachments -->
+            <div class="concern-attachment-row">
+                <label class="concern-form-label">Attachment/s:</label>
+                <button class="concern-upload-btn" type="button" id="concernUploadBtn">
+                    <span class="upload-label">Upload</span>
+                    <span class="upload-hint">(.jpg .png .mp4 .pdf)</span>
+                </button>
+                <input type="file" id="concernFileInput" style="display:none;" multiple accept="image/*,video/*,.pdf" />
+                <span class="concern-file-names" id="concernFileNames"></span>
+            </div>
+
+            <!-- Submit -->
+            <div class="concern-submit-row">
+                <button class="btn-submit" id="concernSubmitBtn" type="button">Submit</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Project Proposal Multi-Step Form -->
+<div id="projectView" class="view-section">
+    <div style="display:flex; justify-content:center;">
+        <div class="proposal-card">
+
+            <div class="proposal-card-header">
+                <h2>Submit a Project Proposal</h2>
+                <p>Vox Angelos: Make your voice heard.</p>
+            </div>
+
+            <!-- STEP 1: Project Type -->
+            <div class="step-content active" id="step1">
+                <p class="step-question">What type of project would you like to propose?</p>
+                <div class="category-grid">
+                    <button class="category-btn" data-value="Infrastructure">Infrastructure</button>
+                    <button class="category-btn" data-value="Environment">Environment</button>
+                    <button class="category-btn" data-value="Community Program">Community Program</button>
+                    <button class="category-btn" data-value="Public Safety">Public Safety</button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Project Details -->
+            <div class="step-content" id="step2">
+                <div class="form-group">
+                    <label class="form-label">Give your project a title.</label>
+                    <input type="text" class="form-input" id="projectTitle" placeholder="Title" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Where would you like the project to be located?</label>
+                    <input type="text" class="form-input" id="projectLocation" placeholder="Sto. Rosario, Angeles City" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Describe the project you are proposing.</label>
+                    <textarea class="form-textarea" id="projectDescription" placeholder="Describe your project here..."></textarea>
+                </div>
+            </div>
+
+            <!-- STEP 3: More Details -->
+            <div class="step-content" id="step3">
+                <p class="step-question">Please provide more details about your proposal.</p>
+
+                <div class="form-group">
+                    <label class="form-label left">How urgent is this project?</label>
+                    <div class="urgency-labels">
+                        <span>Low</span>
+                        <span>Moderate</span>
+                        <span>High</span>
+                        <span>Critical</span>
+                    </div>
+                    <div class="urgency-track">
+                        <input type="range" class="urgency-slider" id="urgencySlider" min="1" max="4" value="1" step="1" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label left">Who will benefit from this project?</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Local residents" /> Local residents</label>
+                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Students" checked /> Students</label>
+                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Businesses" /> Businesses</label>
+                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Senior citizens" /> Senior citizens</label>
+                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Entire community" /> Entire community</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label left">Estimated no. of people affected</label>
+                    <input type="number" class="form-input" id="peopleAffected" placeholder="e.g. 500" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label left">Upload Files (Optional):</label>
+                    <button class="upload-btn" type="button" id="uploadBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        Upload Photo or Document
+                    </button>
+                    <input type="file" id="fileInput" style="display:none;" multiple accept="image/*,.pdf,.doc,.docx" />
+                    <p class="file-name-label" id="fileLabel"></p>
+                </div>
+            </div>
+
+            <!-- STEP 4: Review -->
+            <div class="step-content" id="step4">
+                <p class="review-section-title">Review Your Proposal</p>
+                <div class="review-box" id="reviewBox">
+                    <div><strong>Project Type:</strong> <span id="r-type"></span></div>
+                    <div><strong>Project Title:</strong> <span id="r-title"></span></div>
+                    <div><strong>Location:</strong> <span id="r-location"></span></div>
+                    <div><strong>Description:</strong> <span id="r-description"></span></div>
+                    <br>
+                    <div><strong>Urgency:</strong> <span id="r-urgency"></span></div>
+                    <div><strong>Beneficiaries:</strong> <span id="r-beneficiaries"></span></div>
+                    <div><strong>Est. people affected:</strong> <span id="r-people"></span></div>
+                    <div><strong>Attachments:</strong> <span id="r-attachments"></span></div>
+                </div>
+            </div>
+
+            <!-- Success State -->
+            <div class="success-state" id="successState">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                </div>
+                <h3>Proposal Submitted!</h3>
+                <p>Your project proposal has been received.<br>We'll review it and get back to you.</p>
+                <button class="btn-new" id="btnNewProposal">Submit Another</button>
+            </div>
+
+            <!-- Footer -->
+            <div class="step-footer" id="stepFooter">
+                <span class="step-counter" id="stepCounter">Step 1 of 4</span>
+                <div class="footer-actions">
+                    <button class="btn-back" id="btnBack" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        Back
+                    </button>
+                    <button class="btn-next" id="btnNext">
+                        Next
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+             
+<!-- Map Modal -->
+<div class="map-modal-overlay" id="mapModalOverlay">
+    <div class="map-modal">
+        <div class="map-placeholder">google map view here</div>
+        <div class="map-modal-footer">
+            <span class="map-coord-label">Location/Coordinate:</span>
+            <span class="map-coord-value" id="mapCoordDisplay"></span>
+            <button class="btn-submit" id="mapConfirmBtn" type="button">Confirm</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        /* ── Tab switching ──────────────────────────── */
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const concernView = document.getElementById('concernView');
+        const projectView = document.getElementById('projectView');
+        const tabIndicator = document.querySelector('.tab-indicator');
+        const pageTitle = document.querySelector('.page-title');
+
+        tabButtons.forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                tabButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tabIndicator.style.transform = `translateX(${index * 100}%)`;
+                const selectedView = btn.dataset.view;
+                if (selectedView === "concern") {
+                    concernView.classList.add("active-view");
+                    projectView.classList.remove("active-view");
+                    pageTitle.textContent = "Submit a Concern";
+                } else {
+                    concernView.classList.remove("active-view");
+                    projectView.classList.add("active-view");
+                    pageTitle.textContent = "Submit a Proposal";
+                }
+            });
+        });
+
+                  
+
+        /* ── Multi-step form ────────────────────────── */
+        let currentStep = 1;
+        const totalSteps = 4;
+        let selectedCategory = '';
+        const urgencyLabels = ['Low', 'Moderate', 'High', 'Critical'];
+
+        const steps = document.querySelectorAll('.step-content');
+        const btnBack = document.getElementById('btnBack');
+        const btnNext = document.getElementById('btnNext');
+        const stepCounter = document.getElementById('stepCounter');
+        const stepFooter = document.getElementById('stepFooter');
+        const successState = document.getElementById('successState');
+
+        // Category selection
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedCategory = btn.dataset.value;
+            });
+        });
+
+        // Urgency slider gradient update
+        const urgencySlider = document.getElementById('urgencySlider');
+        function updateSlider() {
+            const pct = ((urgencySlider.value - 1) / 3) * 100;
+            urgencySlider.style.setProperty('--slider-pct', pct + '%');
+        }
+        urgencySlider.addEventListener('input', updateSlider);
+        updateSlider();
+
+        // File upload
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const fileLabel = document.getElementById('fileLabel');
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            const files = Array.from(fileInput.files);
+            fileLabel.textContent = files.length ? files.map(f => f.name).join(', ') : '';
+        });
+
+        function renderReview() {
+            document.getElementById('r-type').textContent = selectedCategory || '—';
+            document.getElementById('r-title').textContent = document.getElementById('projectTitle').value || '—';
+            document.getElementById('r-location').textContent = document.getElementById('projectLocation').value || '—';
+            document.getElementById('r-description').textContent = document.getElementById('projectDescription').value || '—';
+            document.getElementById('r-urgency').textContent = urgencyLabels[urgencySlider.value - 1];
+            const checked = Array.from(document.querySelectorAll('input[name="beneficiary"]:checked')).map(c => c.value);
+            document.getElementById('r-beneficiaries').textContent = checked.length ? checked.join(', ') : '—';
+            const people = document.getElementById('peopleAffected').value;
+            document.getElementById('r-people').textContent = people || '—';
+            const files = Array.from(fileInput.files);
+            document.getElementById('r-attachments').textContent = files.length ? files.map(f => f.name).join(', ') : 'None';
+        }
+
+        function goToStep(step) {
+            steps.forEach(s => s.classList.remove('active'));
+            document.getElementById('step' + step).classList.add('active');
+            stepCounter.textContent = `Step ${step} of ${totalSteps}`;
+            btnBack.style.display = step > 1 ? 'flex' : 'none';
+
+            if (step === totalSteps) {
+                renderReview();
+                btnNext.innerHTML = 'Submit';
+                btnNext.className = 'btn-submit';
+            } else {
+                btnNext.innerHTML = 'Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="9 18 15 12 9 6"/></svg>';
+                btnNext.className = 'btn-next';
+            }
+        }
+
+        btnNext.addEventListener('click', () => {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                goToStep(currentStep);
+            } else {
+                stepFooter.style.display = 'none';
+                steps.forEach(s => s.classList.remove('active'));
+                successState.classList.add('active');
+            }
+        });
+
+        btnBack.addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                goToStep(currentStep);
+                stepFooter.style.display = 'flex';
+            }
+        });
+
+        document.getElementById('btnNewProposal').addEventListener('click', () => {
+            currentStep = 1;
+            selectedCategory = '';
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('projectTitle').value = '';
+            document.getElementById('projectLocation').value = '';
+            document.getElementById('projectDescription').value = '';
+            urgencySlider.value = 1;
+            updateSlider();
+            document.querySelectorAll('input[name="beneficiary"]').forEach(c => c.checked = false);
+            document.getElementById('peopleAffected').value = '';
+            fileLabel.textContent = '';
+            successState.classList.remove('active');
+            stepFooter.style.display = 'flex';
+            goToStep(1);
+        });
+
+        goToStep(1);
+
+        /* ── Concern form ───────────────────────────── */
+        const useMapBtn = document.getElementById('useMapBtn');
+        const mapModalOverlay = document.getElementById('mapModalOverlay');
+        const mapConfirmBtn = document.getElementById('mapConfirmBtn');
+        const concernLocationText = document.getElementById('concernLocationText');
+        const mapCoordDisplay = document.getElementById('mapCoordDisplay');
+
+        // Simulated coordinate (replace with real Google Maps integration)
+        let pendingCoord = '';
+
+        useMapBtn.addEventListener('click', () => {
+            pendingCoord = '15.1450° N, 120.5887° E'; // placeholder
+            mapCoordDisplay.textContent = pendingCoord;
+            mapModalOverlay.classList.add('active');
+        });
+
+        mapConfirmBtn.addEventListener('click', () => {
+            concernLocationText.textContent = pendingCoord;
+            mapModalOverlay.classList.remove('active');
+        });
+
+        mapModalOverlay.addEventListener('click', (e) => {
+            if (e.target === mapModalOverlay) mapModalOverlay.classList.remove('active');
+        });
+
+        // Concern file upload
+        const concernUploadBtn = document.getElementById('concernUploadBtn');
+        const concernFileInput = document.getElementById('concernFileInput');
+        const concernFileNames = document.getElementById('concernFileNames');
+
+        concernUploadBtn.addEventListener('click', () => concernFileInput.click());
+        concernFileInput.addEventListener('change', () => {
+            const files = Array.from(concernFileInput.files);
+            concernFileNames.textContent = files.length ? files.map(f => f.name).join(', ') : '';
+        });
+
+        // Concern submit
+        document.getElementById('concernSubmitBtn').addEventListener('click', () => {
+            const desc = document.getElementById('concernDescription').value.trim();
+            if (!desc) {
+                document.getElementById('concernDescription').focus();
+                return;
+            }
+            alert('Concern submitted successfully!');
+        });
+    </script>
+}

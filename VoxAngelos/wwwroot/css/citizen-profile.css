@@ -1,0 +1,124 @@
+﻿﻿ /* ── Header ───────────────────────────────── */
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 16px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+}
+
+.page-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--sidebar-bg);
+    letter-spacing: -0.5px;
+}
+
+/* ── Profile Card ─────────────────────────── */
+
+.profile-card-wrapper {
+    width: 100%;
+    max-width: 680px;
+    position: relative;
+    margin-top: 40px;
+}
+
+.profile-avatar-wrap {
+    position: absolute;
+    top: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+}
+
+.profile-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #5B8DEF, #2B45B0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 4px 4px 12px 0 var(--shadow-color), -3px -3px 8px 0 #ffffff90;
+    border: 3px solid var(--card-bg);
+}
+
+    .profile-avatar svg {
+        width: 52px;
+        height: 52px;
+        color: #fff;
+    }
+
+.profile-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: 4px 4px 10px 0 var(--shadow-color), -3px -3px 8px 0 #ffffff90;
+    padding: 56px 40px 32px;
+    width: 100%;
+}
+
+/* ── Profile Fields ───────────────────────── */
+
+.profile-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.profile-field-label {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+}
+
+.profile-field-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+    .profile-field-value.password {
+        letter-spacing: 2px;
+        font-size: 14px;
+    }
+
+    .profile-field-value.link {
+        color: var(--sidebar-bg);
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+        .profile-field-value.link:hover {
+            opacity: 0.75;
+        }
+
+/* ── Responsive ───────────────────────────── */
+
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 28px;
+    }
+
+    .profile-card {
+        padding: 56px 22px 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .content-header {
+        gap: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
