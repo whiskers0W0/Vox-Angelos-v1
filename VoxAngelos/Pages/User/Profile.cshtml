@@ -1,0 +1,91 @@
+﻿@page
+@model VoxAngelos.Pages.User.ProfileModel
+@{
+    Layout = "_CitizenLayout";
+    ViewData["Title"] = "Profile";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/citizen-profile.css" />
+}
+
+<div class="content-header">
+    <h1 class="page-title">Profile</h1>
+</div>
+
+<!-- Profile Card -->
+<div class="profile-card-wrapper">
+
+    <!-- Floating avatar -->
+    <div class="profile-avatar-wrap">
+        <div class="profile-avatar">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+            </svg>
+        </div>
+    </div>
+
+    <div class="profile-card">
+        <div class="profile-fields">
+
+            <div class="profile-field">
+                <span class="profile-field-label">First Name</span>
+                <span class="profile-field-value">Juan</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">Middle Name</span>
+                <span class="profile-field-value">Martinez</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">Last Name</span>
+                <span class="profile-field-value">Dela Cruz</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">Phone Number</span>
+                <span class="profile-field-value">+63 9123456789</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">Email</span>
+                <span class="profile-field-value">jdc@gmail.com</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">Password</span>
+                <span class="profile-field-value password">••••••••••</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">ID Type</span>
+                <span class="profile-field-value">PhilSys ID</span>
+            </div>
+
+            <div class="profile-field">
+                <span class="profile-field-label">ID Photo</span>
+                <span class="profile-field-value link">national_id.jpg</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        hamburgerBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+    </script>
+}

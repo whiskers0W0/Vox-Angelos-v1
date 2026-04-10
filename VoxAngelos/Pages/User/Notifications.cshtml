@@ -1,0 +1,161 @@
+﻿@page
+@model VoxAngelos.Pages.User.NotificationsModel
+@{
+    Layout = "_CitizenLayout";
+    ViewData["Title"] = "Notifications";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/citizen-notification.css" />
+}
+<div class="content-header">
+    <h1 class="page-title">Your Concerns</h1>
+</div>
+
+<!-- Toggle Tabs -->
+<div class="tab-group">
+    <div class="tab-indicator"></div>
+    <button class="tab-btn active" data-view="outbox">Outbox</button>
+    <button class="tab-btn" data-view="inbox">Inbox</button>
+
+</div>
+
+<!-- Feed -->
+<div id="outboxView" class="view-section active-view">
+    <div class="outbox-feed">
+        <div class="concern-card">
+            <div class="concern-status">In Progress</div>
+            <div class="card-header">
+                <div class="author-info">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="author-name">Juan Dela Cruz</div>
+                    </div>
+                </div>
+                <div class="card-date">3h ago</div>
+            </div>
+
+            <div class="card-meta">
+                <span class="meta-label">
+                    Category: <span class="meta-value">Infrastructure & Building Permits</span>
+                </span>
+                <span class="meta-label">
+                    Office: <span class="meta-value">Engineer’s Office</span>
+                </span>
+            </div>
+
+            <div class="card-body">
+                <p class="concern-excerpt">
+                    A sewer cover on the sidewalk is slightly out of place and creates a tripping hazard.
+                    Repositioning it would quickly resolve the issue.
+                </p>
+            </div>
+
+            <div class="concern-attachments">
+                <div class="concern-photo">
+                    <img src="concern.jpg" alt="Concern photo">
+                </div>
+            </div>
+
+            <div class="concern-location">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 13 6 13s6-7.75 6-13c0-3.314-2.686-6-6-6z" />
+                    <circle cx="12" cy="8" r="2" />
+                </svg>
+                Location
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="inboxView" class="view-section">
+    <div class="inbox-feed">
+        <div class="concern-card">
+            <div class="card-header">
+                <div class="author-info">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="author-name">Juan Dela Cruz</div>
+                    </div>
+                </div>
+                <div class="card-date">3h ago</div>
+            </div>
+
+            <div class="card-meta">
+                <span class="meta-label">
+                    Category: <span class="meta-value">
+                    Infrastructure & Building
+                    Permits
+                </span>
+            </span>
+            <span class="meta-label">Office: <span class="meta-value">Engineer’s Office</span></span>
+        </div>
+
+        <div class="inbox-reply">
+
+            <div class="reply-box">
+                <div class="office-info">
+                    <div class="office-avatar">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                        </svg>
+                    </div>
+                    <div class="office-name">Engineer’s Office</div>
+                </div>
+
+                <p class="reply-text">
+                    We have received your report regarding the sewer cover hazard. Our engineering team
+                    is currently assessing the situation and will proceed with the necessary repairs.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+@section Scripts {
+    <script>
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const outboxView = document.getElementById('outboxView');
+        const inboxView = document.getElementById('inboxView');
+        const tabIndicator = document.querySelector('.tab-indicator');
+
+        tabButtons.forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                tabButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                tabIndicator.style.transform = `translateX(${index * 100}%)`;
+
+                const selectedView = btn.dataset.view;
+
+                if (selectedView === "outbox") {
+                    outboxView.classList.add("active-view");
+                    inboxView.classList.remove("active-view");
+                } else {
+                    outboxView.classList.remove("active-view");
+                    inboxView.classList.add("active-view");
+                }
+            });
+        });
+
+        document.querySelectorAll('.vote-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('voted');
+            });
+        });
+    </script>
+}
