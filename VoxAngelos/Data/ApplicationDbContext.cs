@@ -16,6 +16,8 @@ namespace VoxAngelos.Data
         public DbSet<UserOcrVerification> UserOcrVerifications { get; set; }
         public DbSet<AccountApproval> AccountApprovals { get; set; }
         public DbSet<UserLoginAudit> UserLoginAudits { get; set; }
+        public DbSet<Concern> Concerns { get; set; }
+        public DbSet<ConcernAttachment> ConcernAttachments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
