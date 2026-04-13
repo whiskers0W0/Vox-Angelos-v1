@@ -1,72 +1,42 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using VoxAngelos.Data;
 
 namespace VoxAngelos.Pages.LGU
 {
     [Authorize(Policy = "RequireLGURole")]
     public class DashboardModel : PageModel
     {
-        public string DepartmentName { get; set; } = "";
+        private readonly ApplicationDbContext _db;
+        private readonly UserManager<ApplicationUser> _userManager;
+
+        public DashboardModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        {
+            _db = db;
+            _userManager = userManager;
+        }
+
+        public string DepartmentName { get; set; } = string.Empty;
         public int TotalConcerns { get; set; }
         public int TotalUnresolved { get; set; }
+        public int TotalChosen { get; set; }
         public int TotalInProgress { get; set; }
         public int TotalResolved { get; set; }
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            // ── Department name from logged-in user ──
-            var email = User.Identity?.Name ?? "";
-            var prefix = email.Contains("@") ? email.Split('@')[0] : email;
+            var user = await _userManager.GetUserAsync(User);
+            DepartmentName = user?.Department ?? "LGU";
 
-            var departmentMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "socialwelfare",  "Social Welfare" },
-                { "publicsafety",   "Public Safety"  },
-                { "health",         "Health"         },
-                { "agriculture",    "Agriculture"    },
-                { "engineering",    "Engineering"    },
-                { "admin",          "Admin"          },
-            };
+            var concerns = _db.Concerns.AsQueryable();
 
-            DepartmentName = departmentMap.TryGetValue(prefix, out var name) ? name : prefix;
-
-            // ── Dummy data — replace with database queries later ──
-            // e.g. TotalConcerns = _context.Concerns.Count(c => c.Department == DepartmentName);
-            TotalConcerns = 0;
-            TotalUnresolved = 0;
-            TotalInProgress = 0;
-            TotalResolved = 0;
+            TotalConcerns = await concerns.CountAsync();
+            TotalUnresolved = await concerns.CountAsync(c => c.Status == "Unresolved");
+            TotalChosen = await concerns.CountAsync(c => c.Status == "Chosen");
+            TotalInProgress = await concerns.CountAsync(c => c.Status == "In Progress");
+            TotalResolved = await concerns.CountAsync(c => c.Status == "Resolved");
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -156,6 +156,47 @@ using (var scope = app.Services.CreateScope())
             }
         }
     }
+
+    // Seed Citizen accounts
+    var citizenAccounts = new[]
+    {
+    new { Email = "juan@gmail.com", FirstName = "Juan", MiddleName = "Santos", LastName = "Dela Cruz", Barangay = "Sto. Rosario", City = "Angeles City" },
+    new { Email = "maria@gmail.com", FirstName = "Maria", MiddleName = "Reyes", LastName = "Santos", Barangay = "Balibago", City = "Angeles City" },
+};
+
+    foreach (var citizen in citizenAccounts)
+    {
+        var existing = await userManager.FindByEmailAsync(citizen.Email);
+        if (existing == null)
+        {
+            var citizenUser = new ApplicationUser
+            {
+                UserName = citizen.Email,
+                Email = citizen.Email,
+                EmailConfirmed = true,
+                ApprovalStatus = "Approved",
+                CreatedAt = DateTime.UtcNow
+            };
+            var citizenResult = await userManager.CreateAsync(citizenUser, "Citizen@123456");
+            if (citizenResult.Succeeded)
+            {
+                await userManager.AddToRoleAsync(citizenUser, "User");
+
+                // Create matching UserProfile
+                dbContext.UserProfiles.Add(new UserProfile
+                {
+                    UserId = citizenUser.Id,
+                    FirstName = citizen.FirstName,
+                    MiddleName = citizen.MiddleName,
+                    LastName = citizen.LastName,
+                    Barangay = citizen.Barangay,
+                    City = citizen.City
+                });
+
+            }
+        }
+    }
+    await dbContext.SaveChangesAsync();
 }
 
 app.Run();
