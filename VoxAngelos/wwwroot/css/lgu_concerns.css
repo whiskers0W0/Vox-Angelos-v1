@@ -243,6 +243,11 @@
         color: #991b1b;
     }
 
+    .concern-status-badge.chosen {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
 /* ── Card actions ── */
 .concern-card-actions {
     display: flex;

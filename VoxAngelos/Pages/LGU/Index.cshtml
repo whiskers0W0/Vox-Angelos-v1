@@ -4,253 +4,205 @@
     Layout = "_LGULayout";
     ViewData["Title"] = "Citizen Concerns";
 }
+@functions {
+    string GetTimeAgo(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt;
+        if (diff.TotalSeconds < 60) return $"{(int)diff.TotalSeconds}s ago";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+}
 
 @section Styles {
     <link rel="stylesheet" href="~/css/lgu_concerns.css" asp-append-version="true" />
 }
 
 <!-- ── Feed header ── -->
-<div class="feed-header">
-   
-    <div class="feed-filter-group">
-        <button class="filter-btn active" data-filter="pending">Unresolved</button>
-        <button class="filter-btn" data-filter="in-progress">In Progress</button>
-        <button class="filter-btn" data-filter="resolved">Resolved</button>
-        <button class="filter-btn" data-filter="all">All</button>
-    </div>
+<div class="feed-filter-group">
+    @{
+        var filters = new[] { "Unresolved", "Chosen", "In Progress", "Resolved", "All" };
+    }
+    @foreach (var f in filters)
+    {
+        var isActive = Model.CurrentFilter == f ? "active" : "";
+        <a class="filter-btn @isActive" href="?filter=@f">@f</a>
+    }
 </div>
 
-<!-- ── Concern cards (dummy data) ── -->
+<!-- ── Concern cards (from DB) ── -->
 <div id="concern-feed">
 
-    <!-- Card 1 -->
-    <div class="concern-card" data-status="pending">
-        <div class="concern-card-body">
-            <div class="concern-author">
-                <div class="concern-author-left">
-                    <div class="concern-avatar">JD</div>
-                    <div>
-                        <p class="concern-author-name">Juan Dela Cruz</p>
+    @foreach (var concern in Model.Concerns)
+    {
+        var statusKey = concern.Status == "Unresolved" ? "pending"
+              : concern.Status == "Chosen" ? "chosen"
+              : concern.Status == "In Progress" ? "in-progress"
+              : "resolved";
+
+        var badgeLabel = concern.Status == "Unresolved" ? "Pending"
+                       : concern.Status == "Chosen" ? "Chosen"
+                       : concern.Status == "In Progress" ? "In Progress"
+                       : "Resolved";
+
+        var timeAgo = GetTimeAgo(concern.SubmittedAt);
+
+        <div class="concern-card" data-status="@statusKey" data-id="@concern.Id">
+            <div class="concern-card-body">
+                <div class="concern-author">
+                    <div class="concern-author-left">
+                        <div class="concern-avatar">@concern.Initials</div>
+                        <div>
+                            <p class="concern-author-name">@concern.CitizenName</p>
+                        </div>
                     </div>
+                    <span class="concern-timestamp-right">@timeAgo</span>
                 </div>
-                <span class="concern-timestamp-right">10s ago</span>
-            </div>
 
-            <div class="concern-category">Category: Road</div>
+                <div class="concern-category">Category: @concern.Category</div>
 
-            <p class="concern-description">
-                A small pothole is starting to form on the road and collects rainwater.
-                Early repair can prevent it from getting bigger and causing accidents.
-            </p>
+                <p class="concern-description">@concern.Description</p>
 
-            <img class="concern-photo"
-                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/320px-Camponotus_flavomarginatus_ant.jpg"
-                 alt="Concern photo"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="concern-photo-placeholder" style="display:none;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                </svg>
-            </div>
-
-            <div class="concern-location">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="10" r="3" />
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-                </svg>
-                Main Road area (Barangay Hall)
-                <a href="#" class="view-in-map-btn ms-auto">
-                    View in Map
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 8 16 12 12 16" />
-                        <line x1="8" y1="12" x2="16" y2="12" />
-                    </svg>
-                </a>
-            </div>
-        </div>
-        <div class="concern-card-footer">
-            <span class="concern-status-badge pending">● Pending</span>
-            <div class="concern-card-actions">
-                <button class="btn-choose-concern">Choose Concern</button>
-                <button class="btn-update-status" style="display:none;" data-bs-toggle="modal" data-bs-target="#statusModal">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Update Status
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Card 2 -->
-    <div class="concern-card" data-status="pending">
-        <div class="concern-card-body">
-            <div class="concern-author">
-                <div class="concern-author-left">
-                    <div class="concern-avatar">MT</div>
-                    <div>
-                        <p class="concern-author-name">Mel Tiangco</p>
+                @if (concern.FirstAttachmentPath != null)
+                {
+                    <img class="concern-photo"
+                         src="@concern.FirstAttachmentPath"
+                         alt="Concern photo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                    <div class="concern-photo-placeholder" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="3" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <path d="M21 15l-5-5L5 21" />
+                        </svg>
                     </div>
-                </div>
-                <span class="concern-timestamp-right">7h ago</span>
-            </div>
-
-            <div class="concern-category">Category: Utilities</div>
-
-            <p class="concern-description">
-                Some overhead cables are hanging lower than normal due to a loose support.
-                Securing them early can prevent safety risks.
-            </p>
-
-            <div class="concern-photo-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                </svg>
-            </div>
-
-            <div class="concern-location">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="10" r="3" />
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-                </svg>
-                Pulung Bulu, Angeles City
-                <a href="#" class="view-in-map-btn ms-auto">
-                    View in Map
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 8 16 12 12 16" />
-                        <line x1="8" y1="12" x2="16" y2="12" />
-                    </svg>
-                </a>
-            </div>
-        </div>
-        <div class="concern-card-footer">
-            <span class="concern-status-badge pending">● Pending</span>
-            <div class="concern-card-actions">
-                <button class="btn-choose-concern">Choose Concern</button>
-                <button class="btn-update-status" style="display:none;" data-bs-toggle="modal" data-bs-target="#statusModal">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Update Status
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Card 3 -->
-    <div class="concern-card" data-status="pending">
-        <div class="concern-card-body">
-            <div class="concern-author">
-                <div class="concern-author-left">
-                    <div class="concern-avatar">AC</div>
-                    <div>
-                        <p class="concern-author-name">Anna Cruz</p>
+                }
+                else
+                {
+                    <div class="concern-photo-placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="3" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <path d="M21 15l-5-5L5 21" />
+                        </svg>
                     </div>
+                }
+
+                <div class="concern-location">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="10" r="3" />
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                    </svg>
+                    @concern.LocationName
+                    @if (concern.Latitude.HasValue && concern.Longitude.HasValue)
+                    {
+                        <a href="https://maps.google.com/?q=@concern.Latitude,@concern.Longitude"
+                               target="_blank" class="view-in-map-btn ms-auto">
+                            View in Map
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 8 16 12 12 16" />
+                                <line x1="8" y1="12" x2="16" y2="12" />
+                            </svg>
+                        </a>
+                    }
                 </div>
-                <span class="concern-timestamp-right">2d ago</span>
             </div>
 
-            <div class="concern-category">Category: Flooding</div>
-
-            <p class="concern-description">
-                Drainage near the market area is clogged and causes flooding every time it rains heavily.
-                Residents have been requesting a cleanup for weeks.
-            </p>
-
-            <div class="concern-photo-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="3" y="3" width="18" height="18" rx="3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                </svg>
-            </div>
-
-            <div class="concern-location">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="10" r="3" />
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-                </svg>
-                Market Area, Balibago
-                <a href="#" class="view-in-map-btn ms-auto">
-                    View in Map
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 8 16 12 12 16" />
-                        <line x1="8" y1="12" x2="16" y2="12" />
-                    </svg>
-                </a>
-            </div>
-        </div>
-        <div class="concern-card-footer">
-            <span class="concern-status-badge pending">● Pending</span>
-            <div class="concern-card-actions">
-                <button class="btn-choose-concern">Choose Concern</button>
-                <button class="btn-update-status" style="display:none;" data-bs-toggle="modal" data-bs-target="#statusModal">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Update Status
-                </button>
+            <div class="concern-card-footer">
+                <span class="concern-status-badge @statusKey">● @badgeLabel</span>
+                <div class="concern-card-actions">
+                    @if (concern.Status == "Unresolved")
+                    {
+                        <form method="post" asp-page="/LGU/Index" asp-page-handler="ChooseConcern">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="concernId" value="@concern.Id" />
+                            <button type="submit" class="btn-choose-concern">Choose Concern</button>
+                        </form>
+                        <button class="btn-update-status" style="display:none;"
+                                data-bs-toggle="modal" data-bs-target="#statusModal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            Update Status
+                        </button>
+                    }
+                    else if (concern.Status == "Chosen" || concern.Status == "In Progress")
+                    {
+                        <button class="btn-update-status" style="display:inline-flex;"
+                                data-bs-toggle="modal" data-bs-target="#statusModal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            Update Status
+                        </button>
+                    }
+                    @* Resolved concerns get no action buttons *@
+                </div>
             </div>
         </div>
-    </div>
+    }
+
+    @if (!Model.Concerns.Any())
+    {
+        <div class="feed-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 12l2 2 4-4" />
+                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>No concerns submitted yet.</p>
+        </div>
+    }
 
 </div>
 
-<!-- ── Empty state ── -->
-<div id="feed-empty" style="display:none;">
-    <div class="feed-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 12l2 2 4-4" />
-            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p>No unresolved concerns. All caught up!</p>
-    </div>
-</div>
 
 <!-- ── Update Status Modal ── -->
-<div class="modal fade modal-va" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+<div class="modal fade modal-va" id="statusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-
             <div class="modal-header justify-content-center border-0 pb-0">
                 <div class="modal-title text-center" id="statusModalLabel">
-                    Update Status for Post: <span id="modal-citizen-name"></span>
+                    Update Status for: <span id="modal-citizen-name"></span>
                 </div>
-                <button type="button" class="btn-close position-absolute end-0 me-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close position-absolute end-0 me-3"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body pt-3">
-                <div class="mb-3">
-                    <label class="form-label text-center w-100" style="color: var(--accent); font-weight: 600;">New Status</label>
-                    <select class="form-select" id="modal-status-select">
-                        <option value="" disabled selected>Status...</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                    </select>
-                </div>
-                <div class="mb-1">
-                    <label class="form-label text-center w-100" style="color: var(--accent); font-weight: 600;">Notes / Public Response</label>
-                    <textarea class="form-control"
-                              id="modal-notes"
-                              placeholder="Add a response to the resident..."></textarea>
-                </div>
-            </div>
+            <form method="post" asp-page="/LGU/Index" asp-page-handler="UpdateStatus">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="concernId" id="modal-concern-id" />
 
-            <div class="modal-footer justify-content-center border-0">
-                <button type="button" class="btn-va-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn-va-primary" onclick="saveStatus()">Save Update</button>
-            </div>
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label class="form-label text-center w-100"
+                               style="color: var(--accent); font-weight: 600;">New Status</label>
+                        <select class="form-select" name="status" id="modal-status-select">
+                            <option value="" disabled selected>Status...</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label text-center w-100"
+                               style="color: var(--accent); font-weight: 600;">Notes / Public Response</label>
+                        <textarea class="form-control" name="notes" id="modal-notes"
+                                  placeholder="Add a response to the resident..."></textarea>
+                    </div>
+                </div>
 
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="button" class="btn-va-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-va-primary">Save Update</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -259,34 +211,7 @@
     <script>
         let activeCard = null;
 
-                       document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-
-                const filter = this.dataset.filter;
-                const cards = document.querySelectorAll('.concern-card');
-                let visible = 0;
-
-                cards.forEach(card => {
-                    const show = filter === 'all' || card.dataset.status === filter;
-                    card.style.display = show ? 'block' : 'none';
-                    if (show) visible++;
-                });
-
-                const messages = {
-                    'pending': 'No unresolved concerns. All caught up!',
-                    'in-progress': 'No concerns are in progress.',
-                    'resolved': 'No resolved concerns yet.',
-                    'all': 'No concerns found.'
-                };
-
-                document.getElementById('feed-empty').querySelector('p').textContent = messages[filter] || 'No concerns found.';
-                document.getElementById('feed-empty').style.display = visible === 0 ? 'block' : 'none';
-            });
-        });
-
-               // ── Choose Concern → reveal Update Status ──
+        // ── Choose Concern → reveal Update Status ──
         document.getElementById('concern-feed').addEventListener('click', function (e) {
             const chooseBtn = e.target.closest('.btn-choose-concern');
             if (chooseBtn) {
@@ -294,12 +219,10 @@
                 chooseBtn.style.display = 'none';
                 card.querySelector('.btn-update-status').style.display = 'inline-flex';
 
-                // Add selected banner
                 const banner = document.createElement('div');
                 banner.className = 'concern-selected-banner';
                 banner.textContent = 'Selected';
                 card.querySelector('.concern-card-body').prepend(banner);
-
                 return;
             }
 
@@ -308,37 +231,33 @@
             if (updateBtn) {
                 activeCard = updateBtn.closest('.concern-card');
                 const citizenName = activeCard.querySelector('.concern-author-name').textContent.trim();
+                const concernId = activeCard.dataset.id;
                 document.getElementById('modal-citizen-name').textContent = citizenName;
+                document.getElementById('modal-concern-id').value = concernId;
                 document.getElementById('modal-status-select').value = '';
                 document.getElementById('modal-notes').value = '';
             }
-        });
+        }); // ← this was missing, causing setInterval to be inside the click handler
 
-                function saveStatus() {
-            const status = document.getElementById('modal-status-select').value;
+               setInterval(() => {
+            fetch(window.location.href)
+                .then(res => res.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newFeed = doc.getElementById('concern-feed');
+                    const currentFeed = document.getElementById('concern-feed');
 
-            if (!status) {
-                alert('Please select a status.');
-                return;
-            }
-
-            bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
-
-            if (activeCard) {
-                activeCard.dataset.status = status;
-
-                const badge = activeCard.querySelector('.concern-status-badge');
-                badge.className = 'concern-status-badge ' + status;
-                badge.textContent = '● ' + (status === 'in-progress' ? 'In Progress' : 'Resolved');
-
-                // const banner = activeCard.querySelector('.concern-selected-banner');
-                // if (banner) banner.remove();
-
-                // activeCard.querySelector('.btn-choose-concern').style.display = 'inline-flex';
-                // activeCard.querySelector('.btn-update-status').style.display = 'none';
-
-                activeCard = null;
-            }
-        }
+                    if (newFeed && currentFeed) {
+                        const newCount = newFeed.querySelectorAll('.concern-card').length;
+                        const currentCount = currentFeed.querySelectorAll('.concern-card').length;
+                        if (newCount !== currentCount) {
+                            currentFeed.innerHTML = newFeed.innerHTML;
+                        }
+                    }
+                })
+                .catch(() => {});
+        }, 15000);
     </script>
 }
+
