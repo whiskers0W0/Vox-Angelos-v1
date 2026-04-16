@@ -40,7 +40,7 @@
                 <div class="eyebrow mb-2">Vox Angelos</div>
                 <h1 class="title mb-3">Citizen<br />Portal</h1>
                 <p class="tagline mb-0">
-                    Secure access for<br />
+                    Secure access for
                     <strong>authorized personnel</strong>
                 </p>
             </div>
@@ -65,7 +65,7 @@
                                    spellcheck="false"
                                    aria-required="true"
                                    placeholder="name@example.com" />
-                            <span asp-validation-for="Input.Email" class="text-danger" style="font-size:0.72rem; font-family:'Syne Mono',monospace;"></span>
+                            <span asp-validation-for="Input.Email" class="text-danger" style="font-size:0.72rem; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;"></span>
                         </div>
 
                         <!-- Password with eye toggle -->
@@ -86,7 +86,7 @@
                                     </svg>
                                 </button>
                             </div>
-                            <span asp-validation-for="Input.Password" class="text-danger" style="font-size:0.72rem; font-family:'Syne Mono',monospace;"></span>
+                            <span asp-validation-for="Input.Password" class="text-danger" style="font-size:0.72rem; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;"></span>
                         </div>
 
                         <!-- Submit -->
@@ -106,19 +106,7 @@
                 </section>
 
                 <div class="my-4" style="border-top:1px solid rgba(0,179,230,0.15);"></div>
-
-                <section>
-                    <div class="eyebrow mb-3">External Authentication</div>
-                    @{
-                        if ((Model.ExternalLogins?.Count ?? 0) == 0)
-                        {
-                            <p style="font-family:'Syne Mono',monospace; font-size:0.7rem; color:rgba(128,223,255,0.35); letter-spacing:0.08em;">
-                                No external authentication services configured.
-                            </p>
-                        }
-                    }
-                </section>
-            </div>
+             </div>
         </div>
     </div>
 
