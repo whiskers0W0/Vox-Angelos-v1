@@ -1,5 +1,5 @@
 # Use the official .NET 8.0 SDK image to build the app
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["VoxAngelos/VoxAngelos.csproj", "VoxAngelos/"]
 RUN dotnet restore "VoxAngelos/VoxAngelos.csproj"
