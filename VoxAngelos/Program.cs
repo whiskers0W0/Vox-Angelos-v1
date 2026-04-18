@@ -6,8 +6,20 @@ using VoxAngelos.Services; // ← ADDED
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Database Configuration
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+var rawUrl = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+string connectionString;
+if (rawUrl.StartsWith("postgresql://") || rawUrl.StartsWith("postgres://"))
+{
+    var uri = new Uri(rawUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port == -1 ? 5432 : uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+}
+else
+{
+    connectionString = rawUrl;
+}
 
 builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, VoxAngelos.Services.EmailSender>();
 
