@@ -14,7 +14,7 @@ if (rawUrl.StartsWith("postgresql://") || rawUrl.StartsWith("postgres://"))
 {
     var uri = new Uri(rawUrl);
     var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port == -1 ? 5432 : uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    connectionString = $"Host={uri.Host};Port={(uri.Port == -1 ? 5432 : uri.Port)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
 }
 else
 {
