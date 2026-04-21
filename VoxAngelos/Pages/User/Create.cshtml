@@ -223,11 +223,19 @@
         </div>
     </div>
 </div>
-             
+
 <!-- Map Modal -->
 <div class="map-modal-overlay" id="mapModalOverlay">
     <div class="map-modal">
-        <div class="map-placeholder">google map view here</div>
+        <div style="padding: 8px 12px; display:flex; gap:6px;">
+            <input id="mapSearchBox" type="text" placeholder="Search location in Angeles City..."
+                   style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px;" />
+            <button id="mapSearchBtn" type="button"
+                    style="padding:8px 14px; background:#2B45B0; color:white; border:none; border-radius:6px; cursor:pointer;">
+                Search
+            </button>
+        </div>
+        <div id="googleMap" style="width:100%; height:350px;"></div>
         <div class="map-modal-footer">
             <span class="map-coord-label">Location/Coordinate:</span>
             <span class="map-coord-value" id="mapCoordDisplay"></span>
@@ -374,29 +382,119 @@
         });
 
         goToStep(1);
-
-        /* ── Concern form ───────────────────────────── */
+               /* ── Concern form ───────────────────────────── */
         const useMapBtn = document.getElementById('useMapBtn');
         const mapModalOverlay = document.getElementById('mapModalOverlay');
         const mapConfirmBtn = document.getElementById('mapConfirmBtn');
         const concernLocationText = document.getElementById('concernLocationText');
         const mapCoordDisplay = document.getElementById('mapCoordDisplay');
 
-        // Simulated coordinate (replace with real Google Maps integration)
-        let pendingCoord = '';
+        let selectedLat = null;
+        let selectedLng = null;
+        let selectedAddress = '';
+        let map, marker, autocompleteEl;
 
         useMapBtn.addEventListener('click', () => {
-            pendingCoord = '15.1450° N, 120.5887° E'; // placeholder
-            mapCoordDisplay.textContent = pendingCoord;
             mapModalOverlay.classList.add('active');
+            if (!map) {
+                initMap();
+            }
         });
 
-         mapConfirmBtn.addEventListener('click', () => {
-            concernLocationText.textContent = pendingCoord;
-            document.getElementById('hdnLocationName').value = pendingCoord;
-            // Latitude/Longitude will be real values once Google Maps is integrated
-            document.getElementById('hdnLatitude').value = '15.1450';
-            document.getElementById('hdnLongitude').value = '120.5887';
+        function initMap() {
+            const defaultCenter = { lat: 15.1450, lng: 120.5887 };
+
+            map = new google.maps.Map(document.getElementById('googleMap'), {
+                center: defaultCenter,
+                zoom: 14
+            });
+
+            marker = new google.maps.Marker({
+                position: defaultCenter,
+                map: map,
+                draggable: true
+            });
+
+            // Click on map to move marker
+            map.addListener('click', (e) => {
+                marker.setPosition(e.latLng);
+                selectedLat = e.latLng.lat();
+                selectedLng = e.latLng.lng();
+                reverseGeocode(selectedLat, selectedLng);
+            });
+
+            // Drag marker
+            marker.addListener('dragend', (e) => {
+                selectedLat = e.latLng.lat();
+                selectedLng = e.latLng.lng();
+                reverseGeocode(selectedLat, selectedLng);
+            });
+
+            // Set initial values
+            selectedLat = defaultCenter.lat;
+            selectedLng = defaultCenter.lng;
+            reverseGeocode(selectedLat, selectedLng);
+
+            // Initialize PlaceAutocompleteElement AFTER map is ready
+            initAutocomplete();
+        }
+
+                // Search box using Geocoding API
+        const searchInput = document.getElementById('mapSearchBox');
+        const searchBtn = document.getElementById('mapSearchBtn');
+
+        function searchLocation() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({
+                address: query + ', Angeles City, Pampanga, Philippines'
+            }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    const latLng = results[0].geometry.location;
+                    map.panTo(latLng);
+                    map.setZoom(16);
+                    marker.setPosition(latLng);
+
+                    selectedLat = latLng.lat();
+                    selectedLng = latLng.lng();
+                    selectedAddress = results[0].formatted_address;
+                    mapCoordDisplay.textContent = selectedAddress;
+                } else {
+                    alert('Location not found. Try a more specific address.');
+                }
+            });
+        }
+
+        searchBtn.addEventListener('click', searchLocation);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchLocation();
+            }
+        });
+
+        function reverseGeocode(lat, lng) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    selectedAddress = results[0].formatted_address;
+                    mapCoordDisplay.textContent = selectedAddress;
+                } else {
+                    selectedAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    mapCoordDisplay.textContent = selectedAddress;
+                }
+            });
+        }
+
+        mapConfirmBtn.addEventListener('click', () => {
+            if (selectedLat && selectedLng) {
+                concernLocationText.textContent = selectedAddress;
+                document.getElementById('hdnLocationName').value = selectedAddress;
+                document.getElementById('hdnLatitude').value = selectedLat;
+                document.getElementById('hdnLongitude').value = selectedLng;
+            }
             mapModalOverlay.classList.remove('active');
         });
 
@@ -417,37 +515,35 @@
 
         // Concern submit
         document.getElementById('concernSubmitBtn').addEventListener('click', () => {
-    let valid = true;
+            let valid = true;
 
-    // Clear previous errors
-    document.getElementById('err-description').textContent = '';
-    document.getElementById('err-location').textContent = '';
-    document.getElementById('err-attachment').textContent = '';
+            document.getElementById('err-description').textContent = '';
+            document.getElementById('err-location').textContent = '';
+            document.getElementById('err-attachment').textContent = '';
 
-    // Validate description
-    const desc = document.getElementById('concernDescription').value.trim();
-    if (!desc) {
-        document.getElementById('err-description').textContent = 'Description is required.';
-        valid = false;
-    }
+            const desc = document.getElementById('concernDescription').value.trim();
+            if (!desc) {
+                document.getElementById('err-description').textContent = 'Description is required.';
+                valid = false;
+            }
 
-    // Validate location
-    const location = document.getElementById('hdnLocationName').value.trim();
-    if (!location) {
-        document.getElementById('err-location').textContent = 'Please pin your location using the map.';
-        valid = false;
-    }
+            const location = document.getElementById('hdnLocationName').value.trim();
+            if (!location) {
+                document.getElementById('err-location').textContent = 'Please pin your location using the map.';
+                valid = false;
+            }
 
-    // Validate attachments
-    const files = document.getElementById('concernFileInput').files;
-    if (!files || files.length === 0) {
-        document.getElementById('err-attachment').textContent = 'Please upload at least one image or video.';
-        valid = false;
-    }
+            const files = document.getElementById('concernFileInput').files;
+            if (!files || files.length === 0) {
+                document.getElementById('err-attachment').textContent = 'Please upload at least one image or video.';
+                valid = false;
+            }
 
-    if (valid) {
-        document.getElementById('concernForm').submit();
-    }
-});
+            if (valid) {
+                document.getElementById('concernForm').submit();
+            }
+        });
     </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&libraries=places&v=beta&callback=initMap"</script>
+   
 }
