@@ -1,365 +1,212 @@
-﻿/* ── loginwith2fa.css ── */
+﻿/* ============================================================================
+   VOX ANGELOS — 2FA PORTAL PREMIUM UI
+   Coherent with Master Login Baseline
+   ============================================================================ */
 
 :root {
-    --color-navy: #00004d;
-    --color-blue: #0066cc;
-    --color-cyan: #00b3e6;
-    --color-light: #80dfff;
-    --color-ice: #ccf2ff;
-    --bg: var(--color-navy);
-    --glow: var(--color-cyan);
-    --bright: var(--color-light);
-    --white: var(--color-ice);
-    --sub: rgba(128, 223, 255, 0.42);
-    --grid: rgba(0, 179, 230, 0.15);
-    --fs-micro: clamp(0.55rem, 0.75vw, 0.68rem);
-    --fs-body: clamp(0.78rem, 1.2vw, 0.88rem);
-    --fs-title: clamp(1.6rem, 3vw, 2.4rem);
+    --color-bg: #EAECF5;
+    --color-primary: #2B45B0;
+    --color-primary-light: #445ec9;
+    --color-text-main: #2D3748;
+    --color-text-sub: #718096;
+    --color-error: #e53e3e;
+    --font-stack: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    --font-oswald: 'Oswald', sans-serif;
+    --neo-shadow-dark: rgba(163, 177, 198, 0.7);
+    --neo-shadow-light: rgba(255, 255, 255, 0.9);
+    --neo-inset: inset 4px 4px 8px var(--neo-shadow-dark), inset -4px -4px 8px var(--neo-shadow-light);
 }
 
-*, *::before, *::after {
-    box-sizing: border-box;
-}
-
+/* ── BASE & VIEWPORT ── */
 body {
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--white);
-    font-family: 'Barlow', sans-serif;
+    background-color: var(--color-bg);
+    font-family: var(--font-stack);
     margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow-y: auto;
+    min-height: 100vh;
 }
 
 .bg {
     position: fixed;
     inset: 0;
-    background: radial-gradient(ellipse 70% 58% at 50% 40%, rgba(0,102,204,0.25) 0%, rgba(0,0,77,0.8) 55%, transparent 80%);
-    z-index: -2;
-}
-
-.bg-grid {
-    position: fixed;
-    inset: 0;
-    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 50px 50px;
+    background: radial-gradient(circle at 20% 20%, #d1d9e6, var(--color-bg));
     z-index: -1;
 }
 
+/* Hide legacy elements */
+.bg-grid, .corner {
+    display: none;
+}
+
+/* ── MAIN CONTAINER ── */
 .tech-wrapper {
-    position: relative;
-    background: rgba(0,0,77,0.65);
-    border: 1px solid rgba(0,179,230,0.25);
-    box-shadow: 0 0 40px rgba(0,102,204,0.2);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    max-width: 860px;
-    width: calc(100% - 2rem);
-    margin: 1rem auto;
+    background: var(--color-bg);
+    width: 95%;
+    max-width: 900px;
+    border-radius: 30px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 20px 20px 60px var(--neo-shadow-dark), -20px -20px 60px var(--neo-shadow-light);
+    border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-.corner {
-    position: absolute;
-    width: clamp(14px, 2.2vw, 24px);
-    height: clamp(14px, 2.2vw, 24px);
-    pointer-events: none;
+.row {
+    width: 100%;
+    display: flex;
+    margin: 0;
 }
 
-    .corner::before, .corner::after {
-        content: '';
-        position: absolute;
-        background: var(--bright);
-        opacity: 0.8;
-    }
-
-    .corner::before {
-        width: 100%;
-        height: 2px;
-        top: 0;
-        left: 0;
-    }
-
-    .corner::after {
-        width: 2px;
-        height: 100%;
-        top: 0;
-        left: 0;
-    }
-
-.c-tl {
-    top: -1px;
-    left: -1px;
-}
-
-.c-tr {
-    top: -1px;
-    right: -1px;
-    transform: scaleX(-1);
-}
-
-.c-bl {
-    bottom: -1px;
-    left: -1px;
-    transform: scaleY(-1);
-}
-
-.c-br {
-    bottom: -1px;
-    right: -1px;
-    transform: scale(-1,-1);
-}
-
+/* ── LEFT PANEL (BRANDING) ── */
 .panel-left {
-    padding: 2rem 2.2rem;
-    border-right: 1px solid rgba(0,179,230,0.15);
+    background: linear-gradient(135deg, var(--color-primary) 0%, #1a2a6c 100%);
+    padding: 60px 50px;
+    color: white;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    background: linear-gradient(90deg, rgba(0,102,204,0.08), transparent);
+    position: relative;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030;
 }
 
-.panel-right {
-    padding: 2rem 2.2rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+.panel-left .eyebrow {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 6px 16px;
+    margin-bottom: 1.2rem;
+    text-transform: uppercase;
+    width: fit-content;
+    color: white;
 }
 
 .title {
-    font-family: 'Oswald', sans-serif;
-    font-size: var(--fs-title);
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    font-family: var(--font-oswald);
+    font-size: 3.5rem;
+    line-height: 1;
     text-transform: uppercase;
-    color: var(--white);
-    line-height: 1.1;
-    text-shadow: 0 0 30px rgba(0,179,230,0.3);
-    margin: 0;
-}
-
-.eyebrow {
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    letter-spacing: .44em;
-    text-transform: uppercase;
-    color: var(--sub);
-    display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .tagline {
-    font-family: 'Barlow', sans-serif;
-    font-size: var(--fs-body);
-    font-weight: 300;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: rgba(204,242,255,0.44);
+    font-size: 1rem;
+    opacity: 0.9;
+    font-weight: 400;
     line-height: 1.6;
-    margin: 0;
 }
 
-    .tagline strong {
-        font-weight: 400;
-        color: rgba(204,242,255,0.86);
-    }
+/* ── RIGHT PANEL (OTP FORM) ── */
+.panel-right {
+    background: var(--color-bg);
+    padding: 60px;
+    flex-grow: 1;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.eyebrow {
+    display: inline-block;
+    background-color: rgba(43, 69, 176, 0.1);
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    padding: 7px 18px;
+    margin-bottom: 2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    width: fit-content;
+}
 
 .form-text-label {
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    letter-spacing: 0.15em;
-    color: var(--bright);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-text-sub);
+    margin-bottom: 12px;
     text-transform: uppercase;
-    display: block;
-    margin-bottom: 4px;
+    letter-spacing: 0.05em;
 }
 
-.tech-input {
-    background: rgba(0,0,77,0.4) !important;
-    border: 1px solid rgba(0,179,230,0.2) !important;
-    color: var(--white) !important;
-    font-family: 'Syne Mono', monospace;
-    font-size: 0.82rem;
-    padding: 9px 14px;
-    border-radius: 0 !important;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    width: 100%;
-}
-
-    .tech-input::placeholder {
-        color: rgba(128,223,255,0.3) !important;
-    }
-
-    .tech-input:focus {
-        border-color: var(--glow) !important;
-        box-shadow: 0 0 20px rgba(0,179,230,0.15) !important;
-        outline: none !important;
-        background: rgba(0,0,77,0.6) !important;
-    }
-
-/* ── OTP input specific ── */
+/* ── OTP INPUT SPECIALIZATION ── */
 .otp-input {
-    background: rgba(0,0,77,0.4) !important;
-    border: 1px solid rgba(0,179,230,0.2) !important;
-    color: var(--white) !important;
-    font-family: 'Syne Mono', monospace !important;
-    font-size: clamp(1.2rem, 2.5vw, 1.6rem) !important;
-    letter-spacing: 0.5em !important;
-    text-align: center !important;
-    padding: 0.75rem !important;
-    border-radius: 0 !important;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    width: 100%;
+    background: var(--color-bg) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 18px 20px !important;
+    font-family: 'Courier New', Courier, monospace; /* Monospaced for OTP digits */
+    font-size: 2rem !important;
+    font-weight: 700;
+    letter-spacing: 0.5em;
+    text-align: center;
+    color: var(--color-primary) !important;
+    box-shadow: var(--neo-inset) !important;
+    transition: 0.3s;
 }
 
     .otp-input::placeholder {
-        color: rgba(128,223,255,0.2) !important;
-        letter-spacing: 0.4em;
+        color: var(--neo-shadow-dark);
+        letter-spacing: 0.2em;
     }
 
     .otp-input:focus {
-        border-color: var(--glow) !important;
-        box-shadow: 0 0 20px rgba(0,179,230,0.15) !important;
-        outline: none !important;
-        background: rgba(0,0,77,0.6) !important;
+        outline: none;
+        box-shadow: 6px 6px 12px var(--neo-shadow-dark), -6px -6px 12px var(--neo-shadow-light) !important;
+        transform: translateY(-2px);
     }
 
-.tech-check {
-    width: 14px;
-    height: 14px;
-    background: transparent;
-    border: 1px solid rgba(0,179,230,0.3);
-    border-radius: 0;
-    flex-shrink: 0;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-.check-label {
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--sub);
-    cursor: pointer;
-}
-
+/* ── CTA BUTTON ── */
 .cta {
-    position: relative;
-    overflow: hidden;
-    padding: 0.65rem 2rem;
-    font-family: 'Oswald', sans-serif;
-    font-size: var(--fs-body);
-    font-weight: 500;
-    letter-spacing: .28em;
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    color: white !important;
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    font-family: var(--font-stack);
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--white) !important;
-    border: 1px solid rgba(0,179,230,0.3) !important;
-    background: rgba(0,102,204,0.1) !important;
-    border-radius: 0 !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
+    letter-spacing: 0.1em;
     cursor: pointer;
-    width: 100%;
-    text-decoration: none;
-    transition: border-color .3s, background .3s, box-shadow .3s !important;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, 6px 6px 20px rgba(43, 69, 176, 0.3);
+    transition: 0.3s;
 }
-
-    .cta::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(105deg, transparent 20%, rgba(128,223,255,0.08) 50%, transparent 80%);
-        transform: translateX(-130%);
-        transition: transform .5s ease;
-    }
-
-    .cta:hover::before {
-        transform: translateX(130%);
-    }
 
     .cta:hover {
-        border-color: rgba(0,179,230,0.66) !important;
-        background: rgba(0,102,204,0.25) !important;
-        box-shadow: 0 0 28px rgba(0,179,230,0.15) !important;
+        transform: translateY(-3px);
+        box-shadow: 10px 10px 25px rgba(43, 69, 176, 0.4);
     }
-
-.cta-arr {
-    display: inline-flex;
-    align-items: center;
-    position: relative;
-    flex-shrink: 0;
-}
-
-    .cta-arr::before {
-        content: '';
-        display: block;
-        width: 13px;
-        height: 1px;
-        background: var(--bright);
-        transition: width .3s;
-    }
-
-    .cta-arr::after {
-        content: '';
-        position: absolute;
-        right: -1px;
-        width: 5px;
-        height: 5px;
-        border-top: 1px solid var(--bright);
-        border-right: 1px solid var(--bright);
-        transform: rotate(45deg) translate(-1px,1px);
-    }
-
-.cta:hover .cta-arr::before {
-    width: 20px;
-}
-
-.tech-link {
-    color: var(--glow);
-    text-decoration: none;
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    letter-spacing: 0.1em;
-    transition: color 0.3s, text-shadow 0.3s;
-}
-
-    .tech-link:hover {
-        color: var(--white);
-        text-shadow: 0 0 8px var(--glow);
-    }
-
-.tech-divider {
-    border: none;
-    border-top: 1px solid rgba(0,179,230,0.15);
-    margin: 1rem 0;
-}
-
-.tech-validation-summary {
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    color: rgba(255,100,100,0.8);
-    background: rgba(255,0,0,0.05);
-    border: 1px solid rgba(255,0,0,0.15);
-    padding: 0.5rem 0.85rem;
-    margin-bottom: 1rem;
-    letter-spacing: 0.05em;
-}
 
 .tech-validation {
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    color: rgba(255,100,100,0.8);
-    letter-spacing: 0.05em;
+    color: var(--color-error);
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 8px;
+    display: block;
+    text-transform: uppercase;
 }
 
-.sign-in-note {
-    font-family: 'Syne Mono', monospace;
-    font-size: var(--fs-micro);
-    color: var(--sub);
-    letter-spacing: 0.08em;
+/* ── MOBILE ── */
+@media (max-width: 850px) {
+    .tech-wrapper {
+        flex-direction: column;
+        max-width: 400px;
+    }
+
+    .panel-left {
+        padding: 40px 30px;
+    }
+
+    .title {
+        font-size: 2.5rem;
+    }
+
+    .panel-right {
+        padding: 40px 25px;
+    }
+
+    .otp-input {
+        font-size: 1.5rem !important;
+    }
 }
