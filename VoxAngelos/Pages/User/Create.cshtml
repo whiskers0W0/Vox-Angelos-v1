@@ -21,7 +21,7 @@
 <div class="tab-group">
     <div class="tab-indicator"></div>
     <button class="tab-btn active" data-view="concern">Concern</button>
-    <button class="tab-btn" data-view="project">Project</button>
+    <button class="tab-btn" data-view="project">Recommendation</button>
 </div>
 
 <!-- Concern Form -->
@@ -94,13 +94,13 @@
         <div class="proposal-card">
 
             <div class="proposal-card-header">
-                <h2>Submit a Project Proposal</h2>
+                <h2>Submit a Citizen Recommendation</h2>
                 <p>Vox Angelos: Make your voice heard.</p>
             </div>
 
             <!-- STEP 1: Project Type -->
             <div class="step-content active" id="step1">
-                <p class="step-question">What type of project would you like to propose?</p>
+                <p class="step-question">What type of recommendation would you like to propose?</p>
                 <div class="category-grid">
                     <button class="category-btn" data-value="Infrastructure">Infrastructure</button>
                     <button class="category-btn" data-value="Environment">Environment</button>
@@ -112,38 +112,25 @@
             <!-- STEP 2: Project Details -->
             <div class="step-content" id="step2">
                 <div class="form-group">
-                    <label class="form-label">Give your project a title.</label>
+                    <label class="form-label">Give your recommendation a title.</label>
                     <input type="text" class="form-input" id="projectTitle" placeholder="Title" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Where would you like the project to be located?</label>
+                    <label class="form-label">Where would you like the recommendation to be located?</label>
                     <input type="text" class="form-input" id="projectLocation" placeholder="Sto. Rosario, Angeles City" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Describe the project you are proposing.</label>
-                    <textarea class="form-textarea" id="projectDescription" placeholder="Describe your project here..."></textarea>
+                    <label class="form-label">Describe the recommendation you are proposing.</label>
+                    <textarea class="form-textarea" id="projectDescription" placeholder="Describe your recommendation here..."></textarea>
                 </div>
             </div>
 
             <!-- STEP 3: More Details -->
             <div class="step-content" id="step3">
-                <p class="step-question">Please provide more details about your proposal.</p>
+                <p class="step-question">Please provide more details about your recommendation.</p>
 
                 <div class="form-group">
-                    <label class="form-label left">How urgent is this project?</label>
-                    <div class="urgency-labels">
-                        <span>Low</span>
-                        <span>Moderate</span>
-                        <span>High</span>
-                        <span>Critical</span>
-                    </div>
-                    <div class="urgency-track">
-                        <input type="range" class="urgency-slider" id="urgencySlider" min="1" max="4" value="1" step="1" />
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label left">Who will benefit from this project?</label>
+                    <label class="form-label left">Who will benefit from this recommendation?</label>
                     <div class="checkbox-group">
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Local residents" /> Local residents</label>
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Students" checked /> Students</label>
@@ -175,10 +162,10 @@
 
             <!-- STEP 4: Review -->
             <div class="step-content" id="step4">
-                <p class="review-section-title">Review Your Proposal</p>
+                <p class="review-section-title">Review Your Recommendation</p>
                 <div class="review-box" id="reviewBox">
-                    <div><strong>Project Type:</strong> <span id="r-type"></span></div>
-                    <div><strong>Project Title:</strong> <span id="r-title"></span></div>
+                    <div><strong>Recommendation Type:</strong> <span id="r-type"></span></div>
+                    <div><strong>Recommendation Title:</strong> <span id="r-title"></span></div>
                     <div><strong>Location:</strong> <span id="r-location"></span></div>
                     <div><strong>Description:</strong> <span id="r-description"></span></div>
                     <br>
@@ -196,8 +183,8 @@
                         <polyline points="20 6 9 17 4 12" />
                     </svg>
                 </div>
-                <h3>Proposal Submitted!</h3>
-                <p>Your project proposal has been received.<br>We'll review it and get back to you.</p>
+                <h3>Recommendation Submitted!</h3>
+                <p>Your proposed recommendation has been received.<br>We'll review it and get back to you.</p>
                 <button class="btn-new" id="btnNewProposal">Submit Another</button>
             </div>
 
@@ -266,7 +253,7 @@
                 } else {
                     concernView.classList.remove("active-view");
                     projectView.classList.add("active-view");
-                    pageTitle.textContent = "Submit a Proposal";
+                    pageTitle.textContent = "Submit a Recommendation";
                 }
             });
         });

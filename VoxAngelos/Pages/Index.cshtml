@@ -17,32 +17,32 @@
 </head>
 <body>
 
-    <!-- Background layers -->
-    <div class="bg position-fixed top-0 start-0 w-100 h-100" style="z-index:0"></div>
-    <div class="bg-grid position-fixed top-0 start-0 w-100 h-100" style="z-index:1"></div>
-    <div class="bg-vig position-fixed top-0 start-0 w-100 h-100" style="z-index:2"></div>
-
-    <!-- Scanline -->
-    <div class="scanline position-fixed" style="z-index:200"></div>
-
-    <!-- Corner accents -->
-    <div class="corner c-tl position-fixed" style="z-index:30"></div>
-    <div class="corner c-tr position-fixed" style="z-index:30"></div>
-    <div class="corner c-bl position-fixed" style="z-index:30"></div>
-    <div class="corner c-br position-fixed" style="z-index:30"></div>
-
-    <!-- Status bar -->
-    <div class="status-bar position-fixed start-0 end-0 d-flex align-items-center justify-content-center gap-2" style="z-index:30">
-        <div class="s-pip rounded-circle"></div>
-        <div class="s-text">Official Government Portal &nbsp;·&nbsp; Secure Channel</div>
-        <div class="s-pip rounded-circle"></div>
-    </div>
-
     <!-- Main stage -->
     <div class="stage position-relative d-flex flex-column align-items-center justify-content-center text-center w-100" style="z-index:10">
+    
+        <!-- Background layers - now inside stage so they scroll -->
+        <div class="bg" style="z-index:0"></div>
+        <div class="bg-grid" style="z-index:1"></div>
+        <div class="bg-vig" style="z-index:2"></div>
+
+        <!-- Scanline -->
+        <div class="scanline position-fixed" style="z-index:200"></div>
+
+        <!-- Corner accents -->
+        <div class="corner c-tl position-fixed" style="z-index:30"></div>
+        <div class="corner c-tr position-fixed" style="z-index:30"></div>
+        <div class="corner c-bl position-fixed" style="z-index:30"></div>
+        <div class="corner c-br position-fixed" style="z-index:30"></div>
+    
+        <!-- Status bar -->
+        <div class="status-bar d-flex align-items-center justify-content-center gap-2" style="z-index:30; position: absolute; top: 20px; left: 0; right: 0; width: 100%;">
+            <div class="s-pip rounded-circle"></div>
+            <div class="s-text">The Digital Heart Of Angeles City</div>
+            <div class="s-pip rounded-circle"></div>
+        </div>
 
         <!-- Radar -->
-        <div class="radar-wrap position-relative flex-shrink-0">
+        <div class="radar-wrap position-relative flex-shrink-0" style="z-index: 15;">
             <div class="r-dish">
                 <div class="r-ring r-ring-1"></div>
                 <div class="r-ring r-ring-2"></div>
@@ -77,21 +77,287 @@
             <span class="cta-arr ms-2"></span>
         </a>
 
+        <!-- Footer badges inside stage -->
+        <div class="footer-bar d-flex align-items-center justify-content-center flex-wrap gap-2 px-3" style="z-index:30; position: relative; margin-top: 2rem;">
+            <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Community Voiced</div>
+            <div class="f-sep"></div>
+            <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Government Actioned</div>
+            <div class="f-sep"></div>
+            <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Data Secured</div>
+        </div>
+
     </div>
 
-    <!-- Footer badges -->
-    <div class="footer-bar position-fixed start-0 end-0 d-flex align-items-center justify-content-center flex-wrap gap-2 px-3" style="z-index:30">
-        <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Secure Connection</div>
-        <div class="f-sep"></div>
-        <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Official Use Only</div>
-        <div class="f-sep"></div>
-        <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Encrypted</div>
+    <!-- Information Sections -->
+    <section class="info-sections position-relative w-100" style="z-index:5">
+        
+        <!-- Overview Section with Sticky Card -->
+        <div class="overview-section">
+            <div class="container">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-6">
+                        <h2 class="section-title">What is Vox Angelos?</h2>
+                        <p class="section-text">
+                            Vox Angelos is a web-based platform that connects residents with local government units (LGUs) through a centralized space for reporting and monitoring non-urgent community concerns. It enables citizens to share issues they observe while allowing LGU offices to organize, track, and prioritize reports for better decision-making and resource allocation. By streamlining communication and highlighting recurring local problems, the system promotes transparency, accountability, and active community participation, supporting more responsive and data-driven public service delivery.
+                        </p>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                            </div>
+                            <h3>Concern Reporting</h3>
+                            <p>Submit and route community concerns directly to the appropriate LGU office.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Core Values Section -->
+        <div class="values-section">
+            <div class="container">
+                <h2 class="section-title text-center mb-5">Core Values</h2>
+                <div class="values-grid">
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"></path>
+                            </svg>
+                        </div>
+                        <h3>Transparency</h3>
+                        <p>Clear visibility on reported concerns and their progress.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3>Inclusivity</h3>
+                        <p>An open platform where every community voice can be heard.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 100-16 8 8 0 000 16z"></path>
+                            </svg>
+                        </div>
+                        <h3>Accountability</h3>
+                        <p>Ensuring every concern is acknowledged and acted upon by the proper authorities.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section with Sticky Layout -->
+        <div class="features-section">
+            <div class="container">
+                <h2 class="section-title text-center mb-5">Platform Features</h2>
+                <div class="features-grid">
+                    <div class="feature-list-item">
+                        <div class="feature-number">01</div>
+                        <div class="feature-content">
+                            <h3>Submit Concerns</h3>
+                            <p>Send non-urgent community concerns directly to the appropriate LGU office.</p>
+                        </div>
+                    </div>
+                    <div class="feature-list-item">
+                        <div class="feature-number">02</div>
+                        <div class="feature-content">
+                            <h3>Smart Categorization</h3>
+                            <p>Automatically organize submissions by sector (health, safety, infrastructure, etc.) for efficient handling.</p>
+                        </div>
+                    </div>
+                    <div class="feature-list-item">
+                        <div class="feature-number">03</div>
+                        <div class="feature-content">
+                            <h3>Submit Ideas or Recommendations</h3>
+                            <p>Share citizen recommendations on improvements you want to see from the government.</p>
+                        </div>
+                    </div>
+                    <div class="feature-list-item">
+                        <div class="feature-number">04</div>
+                        <div class="feature-content">
+                            <h3>Status Tracking</h3>
+                            <p>Monitor the progress and updates of your submitted recommendations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Copyright and Footer -->
+    <footer class="footer-section">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-about">
+                    <h3 class="footer-title">Vox Angelos</h3>
+                    <p class="footer-description">Empowering communities through citizen-driven reporting and recommendations.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#" class="footer-link" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a>
+                </div>
+            </div>
+            <div class="footer-divider"></div>
+            <div class="copyright text-center">
+                &copy; 2026 Vox Angelos &nbsp;·&nbsp; All Rights Reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Privacy Policy Modal -->
+    <div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="privacyModalLabel">Privacy Policy & Data Protection</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="privacy-content">
+                        <h6>Republic Act No. 10173: Data Privacy Act of 2012</h6>
+                        
+                        <h6 class="mt-4">1. Data Collection & Purpose</h6>
+                        <p>
+                            Vox Angelos collects personal information to enable citizen reporting and community engagement with local government units (LGUs).
+                            This includes:
+                        </p>
+                        <ul>
+                            <li>Government-issued identification (ID) information</li>
+                            <li>Facial image capture for identity verification and face matching</li>
+                            <li>Optical Character Recognition (OCR) extracted data from submitted IDs</li>
+                            <li>Contact information for concern tracking and updates</li>
+                        </ul>
+
+                        <h6 class="mt-4">2. Legal Basis</h6>
+                        <p>
+                            Data processing is conducted in compliance with the <strong>Republic Act No. 10173 (Data Privacy Act of 2012)</strong>.
+                            The collection of Personal Identification Information (PII) is necessary for:
+                        </p>
+                        <ul>
+                            <li>Citizen verification and authentication</li>
+                            <li>Prevention of fraudulent reporting</li>
+                            <li>Accurate tracking and follow-up of community concerns</li>
+                            <li>Compliance with government data retention requirements</li>
+                        </ul>
+
+                        <h6 class="mt-4">3. Data Security Measures</h6>
+                        <p>
+                            Vox Angelos implements industry-standard security measures to protect your personal data:
+                        </p>
+                        <ul>
+                            <li>Encrypted data transmission (SSL/TLS)</li>
+                            <li>Secure storage with restricted access</li>
+                            <li>Regular security audits and assessments</li>
+                            <li>Access controls and authentication requirements</li>
+                        </ul>
+
+                        <h6 class="mt-4">4. Data Retention</h6>
+                        <p>
+                            Personal data is retained only as long as necessary to fulfill the purposes outlined above,
+                            and in compliance with government record-keeping requirements. Facial images and extracted ID data
+                            are securely deleted after verification is complete unless extended retention is legally required.
+                        </p>
+
+                        <h6 class="mt-4">5. Your Rights</h6>
+                        <p>Under the Data Privacy Act of 2012, you have the right to:</p>
+                        <ul>
+                            <li>Access your personal data</li>
+                            <li>Correct inaccurate information</li>
+                            <li>Request deletion of data (subject to legal obligations)</li>
+                            <li>Lodge complaints with the National Privacy Commission (NPC)</li>
+                            <li>Withdraw consent (where applicable)</li>
+                        </ul>
+
+                        <h6 class="mt-4">6. Third-Party Sharing</h6>
+                        <p>
+                            Your personal data is shared only with authorized LGU offices and agencies necessary to process and address your reported concerns.
+                            Data is not sold or shared with unrelated third parties for commercial purposes.
+                        </p>
+
+                        <h6 class="mt-4">7. Contact & Complaints</h6>
+                        <p>
+                            For privacy concerns or to exercise your rights under the Data Privacy Act, please contact:
+                        </p>
+                        <ul>
+                            <li><strong>National Privacy Commission (NPC):</strong> www.privacy.gov.ph</li>
+                            <li><strong>NPC Hotline:</strong> (02) 8926-7275</li>
+                        </ul>
+
+                        <p class="mt-4 text-muted small">
+                            <em>
+                                This privacy policy is effective as of 2026 and may be updated periodically.
+                                Users will be notified of significant changes through the platform.
+                            </em>
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Copyright -->
-    <div class="copyright position-fixed start-0 end-0 text-center" style="z-index:30">
-        &copy; 2025 Vox Angelos &nbsp;·&nbsp; Authorized Personnel Only
+    <!-- Floating CTA Tab -->
+    <div class="floating-cta" id="floatingCta">
+        <div class="cta-pill d-flex align-items-center">
+        
+            <div class="pill-logo-wrap">
+                <div class="pill-logo-inner">
+                    <div class="p-ring p-ring-1"></div>
+                    <div class="p-ring p-ring-2"></div>
+                    <div class="p-ring p-ring-3"></div>
+                
+                    <img src="~/assets/VoxAngelosLogo.png" alt="Logo" class="pill-img" />
+                </div>
+            </div>
+        
+            <span class="pill-title ms-2">Vox Angelos</span>
+        
+            <a asp-area="Identity" asp-page="/Account/Login" class="pill-btn d-flex align-items-center">
+                <span>Enter Portal</span>
+                <svg class="ms-2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 12h14M12 5l7 7-7 7"></path>
+                </svg>
+            </a>
+        </div>
     </div>
+
+
+    <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const floatingCta = document.getElementById('floatingCta');
+    
+                // Show floating CTA after scrolling 100px
+                window.addEventListener('scroll', function() {
+                    if (window.scrollY > 500) {
+                        floatingCta.classList.add('show');
+                    } else {
+                        floatingCta.classList.remove('show');
+                    }
+                });
+    
+                // Smooth scroll behavior for better UX
+                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                    anchor.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const target = document.querySelector(this.getAttribute('href'));
+                        if (target) {
+                            target.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        }
+                    });
+                });
+            });
+    </script>  
 
     <!-- Bootstrap 5 JS bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
