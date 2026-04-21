@@ -29,6 +29,7 @@
 
 /* ── Tabs ─────────────────────────────────── */
 
+
 .tab-group {
     position: relative;
     display: flex;
@@ -36,23 +37,24 @@
     border: 3px solid var(--page-bg);
     border-radius: 50px;
     padding: 4px;
-    width: fit-content;
-    max-width: 760px;
+    /* Removed width: fit-content to allow it to expand naturally */
+    width: 100%;
+    max-width: 500px; /* Adjusted to fit long text comfortably */
     margin: 0 auto 28px;
     box-shadow: inset 2px 4px 4px 1px #BFC5DF70, inset -4px -5px 3px 1px #ffffff70, -4px -3px 2px 1px #ffffff70, 6px 3px 6px 0 var(--shadow-color);
 }
 
 .tab-indicator {
     position: absolute;
-    top: 3px;
-    left: 3px;
+    top: 4px;
+    left: 4px;
+    /* Key Change: Matches the width of one button exactly */
     width: calc(50% - 4px);
-    height: calc(100% - 6px);
+    height: calc(100% - 8px);
     background: var(--sidebar-bg);
-    border: var(--sidebar-bg) solid 2px;
     border-radius: 50px;
     box-shadow: inset 0 -2px 1px 0 #00000020, inset 0 2px 1px 0 #ffffff50;
-    transition: transform 0.3s ease;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Added slight bounce */
     z-index: 0;
 }
 
@@ -61,29 +63,29 @@
     z-index: 1;
     border: none;
     background: transparent;
-    color: #000;
+    color: var(--text-primary);
     font-family: var(--font);
-    font-size: 14px;
+    font-size: 13.5px; /* Slightly smaller to prevent text clipping */
     font-weight: 500;
-    padding: 8px 22px;
+    padding: 10px 15px;
     border-radius: 50px;
     cursor: pointer;
     transition: color 0.3s ease;
+    /* Key Change: Force buttons to be equal width */
     flex: 1;
-    min-width: 0;
     text-align: center;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
     .tab-btn.active {
-        color: #fff;
+        color: #ffffff !important;
     }
 
     .tab-btn:hover:not(.active) {
-        color: #000;
-        background: transparent;
+        color: var(--sidebar-bg);
     }
-
 /* ── Concern Feed ────────────────────────── */
 
 .inbox-feed,

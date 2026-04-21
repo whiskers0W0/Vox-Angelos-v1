@@ -1,6 +1,7 @@
 ﻿@page
 @model VoxAngelos.Areas.Identity.Pages.Account.RegisterConfirmationModel
 @{
+    ViewData["Title"] = "Registration Submitted";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -9,74 +10,71 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Registration Submitted — Vox Angelos</title>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Syne+Mono&family=Barlow:wght@300;400&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/registerconfirmation.css" asp-append-version="true" />
 </head>
 <body>
     <div class="bg"></div>
-    <div class="bg-grid"></div>
-    <div class="corner c-tl"></div>
-    <div class="corner c-tr"></div>
-    <div class="corner c-bl"></div>
-    <div class="corner c-br"></div>
 
-    <div class="tech-wrapper" style="max-width:560px;">
-        <div style="padding: 2.5rem 2.5rem; text-align:center;">
+    <div class="main-viewport d-flex align-items-center justify-content-center w-100">
+        <div class="tech-wrapper confirmation-card">
+            <div class="card-content">
+                
+                <div class="status-icon-container">
+                    <svg viewBox="0 0 100 100" class="svg-icon svg-info">
+                        <circle cx="50" cy="50" r="42" stroke="#2B45B0" stroke-width="5" fill="none" />
+                        <path d="M50,30 L50,55" stroke="#2B45B0" stroke-width="6" stroke-linecap="round" />
+                        <circle cx="50" cy="70" r="3" fill="#2B45B0" />
+                    </svg>
+                </div>
 
-            <div style="font-size:3rem; margin-bottom:1rem;">📋</div>
+                <span class="sys-label mx-auto mb-3">Vox Angelos</span>
+                
+                <h1 class="portal-title text-center mb-4">Application<br />Submitted</h1>
 
-            <div class="eyebrow mb-2">Vox Angelos</div>
+                <div class="message-body">
+                    <p class="instruction-text">
+                        Thank you for registering, <strong class="text-primary-blue">@Model.Email</strong>.
+                    </p>
 
-            <h1 class="title mb-3" style="font-size:clamp(1.4rem,3vw,2rem);">
-                Application Submitted
-            </h1>
+                    <p class="status-alert">
+                        Your account is currently <span class="highlight-blue">pending admin approval</span>.
+                        This process typically takes 1 to 3 business days.
+                    </p>
 
-            <p style="font-family:'Barlow',sans-serif; font-size:0.9rem; color:rgba(204,242,255,0.65); line-height:1.7; margin-bottom:1rem;">
-                Thank you for registering, <strong style="color:rgba(204,242,255,0.9);">@Model.Email</strong>.
-            </p>
+                    <p class="instruction-text mb-5">
+                        You will receive an automated email once your credentials have been verified. Please monitor your inbox and spam folders for further instructions.
+                    </p>
+                </div>
 
-            <p style="font-family:'Barlow',sans-serif; font-size:0.88rem; color:rgba(204,242,255,0.55); line-height:1.7; margin-bottom:0.75rem;">
-                Your account is currently <strong style="color:rgba(0,210,255,0.8);">pending admin approval</strong>.
-                This process may take a few hours to a few business days.
-            </p>
+                <div class="divider-neo"></div>
 
-            <p style="font-family:'Barlow',sans-serif; font-size:0.88rem; color:rgba(204,242,255,0.55); line-height:1.7; margin-bottom:2rem;">
-                You will receive an email at <strong style="color:rgba(204,242,255,0.8);">@Model.Email</strong> once
-                your account has been reviewed. Please check your inbox — including your spam folder — for any
-                updates or instructions from our team.
-            </p>
+                <div class="redirect-section">
+                    <p class="security-note">Authorized Personnel Tracking Active</p>
+                    <p class="countdown-text">
+                        Redirecting to login in <span id="countdown" class="count-num">5</span> seconds...
+                    </p>
 
-            <div style="border-top:1px solid rgba(0,179,230,0.15); margin-bottom:1.5rem;"></div>
-
-            <p style="font-family:'Syne Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; color:rgba(128,223,255,0.3); text-transform:uppercase; margin-bottom:1rem;">
-                Do not attempt to register again with the same credentials
-            </p>
-
-            <p style="font-family:'Syne Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; color:rgba(128,223,255,0.4); margin-bottom:1.5rem;">
-                Redirecting to login in <span id="countdown" style="color:rgba(0,210,255,0.7);">5</span> seconds...
-            </p>
-
-            <a href="/Identity/Account/Login" class="cta" style="text-decoration:none; display:inline-flex; width:auto; padding:0.65rem 2rem;">
-                Go to Login Now
-                <span class="cta-arr ms-2"></span>
-            </a>
-
+                    <a href="/Identity/Account/Login" class="cta mx-auto text-decoration-none">
+                        Go to Login Now
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let seconds = 5;
-        const timer = setInterval(function () {
-        seconds--;
-        const el = document.getElementById('countdown');
-        if (el) el.textContent = seconds;
-        if (seconds <= 0) {
-        clearInterval(timer);
-        window.location.href = '/Identity/Account/Login';
-        }
-        }, 1000);
+            let seconds = 5;
+            const timer = setInterval(function () {
+                seconds--;
+                const el = document.getElementById('countdown');
+                if (el) el.textContent = seconds;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = '/Identity/Account/Login';
+                }
+            }, 1000);
     </script>
 </body>
 </html>

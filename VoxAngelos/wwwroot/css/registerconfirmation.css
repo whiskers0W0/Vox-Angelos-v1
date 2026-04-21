@@ -1,0 +1,180 @@
+﻿/* ============================================================================
+   VOX ANGELOS PREMIUM REGISTRATION CONFIRMATION
+   ============================================================================ */
+
+:root {
+    --color-bg: #EAECF5;
+    --color-primary: #2B45B0;
+    --color-primary-light: #445ec9;
+    --color-text-main: #2D3748;
+    --color-text-sub: #718096;
+    --font-stack: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    --font-oswald: 'Oswald', sans-serif;
+    --neo-shadow-dark: rgba(163, 177, 198, 0.7);
+    --neo-shadow-light: rgba(255, 255, 255, 0.9);
+    --neo-inset: inset 2px 2px 5px var(--neo-shadow-dark), inset -3px -3px 7px var(--neo-shadow-light);
+}
+
+body {
+    background-color: var(--color-bg);
+    font-family: var(--font-stack);
+    margin: 0;
+    min-height: 100vh;
+}
+
+.main-viewport {
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.bg {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, #d1d9e6, var(--color-bg));
+    z-index: -1;
+}
+
+/* ── CARD LAYOUT ── */
+.confirmation-card {
+    background: var(--color-bg);
+    width: 100%;
+    max-width: 560px;
+    border-radius: 30px;
+    padding: 3rem 2.5rem;
+    box-shadow: 20px 20px 60px var(--neo-shadow-dark), -20px -20px 60px var(--neo-shadow-light);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ── STATUS ICON ── */
+.status-icon-container {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1.5rem;
+}
+
+.svg-info {
+    filter: drop-shadow(0 4px 10px rgba(43, 69, 176, 0.2));
+}
+
+/* ── TYPOGRAPHY ── */
+.sys-label {
+    display: inline-block;
+    background-color: rgba(43, 69, 176, 0.08);
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 6px 16px;
+    text-transform: uppercase;
+    color: var(--color-primary);
+}
+
+.portal-title {
+    font-family: var(--font-oswald);
+    font-size: 2.5rem;
+    line-height: 1.1;
+    color: var(--color-primary);
+    text-transform: uppercase;
+}
+
+.instruction-text {
+    font-size: 0.95rem;
+    color: var(--color-text-sub);
+    line-height: 1.7;
+    text-align: center;
+}
+
+.status-alert {
+    background: var(--color-bg);
+    padding: 1.2rem;
+    border-radius: 16px;
+    box-shadow: var(--neo-inset);
+    font-size: 0.9rem;
+    color: var(--color-text-main);
+    text-align: center;
+    margin: 1.5rem 0;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+.highlight-blue {
+    color: var(--color-primary);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.text-primary-blue {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* ── REDIRECT SECTION ── */
+.divider-neo {
+    width: 100%;
+    height: 2px;
+    background: var(--neo-shadow-dark);
+    opacity: 0.3;
+    margin: 1rem 0 2rem;
+}
+
+.security-note {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--color-text-sub);
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.countdown-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.count-num {
+    color: var(--color-primary);
+    font-weight: 800;
+}
+
+/* ── BUTTON ── */
+.cta {
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    color: white !important;
+    border: none;
+    border-radius: 14px;
+    padding: 16px 40px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    width: fit-content;
+    cursor: pointer;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, 6px 6px 20px rgba(43, 69, 176, 0.3);
+    transition: 0.3s;
+    display: inline-block;
+}
+
+    .cta:hover {
+        transform: translateY(-3px);
+        box-shadow: 10px 10px 25px rgba(43, 69, 176, 0.4);
+    }
+
+/* ── MOBILE ── */
+@media (max-width: 600px) {
+    .confirmation-card {
+        padding: 2.5rem 1.5rem;
+        margin: 10px;
+    }
+
+    .portal-title {
+        font-size: 2rem;
+    }
+}

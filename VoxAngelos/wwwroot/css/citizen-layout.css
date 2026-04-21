@@ -7,7 +7,7 @@
 }
 
 :root {
-    --sidebar-width: 160px;
+    --sidebar-width: 200px;
     --sidebar-bg: #2B45B0;
     --sidebar-active: rgba(255,255,255,0.15);
     --sidebar-hover: rgba(255, 255, 255, 0.005);
@@ -82,6 +82,15 @@ body {
     transform: translateY(8px);
 }
 
+.user-profile {
+    margin: 0 12px 15px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: inset -2px 2px 2px 0 #00000020;
+}
+
 .sidebar-nav .sidebar-avatar {
     width: 24px !important;
     height: 24px !important;
@@ -142,9 +151,25 @@ body {
     }
 
 .logout-btn {
-    box-shadow: inset -2px 2px 2px 0 #00000020, inset 0 -4px 4px 0 #ffffff20;
-    margin: 0 10px;
+    /* Reset button defaults */
+    background: transparent;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    text-align: left;
+    /* Neomorphic Styling (Inherited from Citizen) */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: 10px;
     color: #fff;
+    font-size: 13.5px;
+    font-weight: 500;
+    /* The Fix for the "Exceeding" Sidebar */
+    margin: 0 !important; /* Remove the 10px margin that pushes it out */
+    box-shadow: inset -2px 2px 2px 0 #00000020, inset 0 -4px 4px 0 #ffffff20;
+    transition: background 0.18s;
 }
 
     .logout-btn:hover {
@@ -152,6 +177,11 @@ body {
         box-shadow: inset -2px 2px 2px 0 #00000020, inset 0 -4px 4px 0 #ffffff20;
         color: #fff;
     }
+
+.sidebar-footer {
+    padding: 0 10px 24px; /* Matches the nav padding */
+    width: 100%;
+}
 
 /* ── Mobile Top Bar ───────────────────────── */
 

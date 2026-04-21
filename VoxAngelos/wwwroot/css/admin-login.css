@@ -1,0 +1,238 @@
+﻿/* ============================================================================
+   VOX ANGELOS — ADMIN PORTAL PREMIUM UI
+   Coherent with Master Login Baseline
+   ============================================================================ */
+
+:root {
+    --color-bg: #EAECF5;
+    --color-primary: #2B45B0;
+    --color-primary-light: #445ec9;
+    --color-text-main: #2D3748;
+    --color-text-sub: #718096;
+    --color-error: #e53e3e;
+    --font-stack: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    --font-oswald: 'Oswald', sans-serif;
+    --neo-shadow-dark: rgba(163, 177, 198, 0.7);
+    --neo-shadow-light: rgba(255, 255, 255, 0.9);
+    --neo-inset: inset 2px 2px 5px var(--neo-shadow-dark), inset -3px -3px 7px var(--neo-shadow-light);
+}
+
+/* ── BASE & VIEWPORT ── */
+body {
+    background-color: var(--color-bg);
+    font-family: var(--font-stack);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.bg {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, #d1d9e6, var(--color-bg));
+    z-index: -1;
+}
+
+/* Hide legacy grid elements to keep neomorphic clean */
+.bg-grid, .corner {
+    display: none;
+}
+
+/* ── MAIN CONTAINER ── */
+.tech-wrapper {
+    background: var(--color-bg);
+    width: 95%;
+    max-width: 1000px;
+    border-radius: 30px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 20px 20px 60px var(--neo-shadow-dark), -20px -20px 60px var(--neo-shadow-light);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.row {
+    width: 100%;
+    display: flex;
+    margin: 0;
+}
+
+/* ── LEFT PANEL (BRANDING) ── */
+.panel-left {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #1a2a6c 100%);
+    padding: 60px 50px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030;
+}
+
+    .panel-left .eyebrow {
+        display: inline-block;
+        background-color: rgba(255, 255, 255, 0.15);
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: white;
+        letter-spacing: 0.1em;
+        padding: 6px 16px;
+        margin-bottom: 1.2rem;
+        text-transform: uppercase;
+        width: fit-content;
+    }
+
+.title {
+    font-family: var(--font-oswald);
+    font-size: 4rem;
+    line-height: 1;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+}
+
+.tagline {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+/* ── RIGHT PANEL (FORM) ── */
+.panel-right {
+    background: var(--color-bg);
+    padding: 60px;
+    flex-grow: 1;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+/* Badge System */
+.eyebrow {
+    display: inline-block;
+    background-color: rgba(43, 69, 176, 0.1);
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    padding: 7px 18px;
+    margin-bottom: 2.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    width: fit-content;
+}
+
+/* ── FORM ELEMENTS ── */
+.form-text-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-text-sub);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tech-input {
+    background: var(--color-bg) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 16px 20px !important;
+    font-family: var(--font-stack);
+    font-size: 1rem;
+    color: var(--color-text-main) !important;
+    box-shadow: var(--neo-inset) !important;
+    transition: 0.3s;
+}
+
+    .tech-input:focus {
+        outline: none;
+        box-shadow: 6px 6px 12px var(--neo-shadow-dark), -6px -6px 12px var(--neo-shadow-light) !important;
+        transform: translateY(-1px);
+    }
+
+.pw-wrapper {
+    position: relative;
+}
+
+.pw-toggle {
+    position: absolute;
+    right: 1.2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-sub); /* Ensures it's gray like the labels */
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    z-index: 10;
+}
+
+    .pw-toggle svg {
+        width: 20px;
+        height: 20px;
+        stroke: currentColor; /* Inherits the color from .pw-toggle */
+        pointer-events: none; /* Prevents clicking the SVG instead of the button */
+    }
+
+/* ── ERROR MESSAGE (ADMIN ALERT STYLE) ── */
+.error-alert {
+    background: var(--color-bg);
+    border-left: 4px solid var(--color-error);
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 4px 4px 10px var(--neo-shadow-dark);
+    margin-bottom: 1.5rem;
+}
+
+/* ── BUTTON ── */
+.cta {
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    color: white !important;
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    font-family: var(--font-stack);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, 6px 6px 20px rgba(43, 69, 176, 0.3);
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .cta:hover {
+        transform: translateY(-3px);
+        box-shadow: 10px 10px 25px rgba(43, 69, 176, 0.4);
+    }
+
+    .cta:active {
+        transform: translateY(0);
+        box-shadow: inset 4px 4px 10px rgba(0,0,0,0.2);
+    }
+
+/* ── MOBILE ── */
+@media (max-width: 850px) {
+    .tech-wrapper {
+        flex-direction: column;
+        max-width: 420px;
+        margin: 20px;
+    }
+
+    .panel-left {
+        padding: 40px;
+    }
+
+    .panel-right {
+        padding: 40px 30px;
+    }
+
+    .title {
+        font-size: 2.8rem;
+    }
+}
