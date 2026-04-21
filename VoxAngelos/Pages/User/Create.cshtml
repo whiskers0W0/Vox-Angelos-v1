@@ -401,12 +401,22 @@
             }
         });
 
-        function initMap() {
+                function initMap() {
             const defaultCenter = { lat: 15.1450, lng: 120.5887 };
+
+            // Angeles City bounds
+            const angelsesBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(15.1000, 120.5400), // SW corner
+                new google.maps.LatLng(15.1900, 120.6400)  // NE corner
+            );
 
             map = new google.maps.Map(document.getElementById('googleMap'), {
                 center: defaultCenter,
-                zoom: 14
+                zoom: 14,
+                restriction: {
+                    latLngBounds: angelsesBounds,
+                    strictBounds: true  // hard lock — cannot pan outside
+                }
             });
 
             marker = new google.maps.Marker({
@@ -435,45 +445,50 @@
             selectedLng = defaultCenter.lng;
             reverseGeocode(selectedLat, selectedLng);
 
-            // Initialize PlaceAutocompleteElement AFTER map is ready
-            initAutocomplete();
-        }
+            // Search restricted to Angeles City
+            const searchInput = document.getElementById('mapSearchBox');
+            const searchBtn = document.getElementById('mapSearchBtn');
 
-                // Search box using Geocoding API
-        const searchInput = document.getElementById('mapSearchBox');
-        const searchBtn = document.getElementById('mapSearchBtn');
+            function searchLocation() {
+                const query = searchInput.value.trim();
+                if (!query) return;
 
-        function searchLocation() {
-            const query = searchInput.value.trim();
-            if (!query) return;
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({
+                    address: query + ', Angeles City, Pampanga, Philippines',
+                    bounds: angelsesBounds
+                }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const latLng = results[0].geometry.location;
 
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({
-                address: query + ', Angeles City, Pampanga, Philippines'
-            }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const latLng = results[0].geometry.location;
-                    map.panTo(latLng);
-                    map.setZoom(16);
-                    marker.setPosition(latLng);
+                        // Validate result is within Angeles City bounds
+                        if (!angelsesBounds.contains(latLng)) {
+                            alert('Location is outside Angeles City. Please pin a location within Angeles City, Pampanga.');
+                            return;
+                        }
 
-                    selectedLat = latLng.lat();
-                    selectedLng = latLng.lng();
-                    selectedAddress = results[0].formatted_address;
-                    mapCoordDisplay.textContent = selectedAddress;
-                } else {
-                    alert('Location not found. Try a more specific address.');
+                        map.panTo(latLng);
+                        map.setZoom(16);
+                        marker.setPosition(latLng);
+
+                        selectedLat = latLng.lat();
+                        selectedLng = latLng.lng();
+                        selectedAddress = results[0].formatted_address;
+                        mapCoordDisplay.textContent = selectedAddress;
+                    } else {
+                        alert('Location not found. Try a more specific address in Angeles City.');
+                    }
+                });
+            }
+
+            searchBtn.addEventListener('click', searchLocation);
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchLocation();
                 }
             });
         }
-
-        searchBtn.addEventListener('click', searchLocation);
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                searchLocation();
-            }
-        });
 
         function reverseGeocode(lat, lng) {
             const geocoder = new google.maps.Geocoder();
