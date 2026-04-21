@@ -13,20 +13,22 @@ namespace VoxAngelos.Pages.User
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _env;
+        private readonly IConfiguration _configuration;
 
         public CreateModel(ApplicationDbContext db,
                            UserManager<ApplicationUser> userManager,
-                           IWebHostEnvironment env)
+                           IWebHostEnvironment env,
+                           IConfiguration configuration)
         {
             _db = db;
             _userManager = userManager;
             _env = env;
+            _configuration = configuration;
         }
 
-        // Displayed in the form header
         public string CitizenFullName { get; set; } = string.Empty;
+        public string GoogleMapsApiKey => _configuration["GoogleMaps:ApiKey"] ?? "";
 
-        // Bound from the form
         [BindProperty] public string Description { get; set; } = string.Empty;
         [BindProperty] public string? LocationName { get; set; }
         [BindProperty] public double? Latitude { get; set; }
@@ -38,7 +40,6 @@ namespace VoxAngelos.Pages.User
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage("/Login");
 
-            // Pull full name from UserProfile
             var profile = await _db.UserProfiles
                 .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
@@ -55,19 +56,13 @@ namespace VoxAngelos.Pages.User
             if (user == null) return RedirectToPage("/Login");
 
             if (string.IsNullOrWhiteSpace(Description))
-            {
                 ModelState.AddModelError("Description", "Description is required.");
-            }
 
             if (string.IsNullOrWhiteSpace(LocationName) || Latitude == null || Longitude == null)
-            {
                 ModelState.AddModelError("LocationName", "Please pin your location using the map.");
-            }
 
             if (Attachments == null || Attachments.Count == 0)
-            {
                 ModelState.AddModelError("Attachments", "Please upload at least one image or video.");
-            }
 
             if (!ModelState.IsValid)
             {
@@ -75,7 +70,6 @@ namespace VoxAngelos.Pages.User
                 return Page();
             }
 
-            // Save concern
             var concern = new Concern
             {
                 CitizenId = user.Id,
@@ -84,14 +78,13 @@ namespace VoxAngelos.Pages.User
                 Latitude = Latitude,
                 Longitude = Longitude,
                 Status = "Unresolved",
-                Category = null, // NLP will fill this later
+                Category = null,
                 SubmittedAt = DateTime.UtcNow
             };
 
             _db.Concerns.Add(concern);
-            await _db.SaveChangesAsync(); // Save first to get concern.Id
+            await _db.SaveChangesAsync();
 
-            // Save attachments
             if (Attachments != null && Attachments.Count > 0)
             {
                 var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "concerns");
@@ -122,7 +115,6 @@ namespace VoxAngelos.Pages.User
                 await _db.SaveChangesAsync();
             }
 
-            // Redirect back to form (confirmation page can replace this later)
             TempData["ConcernSuccess"] = "Your concern has been submitted successfully!";
             return RedirectToPage();
         }

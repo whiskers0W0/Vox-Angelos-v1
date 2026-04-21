@@ -7,15 +7,44 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/lgu_heatmap.css" asp-append-version="true" />
+    <style>
+        .info-window {
+            font-family: sans-serif;
+            font-size: 13px;
+            max-width: 220px;
+            line-height: 1.5;
+        }
+        .info-window .iw-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .info-window .iw-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-bottom: 6px;
+            background: #e0e0e0;
+            color: #333;
+        }
+        .info-window .iw-status.unresolved { background:#fff3cd; color:#856404; }
+        .info-window .iw-status.chosen { background:#cfe2ff; color:#084298; }
+        .info-window .iw-status.in-progress { background:#d1ecf1; color:#0c5460; }
+        .info-window .iw-status.resolved { background:#d4edda; color:#155724; }
+        .info-window .iw-label { color: #666; font-size: 11px; }
+        .info-window .iw-value { color: #222; margin-bottom: 4px; }
+    </style>
 }
 
-@* <h1 class="page-title" style="margin-bottom: 16px;">Map View</h1> *@
 <div class="heatmap-wrapper">
     <div id="map"></div>
 </div>
 
 @section Scripts {
     <script>
+        const concerns = @Html.Raw(Model.ConcernsJson);
+
         function initMap() {
             const angelesCityCenter = { lat: 15.1450, lng: 120.5887 };
 
@@ -34,10 +63,68 @@
                     }
                 ]
             });
+
+            const infoWindow = new google.maps.InfoWindow();
+
+            // Status color mapping
+            function getMarkerColor(status) {
+                switch (status) {
+                    case 'Unresolved': return 'http://maps.google.com/mapfiles/ms/icons/red-dot.png';
+                    case 'Chosen': return 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+                    case 'In Progress': return 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
+                    case 'Resolved': return 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
+                    default: return 'http://maps.google.com/mapfiles/ms/icons/red-dot.png';
+                }
+            }
+
+            function getStatusClass(status) {
+                return status.toLowerCase().replace(' ', '-');
+            }
+
+            // Place markers
+            concerns.forEach(concern => {
+                const marker = new google.maps.Marker({
+                    position: { lat: concern.lat, lng: concern.lng },
+                    map: map,
+                    icon: getMarkerColor(concern.status),
+                    title: concern.citizenName
+                });
+
+                const content = `
+                    <div class="info-window">
+                        <div class="iw-name">${concern.citizenName}</div>
+                        <span class="iw-status ${getStatusClass(concern.status)}">${concern.status}</span>
+                        <div class="iw-label">Category</div>
+                        <div class="iw-value">${concern.category}</div>
+                        <div class="iw-label">Location</div>
+                        <div class="iw-value">${concern.location}</div>
+                        <div class="iw-label">Description</div>
+                        <div class="iw-value">${concern.description}</div>
+                        <div class="iw-label">Submitted</div>
+                        <div class="iw-value">${concern.submittedAt}</div>
+                    </div>
+                `;
+
+                // Show on hover
+                marker.addListener('mouseover', () => {
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+
+                // Close on mouseout
+                marker.addListener('mouseout', () => {
+                    infoWindow.close();
+                });
+
+                // Keep open on click
+                marker.addListener('click', () => {
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+            });
         }
     </script>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap"
-            async defer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&callback=initMap"
     </script>
 }
