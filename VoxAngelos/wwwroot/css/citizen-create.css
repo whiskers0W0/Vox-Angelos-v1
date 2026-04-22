@@ -20,6 +20,10 @@
     flex-wrap: wrap;
     width: 100%;
     max-width: 100%;
+    padding: 8px;
+    border-radius: 16px;
+    background: #ffffff10;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
 }
 
 .page-title {
@@ -41,7 +45,7 @@
     /* Removed width: fit-content to allow it to expand naturally */
     width: 100%;
     max-width: 500px; /* Adjusted to fit long text comfortably */
-    margin: 0 auto 28px;
+    margin: 0 auto 20px;
     box-shadow: inset 2px 4px 4px 1px #BFC5DF70, inset -4px -5px 3px 1px #ffffff70, -4px -3px 2px 1px #ffffff70, 6px 3px 6px 0 var(--shadow-color);
 }
 
@@ -107,7 +111,6 @@
     box-shadow: 4px 4px 10px 0 var(--shadow-color), -3px -3px 8px 0 #ffffff90;
     padding: 28px 32px 24px;
     width: 100%;
-    max-width: 580px;
 }
 
 .proposal-card-header {
@@ -151,9 +154,9 @@
 
 .category-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
     margin-bottom: 8px;
+    grid-template-columns: repeat(2, 1fr); /* Keep 2 columns */
+    gap: 15px;
 }
 
 .category-btn {
@@ -161,6 +164,7 @@
     border: 2px solid transparent;
     border-radius: 10px;
     padding: 18px 12px;
+    height: 120px;
     font-family: var(--font);
     font-size: 14px;
     font-weight: 500;
@@ -175,6 +179,12 @@
         box-shadow: inset 2px 2px 5px 0 var(--shadow-color), inset -2px -2px 5px 0 #ffffff90;
     }
 
+    /* Forces the button with the "Others" value to take up the whole row */
+    .category-btn[data-value="Others"] {
+        grid-column: span 2;
+        margin-top: 5px; /* Adds a tiny bit of breathing room */
+    }
+
     .category-btn.selected {
         border-color: var(--sidebar-bg);
         color: var(--sidebar-bg);
@@ -182,6 +192,34 @@
         box-shadow: inset 2px 2px 5px 0 #BFC5DF60, inset -2px -2px 5px 0 #ffffff70;
     }
 
+/* Error Styling */
+.input-error {
+    border: 1.5px solid rgba(225, 29, 72, 0.4) !important;
+    box-shadow: 0 0 8px rgba(225, 29, 72, 0.1) !important;
+    animation: shake 0.3s ease-in-out;
+}
+
+/* Shake Animation */
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-4px);
+    }
+
+    75% {
+        transform: translateX(4px);
+    }
+}
+
+/* Specific styling for the Category Grid if no button is picked */
+.category-grid.input-error {
+    padding: 10px;
+    border-radius: 15px;
+    background: rgba(225, 29, 72, 0.05);
+}
 /* ── Step 2 - Form Fields ─────────────────── */
 
 .form-group {
@@ -231,54 +269,17 @@
     min-height: 110px;
 }
 
-/* ── Step 3 - Urgency Slider ──────────────── */
-
-.urgency-track {
-    position: relative;
+.text-danger {
+    color: #e11d48;
+    font-size: 12px;
+    font-weight: 500;
+    font-style: italic;
+    margin-top: -10px;
     margin-bottom: 6px;
-}
-
-.urgency-labels {
     display: flex;
-    justify-content: space-between;
-    font-size: 11.5px;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
+    align-items: center;
+    gap: 5px;
 }
-
-.urgency-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 6px;
-    border-radius: 50px;
-    background: linear-gradient(to right, var(--sidebar-bg) 0%, var(--sidebar-bg) var(--slider-pct, 25%), #D0D5E8 var(--slider-pct, 25%), #D0D5E8 100%);
-    outline: none;
-    cursor: pointer;
-    box-shadow: inset 1px 1px 3px #BFC5DF80;
-}
-
-    .urgency-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: var(--sidebar-bg);
-        cursor: pointer;
-        box-shadow: 2px 2px 5px #BFC5DF, -1px -1px 3px #fff;
-        border: 2px solid #fff;
-    }
-
-    .urgency-slider::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: var(--sidebar-bg);
-        cursor: pointer;
-        box-shadow: 2px 2px 5px #BFC5DF, -1px -1px 3px #fff;
-        border: 2px solid #fff;
-    }
 
 /* ── Step 3 - Checkboxes ──────────────────── */
 
@@ -543,7 +544,6 @@
 
     .tab-group {
         width: 100%;
-        max-width: 50%;
         justify-content: stretch;
     }
 
@@ -580,7 +580,6 @@
     box-shadow: 4px 4px 10px 0 var(--shadow-color), -3px -3px 8px 0 #ffffff90;
     padding: 22px 28px 24px;
     width: 100%;
-    max-width: 580px;
 }
 
 .concern-user-row {
@@ -766,7 +765,7 @@
 .map-modal {
     background: var(--card-bg);
     border-radius: var(--radius);
-    box-shadow: 6px 6px 16px 0 var(--shadow-color), -3px -3px 10px 0 #ffffff90;
+    box-shadow: 6px 6px 16px 0 var(--shadow-color), -1px -1px 5px 0 #ffffff90;
     width: 90%;
     max-width: 500px;
     overflow: hidden;
@@ -805,3 +804,122 @@
     flex: 1;
     margin-left: 4px;
 }
+
+/* Container to handle spacing */
+.custom-alert-container {
+    width: 100%;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    animation: slideDownFade 0.5s ease-out;
+}
+
+/* The Neomorphic Alert Box */
+.neomorphic-alert {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 20px;
+    width: 100%;
+    background: var(--page-bg); /* Matches your site background */
+    border-radius: 15px;
+    /* Inset Neomorphism: light top-left, dark bottom-right */
+    box-shadow: inset -4px -4px 8px #ffffff, inset 4px 4px 10px rgba(191, 197, 223, 0.8);
+    position: relative;
+}
+
+/* Success Icon Styling */
+.alert-icon-circle {
+    width: 28px;
+    height: 28px;
+    background: #dcfce7; /* Soft green */
+    color: #15803d; /* Dark green text */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+}
+
+    .alert-icon-circle svg {
+        width: 16px;
+        height: 16px;
+    }
+
+/* Text Styling */
+.alert-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #15803d; /* Matching the green theme */
+    letter-spacing: -0.2px;
+}
+
+/* Close Button */
+.alert-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+    .alert-close:hover {
+        color: #64748b;
+    }
+
+/* Entrance Animation */
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Container for the hidden input */
+.other-spec-container {
+    margin-top: 20px;
+    animation: fadeInSlide 0.3s ease-out;
+}
+
+.other-input {
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: 15px;
+    border: none;
+    background: var(--page-bg);
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--text-primary);
+    /* Neomorphic Inset Shadow to match your search bar */
+    box-shadow: inset -4px -4px 8px #ffffff, inset 4px 4px 10px rgba(191, 197, 223, 0.8);
+    outline: none;
+    transition: box-shadow 0.2s;
+}
+
+    .other-input:focus {
+        box-shadow: inset -2px -2px 5px #ffffff, inset 2px 2px 5px rgba(191, 197, 223, 0.9);
+    }
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Optional: Make the "Others" button stand out slightly or span full width if preferred */
+ #btnOthers { grid-column: span 2; } 

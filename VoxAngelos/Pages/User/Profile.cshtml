@@ -13,79 +13,69 @@
     <h1 class="page-title">Profile</h1>
 </div>
 
-<!-- Profile Card -->
-<div class="profile-card-wrapper">
-
-    <!-- Floating avatar -->
-    <div class="profile-avatar-wrap">
-        <div class="profile-avatar">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-            </svg>
+<div class="profile-container">
+    <div class="profile-card-wrapper">
+        <div class="profile-avatar-wrap">
+            <div class="profile-avatar">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                </svg>
+            </div>
+            <button class="edit-avatar-btn" title="Change Photo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+            </button>
         </div>
-    </div>
 
-    <div class="profile-card">
-        <div class="profile-fields">
-
-            <div class="profile-field">
-                <span class="profile-field-label">First Name</span>
-                <span class="profile-field-value">Juan</span>
+        <div class="profile-card">
+            <div class="profile-header-info">
+                <h2 class="user-display-name">Juan Dela Cruz</h2>
+                <span class="user-role-badge">Verified Citizen</span>
             </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">Middle Name</span>
-                <span class="profile-field-value">Martinez</span>
-            </div>
+            <div class="profile-fields-grid">
+                <div class="profile-field">
+                    <label>First Name</label>
+                    <div class="field-value-box">Juan</div>
+                </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">Last Name</span>
-                <span class="profile-field-value">Dela Cruz</span>
-            </div>
+                <div class="profile-field">
+                    <label>Middle Name</label>
+                    <div class="field-value-box">Martinez</div>
+                </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">Phone Number</span>
-                <span class="profile-field-value">+63 9123456789</span>
-            </div>
+                <div class="profile-field">
+                    <label>Last Name</label>
+                    <div class="field-value-box">Dela Cruz</div>
+                </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">Email</span>
-                <span class="profile-field-value">jdc@gmail.com</span>
-            </div>
+                <div class="profile-field">
+                    <label>Phone Number</label>
+                    <div class="field-value-box">+63 9123456789</div>
+                </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">Password</span>
-                <span class="profile-field-value password">••••••••••</span>
-            </div>
+                <div class="profile-field">
+                    <label>Email Address</label>
+                    <div class="field-value-box">jdc@gmail.com</div>
+                </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">ID Type</span>
-                <span class="profile-field-value">PhilSys ID</span>
-            </div>
+                <div class="profile-field">
+                    <label>Password</label>
+                    <div class="field-value-box password">••••••••••</div>
+                </div>
 
-            <div class="profile-field">
-                <span class="profile-field-label">ID Photo</span>
-                <span class="profile-field-value link">national_id.jpg</span>
-            </div>
+                <div class="profile-field">
+                    <label>Identification Type</label>
+                    <div class="field-value-box">PhilSys ID</div>
+                </div>
 
+                <div class="profile-field">
+                    <label>ID Document</label>
+                    <div class="field-value-box link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; margin-right:5px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        national_id.jpg
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        const hamburgerBtn = document.getElementById('hamburgerBtn');
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-
-        hamburgerBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-        });
-
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('active');
-        });
-    </script>
-}
