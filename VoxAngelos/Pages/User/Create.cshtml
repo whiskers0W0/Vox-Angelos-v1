@@ -12,11 +12,6 @@
     <h1 class="page-title">Submit a Concern</h1>
 </div>
 
-@if (TempData["ConcernSuccess"] != null)
-{
-    <div class="alert alert-success">@TempData["ConcernSuccess"]</div>
-}
-
 <!-- Toggle Tabs -->
 <div class="tab-group">
     <div class="tab-indicator"></div>
@@ -24,9 +19,26 @@
     <button class="tab-btn" data-view="project">Recommendation</button>
 </div>
 
+@if (TempData["ConcernSuccess"] != null)
+{
+    <div class="custom-alert-container">
+        <div class="neomorphic-alert success">
+            <div class="alert-icon-circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <span class="alert-text">@TempData["ConcernSuccess"]</span>
+            <button type="button" class="alert-close" onclick="this.parentElement.style.display='none';">
+                &times;
+            </button>
+        </div>
+    </div>
+}
+
 <!-- Concern Form -->
 <div id="concernView" class="view-section active-view">
-    <div style="display:flex; justify-content:center;">
+    <div style="display:flex; justify-content:center; width:100%;">
         <div class="concern-card">
 
             <form id="concernForm" method="post" enctype="multipart/form-data">
@@ -90,7 +102,7 @@
 
 <!-- Project Proposal Multi-Step Form -->
 <div id="projectView" class="view-section">
-    <div style="display:flex; justify-content:center;">
+    <div style="display:flex; justify-content:center; width:100%;">
         <div class="proposal-card">
 
             <div class="proposal-card-header">
@@ -106,6 +118,11 @@
                     <button class="category-btn" data-value="Environment">Environment</button>
                     <button class="category-btn" data-value="Community Program">Community Program</button>
                     <button class="category-btn" data-value="Public Safety">Public Safety</button>
+                    <button class="category-btn" id="btnOthers" data-value="Others">Others, please specify</button>
+                </div>
+
+                <div class="other-spec-container" id="otherSpecContainer" style="display: none;">
+                    <input type="text" id="otherSpecification" class="other-input" placeholder="Tell us the category name..." />
                 </div>
             </div>
 
@@ -133,7 +150,7 @@
                     <label class="form-label left">Who will benefit from this recommendation?</label>
                     <div class="checkbox-group">
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Local residents" /> Local residents</label>
-                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Students" checked /> Students</label>
+                        <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Students" /> Students</label>
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Businesses" /> Businesses</label>
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Senior citizens" /> Senior citizens</label>
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Entire community" /> Entire community</label>
@@ -169,7 +186,6 @@
                     <div><strong>Location:</strong> <span id="r-location"></span></div>
                     <div><strong>Description:</strong> <span id="r-description"></span></div>
                     <br>
-                    <div><strong>Urgency:</strong> <span id="r-urgency"></span></div>
                     <div><strong>Beneficiaries:</strong> <span id="r-beneficiaries"></span></div>
                     <div><strong>Est. people affected:</strong> <span id="r-people"></span></div>
                     <div><strong>Attachments:</strong> <span id="r-attachments"></span></div>
@@ -257,14 +273,11 @@
                 }
             });
         });
-
-                  
-
-        /* ── Multi-step form ────────────────────────── */
+                     
+               /* ── Multi-step form ────────────────────────── */
         let currentStep = 1;
         const totalSteps = 4;
         let selectedCategory = '';
-        const urgencyLabels = ['Low', 'Moderate', 'High', 'Critical'];
 
         const steps = document.querySelectorAll('.step-content');
         const btnBack = document.getElementById('btnBack');
@@ -273,27 +286,29 @@
         const stepFooter = document.getElementById('stepFooter');
         const successState = document.getElementById('successState');
 
-        // Category selection
+        // UPDATED: Category selection with "Others" logic
+        const otherContainer = document.getElementById('otherSpecContainer');
+        const otherInput = document.getElementById('otherSpecification');
+
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Remove 'selected' from all buttons and add to the clicked one
                 document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
+        
                 selectedCategory = btn.dataset.value;
+
+                // Toggle the 'Others' input box
+                if (selectedCategory === "Others") {
+                    otherContainer.style.display = 'block';
+                    otherInput.focus();
+                } else {
+                    otherContainer.style.display = 'none';
+                    otherInput.value = ''; // Clear input if user switches to a preset
+                }
             });
         });
-
-        // Urgency slider gradient update
-        const urgencySlider = document.getElementById('urgencySlider');
-        function updateSlider() {
-            if (!urgencySlider) return;
-            const pct = ((urgencySlider.value - 1) / 3) * 100;
-            urgencySlider.style.setProperty('--slider-pct', pct + '%');
-        }
-        if (urgencySlider) {
-            urgencySlider.addEventListener('input', updateSlider);
-            updateSlider();
-        }
-
+            
         // File upload
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
@@ -305,16 +320,24 @@
             fileLabel.textContent = files.length ? files.map(f => f.name).join(', ') : '';
         });
 
+                // UPDATED: Modified renderReview to show the custom "Other" value
         function renderReview() {
-            document.getElementById('r-type').textContent = selectedCategory || '—';
+            let categoryDisplay = selectedCategory;
+            if (selectedCategory === "Others") {
+                categoryDisplay = otherInput.value.trim() || "Other (Not specified)";
+            }
+
+            document.getElementById('r-type').textContent = categoryDisplay || '—';
             document.getElementById('r-title').textContent = document.getElementById('projectTitle').value || '—';
             document.getElementById('r-location').textContent = document.getElementById('projectLocation').value || '—';
             document.getElementById('r-description').textContent = document.getElementById('projectDescription').value || '—';
-            document.getElementById('r-urgency').textContent = urgencySlider ? urgencyLabels[urgencySlider.value - 1] : '—';
+
             const checked = Array.from(document.querySelectorAll('input[name="beneficiary"]:checked')).map(c => c.value);
             document.getElementById('r-beneficiaries').textContent = checked.length ? checked.join(', ') : '—';
+    
             const people = document.getElementById('peopleAffected').value;
             document.getElementById('r-people').textContent = people || '—';
+    
             const files = Array.from(fileInput.files);
             document.getElementById('r-attachments').textContent = files.length ? files.map(f => f.name).join(', ') : 'None';
         }
@@ -335,14 +358,78 @@
             }
         }
 
-        btnNext.addEventListener('click', () => {
+                btnNext.addEventListener('click', () => {
             if (currentStep < totalSteps) {
-                currentStep++;
-                goToStep(currentStep);
+                // Run validation for the current step
+                if (validateStep(currentStep)) {
+                    currentStep++;
+                    goToStep(currentStep);
+                }
             } else {
+                // Final Submission
                 stepFooter.style.display = 'none';
                 steps.forEach(s => s.classList.remove('active'));
                 successState.classList.add('active');
+            }
+        });
+
+        function validateStep(step) {
+            let isValid = true;
+
+            // Helper to highlight invalid fields
+            const invalidate = (el) => {
+                el.classList.add('input-error');
+                isValid = false;
+                // Optional: Add a shake effect or specific error message here
+            };
+
+            // Reset previous errors
+            document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
+            if (step === 1) {
+                // Validate Category Selection
+                if (!selectedCategory) {
+                    document.querySelector('.category-grid').classList.add('input-error');
+                    isValid = false;
+                }
+                // If "Others" is picked, check the text input
+                if (selectedCategory === "Others" && !otherInput.value.trim()) {
+                    invalidate(otherInput);
+                }
+            }
+            else if (step === 2) {
+                // Validate Title, Location, and Description
+                const title = document.getElementById('projectTitle');
+                const loc = document.getElementById('projectLocation');
+                const desc = document.getElementById('projectDescription');
+
+                if (!title.value.trim()) invalidate(title);
+                if (!loc.value.trim()) invalidate(loc);
+                if (!desc.value.trim()) invalidate(desc);
+            }
+            else if (step === 3) {
+                // Validate Beneficiaries (at least one checked)
+                const checked = document.querySelectorAll('input[name="beneficiary"]:checked');
+                if (checked.length === 0) {
+                    document.querySelector('.checkbox-group').classList.add('input-error');
+                    isValid = false;
+                }
+                // Validate People Affected
+                const people = document.getElementById('peopleAffected');
+                if (!people.value || people.value <= 0) invalidate(people);
+            }
+
+            if (!isValid) {
+                console.log("Validation failed for step " + step);
+            }
+    
+            return isValid;
+        }
+
+        // Clear error styling when user starts typing/clicking
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('form-input') || e.target.classList.contains('form-textarea')) {
+                e.target.classList.remove('input-error');
             }
         });
 
@@ -361,12 +448,6 @@
             document.getElementById('projectTitle').value = '';
             document.getElementById('projectLocation').value = '';
             document.getElementById('projectDescription').value = '';
-            
-                if (urgencySlider) {
-                urgencySlider.value = 1;
-                updateSlider();
-                }
-
             document.querySelectorAll('input[name="beneficiary"]').forEach(c => c.checked = false);
             document.getElementById('peopleAffected').value = '';
             fileLabel.textContent = '';
@@ -376,6 +457,7 @@
         });
 
         goToStep(1);
+
                /* ── Concern form ───────────────────────────── */
         const useMapBtn = document.getElementById('useMapBtn');
         const mapModalOverlay = document.getElementById('mapModalOverlay');
@@ -533,19 +615,19 @@
 
             const desc = document.getElementById('concernDescription').value.trim();
             if (!desc) {
-                document.getElementById('err-description').textContent = 'Description is required.';
+                document.getElementById('err-description').textContent = 'Could you describe the concern? Every detail helps the city respond faster.';
                 valid = false;
             }
 
             const location = document.getElementById('hdnLocationName').value.trim();
             if (!location) {
-                document.getElementById('err-location').textContent = 'Please pin your location using the map.';
+                document.getElementById('err-location').textContent = 'We need to know where this is happening. Please drop a pin on the map.';
                 valid = false;
             }
 
             const files = document.getElementById('concernFileInput').files;
             if (!files || files.length === 0) {
-                document.getElementById('err-attachment').textContent = 'Please upload at least one image or video.';
+                document.getElementById('err-attachment').textContent = 'A photo or video helps us verify the situation. Please attach at least one.';
                 valid = false;
             }
 
