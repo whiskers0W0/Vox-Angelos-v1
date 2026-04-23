@@ -1,0 +1,117 @@
+﻿/* --- Root Variables for Branding --- */
+:root {
+    --primary-blue: #2D54C4;
+    --text-main: #1a1a1a;
+    --text-muted: #666;
+    --bg-page: #f8fafc;
+    --card-bg: #ffffff;
+    --radius-lg: 20px;
+    --shadow-neumorphic: 5px 5px 10px 0px #BFC5DF50, inset -3px -3px 4px 0 rgba(255,255,255,0.5);
+    --nm-outer: 3px 3px 6px rgba(163, 177, 198, 0.6), -9px -9px 16px rgba(255, 255, 255, 0.8);
+    --nm-inner: inset 3px 3px 6px rgba(163, 177, 198, 0.5), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+}
+
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 16px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.page-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--sidebar-bg);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin: 0;
+}
+
+/* --- Stats Grid: Forced Horizontal --- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    width: 100%;
+    padding: 20px;
+}
+
+/* --- Neumorphic Card --- */
+.stat-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+    transition: transform 0.3s ease;
+}
+
+/* --- Icon "Well" (Carved-in effect) --- */
+.stat-icon {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    /* The "Pressed" look */
+    box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+}
+
+    .stat-icon svg {
+        width: 28px;
+        height: 28px;
+        /* This allows the color classes below to work */
+        stroke: currentColor;
+    }
+
+/* --- Typography --- */
+.stat-number {
+    font-size: 40px;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: center;
+}
+
+/* Specific colors to make them pop against the grey/white base */
+.stat-card:nth-child(1) .stat-icon {
+    color: #e11d48;
+}
+/* Warning Red */
+.stat-card:nth-child(2) .stat-icon {
+    color: #2D54C4;
+}
+/* Admin Blue */
+.stat-card:nth-child(3) .stat-icon {
+    color: #16a34a;
+}
+/* Success Green */
+
+/* --- Mobile Responsive: Stack only when screen is too narrow --- */
+@media (max-width: 992px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}

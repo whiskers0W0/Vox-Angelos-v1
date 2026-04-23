@@ -1,0 +1,296 @@
+﻿/* --- Neumorphic Roots & Variables --- */
+:root {
+    --primary-blue: #2D54C4;
+    --text-main: #1a1a1a;
+    --text-muted: #666;
+    --bg-page: #ebf0f7;
+    --card-bg: #f3f6fb;
+    --radius-lg: 30px;
+    /* Standard Neumorphic Shadows */
+    --nm-outer: 9px 9px 16px rgba(163, 177, 198, 0.6), -9px -9px 16px rgba(255, 255, 255, 0.8);
+    --nm-inner: inset 3px 3px 6px rgba(163, 177, 198, 0.5), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+    /* Confidence Colors */
+    --color-high: #16a34a;
+    --color-low: #dc2626;
+}
+
+body {
+    background-color: var(--bg-page);
+    font-family: var(--font);
+    color: var(--text-main);
+    margin: 0;
+}
+
+/* --- Header Section --- */
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: var(--nm-outer);
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+    .review-header h1 {
+        font-size: 24px;
+        color: var(--primary-blue);
+        margin: 0;
+    }
+
+.review-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* --- Grid Layout --- */
+.review-grid {
+    display: grid;
+    grid-template-columns: 450px 1fr; /* Keep your preferred widths */
+    gap: 40px;
+    align-items: stretch; /* This makes columns equal height if you want them balanced */
+    width: 100%;
+}
+
+/* --- Card Styling --- */
+.review-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 25px;
+    box-shadow: var(--nm-outer);
+    margin-bottom: 30px;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+.card-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding-bottom: 10px;
+}
+
+/* --- Info Rows --- */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.info-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.info-value {
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+/* --- Photos Grid --- */
+.photos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.photo-box {
+    text-align: center;
+}
+
+.photo-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.review-photo {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 15px;
+    cursor: zoom-in;
+    box-shadow: var(--nm-outer);
+    transition: transform 0.2s;
+}
+
+    .review-photo:hover {
+        transform: scale(1.02);
+    }
+
+.photo-placeholder {
+    width: 100%;
+    height: 250px; /* Give it a definite height so it doesn't look squashed */
+    background: var(--bg-page);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    /* Deeper inset shadow for that "carved" look */
+    box-shadow: inset 6px 6px 12px rgba(163, 177, 198, 0.6), inset -6px -6px 12px rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* --- Confidence Progress Bars --- */
+.confidence-bar {
+    width: 100%;
+    height: 12px;
+    background: var(--bg-page);
+    border-radius: 10px;
+    box-shadow: var(--nm-inner);
+    overflow: hidden;
+    margin: 8px 0;
+}
+
+.confidence-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 1s ease-in-out;
+}
+
+    .confidence-fill.high {
+        background: var(--color-high);
+    }
+
+    .confidence-fill.low {
+        background: var(--color-low);
+    }
+
+.confidence-value {
+    font-weight: 800;
+    font-size: 16px;
+}
+
+    .confidence-value.high {
+        color: var(--color-high);
+    }
+
+    .confidence-value.low {
+        color: var(--color-low);
+    }
+
+/* --- Action Buttons --- */
+.action-buttons {
+    display: flex;
+    justify-content: center; /* Centers the button(s) horizontally */
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.btn-cancel, .btn-reject, .btn-approve {
+    /* Override any flex: 1 or width: 100% */
+    flex: none !important;
+    width: 250px !important;
+    padding: 15px 0;
+    border-radius: 15px;
+    display: inline-block;
+    text-align: center;
+    box-shadow: var(--nm-outer);
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.btn-cancel {
+    background: var(--card-bg);
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.btn-reject {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.btn-approve {
+    background: var(--primary-blue);
+    color: white;
+}
+
+    .btn-approve:hover {
+        transform: translateY(-2px);
+        background: #1e40af;
+    }
+
+.btn-reject:hover {
+    transform: translateY(-2px);
+    background: #fecaca;
+}
+
+.btn-cancel:hover {
+    box-shadow: var(--nm-inner);
+}
+
+.action-buttons + .status-message,
+.action-buttons .status-message {
+    margin-left: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--color-high);
+}
+
+/* --- Modals --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(235, 240, 247, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-box {
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: 30px;
+    width: 400px;
+    text-align: center;
+    box-shadow: 20px 20px 40px rgba(163,177,198,0.5), -20px -20px 40px #fff;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+/* --- Status Badges --- */
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: var(--nm-inner);
+}
+
+.status-pending {
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.status-approved {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.status-rejected {
+    background: #fef2f2;
+    color: #991b1b;
+}
