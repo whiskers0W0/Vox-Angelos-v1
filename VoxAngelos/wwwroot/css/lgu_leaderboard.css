@@ -1,262 +1,422 @@
-﻿/* ── Leaderboard header ── */
-.leaderboard-header {
+﻿.content-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
-}
-
-    .leaderboard-header h1 {
-        font-size: 28px;
-        font-weight: 700;
-        color: var(--text-primary);
-        letter-spacing: -0.02em;
-        margin: 0;
-    }
-
-.leaderboard-filter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
-    .leaderboard-filter select {
-        font-size: 13px;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 8px;
-        padding: 6px 12px;
-        background: white;
-        cursor: pointer;
-        outline: none;
-        transition: border-color 0.15s;
-    }
-
-        .leaderboard-filter select:focus {
-            border-color: var(--accent);
-        }
-
-/* ── Leaderboard item ── */
-.leaderboard-item {
-    display: flex;
-    align-items: flex-start;
+    margin-bottom: 15px;
     gap: 16px;
-    margin-bottom: 16px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    border-radius: 16px;
+    background: #ffffff10;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
 }
 
-/* ── Rank indicator ── */
-.rank-indicator {
+.page-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--sidebar-bg);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin: 0;
+}
+
+.proposals-feed {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    min-width: 40px;
-    padding-top: 20px;
+    gap: 20px;
+    width: 100%;
 }
 
-.rank-arrow {
-    width: 0;
-    height: 0;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-}
+/* ── Proposal Card ────────────────────────── */
 
-    .rank-arrow.up {
-        border-bottom: 18px solid #3B40C4;
-    }
-
-    .rank-arrow.down {
-        border-top: 18px solid #e53e3e;
-    }
-
-.rank-number {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1;
-}
-
-/* ── Proposal card ── */
 .proposal-card {
-    flex: 1;
-    background: white;
-    border-radius: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
-    padding: 20px 24px;
-    overflow: hidden;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: 5px 5px 10px 0px #BFC5DF50, inset -3px -3px 4px 0 var(--shadow-color);
+    width: 100%;
+    padding: 22px 24px 18px;
+    transition: box-shadow 0.2s;
 }
 
-/* ── Card author row ── */
-.proposal-author {
+    .proposal-card:hover {
+        box-shadow: 10px 10px 15px 0px var(--shadow-color), inset -3px -3px 4px 0 var(--shadow-color);
+    }
+
+/* Card header */
+.card-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     margin-bottom: 10px;
 }
 
-.proposal-author-left {
+.author-info {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.proposal-avatar {
-    width: 36px;
-    height: 36px;
+.avatar {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: var(--accent-light);
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 600;
+    background: var(--page-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    overflow: hidden;
+    color: var(--sidebar-bg);
 }
 
-    .proposal-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    .avatar svg {
+        width: 24px;
+        height: 24px;
     }
 
-.proposal-author-name {
-    font-size: 14px;
-    font-weight: 600;
+.author-name {
+    font-weight: 500;
+    font-size: 15px;
     color: var(--text-primary);
-    margin: 0;
 }
 
-.proposal-date {
-    font-size: 12px;
+.card-date {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    padding-top: 2px;
+}
+
+/* Card meta */
+.card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 14px;
+}
+
+.meta-label {
+    font-size: 12.5px;
     color: var(--text-secondary);
-}
-
-/* ── Category & office ── */
-.proposal-category {
-    font-size: 12px;
     font-style: italic;
-    color: #c2410c;
-    font-weight: 500;
-    margin-bottom: 2px;
 }
 
-.proposal-office {
-    font-size: 12px;
+.meta-value {
+    color: var(--meta-red);
+    font-weight: 400;
     font-style: italic;
-    color: #c2410c;
-    font-weight: 500;
-    margin-bottom: 10px;
 }
 
-/* ── Title ── */
+/* Proposal title & excerpt */
 .proposal-title {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 14.5px;
+    font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 8px;
     line-height: 1.4;
 }
 
-/* ── Description ── */
-.proposal-description {
-    font-size: 13px;
+.proposal-excerpt {
+    font-size: 13.5px;
+    line-height: 1.20;
     color: var(--text-secondary);
-    line-height: 1.7;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-    .proposal-description.collapsed {
-        display: -webkit-box;
-        -webkit-line-clamp: 4;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-.view-more-btn {
-    color: var(--accent);
+.view-more {
     font-size: 13px;
-    font-weight: 500;
+    color: var(--accent-blue);
+    font-weight: 400;
     text-decoration: none;
-    display: none;
-    margin-bottom: 12px;
+    display: block;
+    text-align: right;
+    margin-bottom: 14px;
+    transition: opacity 0.15s;
 }
 
-    .view-more-btn.visible {
-        display: inline-block;
+    .view-more:hover {
+        opacity: 0.75;
     }
 
-    .view-more-btn:hover {
-        text-decoration: underline;
-    }
-
-/* ── Attachments ── */
-.proposal-attachments {
+/* Attachments */
+.attachments {
     display: flex;
     gap: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
 }
 
 .attachment-thumb {
-    width: 100px;
-    height: 70px;
+    width: 32%;
+    height: 150px;
     border-radius: 8px;
-    background: #f4f5f8;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1.5px solid var(--border);
+    box-shadow: inset 2px 2px 2px 0 #fff, inset -2px -2px 2px 0 #00000020;
+    padding: 22px 24px 18px;
     overflow: hidden;
     flex-shrink: 0;
 }
 
-    .attachment-thumb img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+.thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .thumb-placeholder svg {
+        width: 28px;
+        height: 28px;
+        stroke: #cbd5e1;
     }
 
-.attachment-more {
-    width: 100px;
-    height: 70px;
-    border-radius: 8px;
-    background: #4a5568;
-    color: white;
+.more-files {
+    background: #abacae;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-    flex-shrink: 0;
+    color: #fff;
+    border: none;
 }
 
-    .attachment-more span {
-        font-size: 10px;
-        font-weight: 400;
-        opacity: 0.8;
+    .more-files span {
+        font-size: 18px;
+        font-weight: 500;
+        line-height: 1;
     }
 
-/* ── Votes ── */
-.proposal-votes {
+    .more-files small {
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+/* Vote Bar */
+.vote-bar {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
 }
 
-.vote-count {
-    font-size: 13px;
-    font-weight: 600;
+.vote-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
 }
 
-    .vote-count.upvotes {
-        color: #3B40C4;
+    .vote-btn svg {
+        width: 18px;
+        height: 18px;
+        transition: fill 0.15s;
     }
 
-    .vote-count.downvotes {
-        color: #e53e3e;
+.upvote {
+    color: var(--upvote);
+}
+
+    .upvote svg {
+        stroke: var(--upvote);
+    }
+
+    .upvote.voted svg,
+    .upvote:hover svg {
+        fill: var(--upvote);
+    }
+
+.downvote {
+    color: var(--downvote);
+}
+
+    .downvote svg {
+        stroke: var(--downvote);
+    }
+
+    .downvote.voted svg,
+    .downvote:hover svg {
+        fill: var(--downvote);
+    }
+
+
+/* ── Leaderboard ──────────────────────────── */
+.leaderboard-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.leaderboard-item {
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    gap: 16px;
+    align-items: start;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.rank-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 26px;
+    line-height: 1;
+}
+
+.rank-arrow {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+    .rank-arrow.up {
+        color: var(--upvote);
+    }
+
+    .rank-arrow.down {
+        color: var(--downvote);
+    }
+
+.rank-number {
+    font-size: 22px;
+    font-weight: 500;
+    color: #000;
+}
+
+.leaderboard-card {
+    padding-bottom: 20px;
+}
+
+.leaderboard-votes {
+    display: flex;
+    gap: 14px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.leader-upvotes {
+    color: var(--upvote);
+}
+
+.leader-downvotes {
+    color: var(--downvote);
+}
+
+/* ── Layout Wrapper ── */
+.leaderboard-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 320px; /* Feed takes left, sidebar stays on right */
+    gap: 24px;
+    width: 100%;
+    align-items: start;
+}
+
+/* ── Ranking Sidebar Styling ── */
+.ranking-sidebar {
+    position: sticky;
+    top: 20px; /* Keeps the ranking visible while you scroll the feed */
+}
+
+.ranking-box {
+    background: #ffffff50;
+    border-radius: 25px;
+    padding: 20px;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.ranking-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.trophy-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--sidebar-bg);
+    margin-top: 3px;
+}
+
+.ranking-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--sidebar-bg);
+    margin: 0;
+    line-height: 1.3;
+}
+
+/* ── Individual Mini Rank Items ── */
+.mini-rank-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 15px;
+    margin-bottom: 8px;
+    background: #ffffff;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.mini-number {
+    font-size: 22px;
+    font-weight: 500;
+    color: #333;
+    min-width: 25px;
+}
+
+.mini-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+.mini-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #444;
+    margin: 0 0 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-votes {
+    display: flex;
+    gap: 10px;
+    font-size: 10.5px;
+    font-weight: 500;
+}
+
+    .mini-votes .up {
+        color: var(--sidebar-bg);
+    }
+
+    .mini-votes .down {
+        color: #ef4444;
+    }
+
+    .mini-votes small {
+        font-size: 9px;
+        opacity: 0.8;
     }

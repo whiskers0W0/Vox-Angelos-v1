@@ -37,13 +37,59 @@
     </style>
 }
 
+<div class="content-header">
+    <h1 class="page-title">Concern Locations</h1>
+</div>
+
+<!-- Toggle Tabs -->
+<div class="tab-group">
+    <div class="tab-indicator"></div>
+    <button class="tab-btn active" data-view="locations">Locations</button>
+    <button class="tab-btn" data-view="heatmap">Heatmap</button>
+</div>
+
+<!-- Concern Locations View -->
+<div class="locations-wrapper">
+    <div id="map"></div>
+</div>
+
+<!-- Concern Locations View -->
 <div class="heatmap-wrapper">
     <div id="map"></div>
 </div>
 
 @section Scripts {
     <script>
-        const concerns = @Html.Raw(Model.ConcernsJson);
+        const concerns = @Html.Raw(Model.ConcernsJson)
+
+        // ── Tab Switching ──
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const view = this.dataset.view;
+                
+                // Update active tab button
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                // Update tab indicator position
+                const tabGroup = document.querySelector('.tab-group');
+                const indicator = tabGroup.querySelector('.tab-indicator');
+                const btnIndex = Array.from(document.querySelectorAll('.tab-btn')).indexOf(this);
+                indicator.style.transform = `translateX(calc(${btnIndex} * (100% + 8px)))`;
+
+                // Update page title
+                const pageTitle = document.getElementById('page-title');
+                pageTitle.textContent = view === 'locations' ? 'Concern Locations' : 'Concern Heatmap';
+
+                // Show/hide views
+                document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+                if (view === 'locations') {
+                    document.getElementById('locations-view').classList.add('active');
+                } else {
+                    document.getElementById('heatmap-view').classList.add('active');
+                }
+            });
+        });
 
         function initMap() {
             const angelesCityCenter = { lat: 15.1450, lng: 120.5887 };
