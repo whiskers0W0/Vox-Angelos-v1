@@ -19,6 +19,10 @@
     <link rel="stylesheet" href="~/css/lgu_concerns.css" asp-append-version="true" />
 }
 
+<div class="content-header">
+    <h1 class="page-title">Citizen Concerns</h1>
+</div>
+
 <!-- ── Feed header ── -->
 <div class="feed-filter-group">
     @{
@@ -33,119 +37,78 @@
 
 <!-- ── Concern cards (from DB) ── -->
 <div id="concern-feed">
-
     @foreach (var concern in Model.Concerns)
     {
-        var statusKey = concern.Status == "Unresolved" ? "pending"
-              : concern.Status == "Chosen" ? "chosen"
-              : concern.Status == "In Progress" ? "in-progress"
-              : "resolved";
-
-        var badgeLabel = concern.Status == "Unresolved" ? "Pending"
-                       : concern.Status == "Chosen" ? "Chosen"
-                       : concern.Status == "In Progress" ? "In Progress"
-                       : "Resolved";
-
+        var statusCss = concern.Status.ToLower().Replace(" ", "-");
         var timeAgo = GetTimeAgo(concern.SubmittedAt);
 
-        <div class="concern-card" data-status="@statusKey" data-id="@concern.Id">
-            <div class="concern-card-body">
-                <div class="concern-author">
-                    <div class="concern-author-left">
-                        <div class="concern-avatar">@concern.Initials</div>
-                        <div>
-                            <p class="concern-author-name">@concern.CitizenName</p>
-                        </div>
-                    </div>
-                    <span class="concern-timestamp-right">@timeAgo</span>
-                </div>
-
-                <div class="concern-category">Category: @concern.Category</div>
-
-                <p class="concern-description">@concern.Description</p>
-
-                @if (concern.FirstAttachmentPath != null)
-                {
-                    <img class="concern-photo"
-                         src="@concern.FirstAttachmentPath"
-                         alt="Concern photo"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                    <div class="concern-photo-placeholder" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="3" y="3" width="18" height="18" rx="3" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <path d="M21 15l-5-5L5 21" />
-                        </svg>
-                    </div>
-                }
-                else
-                {
-                    <div class="concern-photo-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="3" y="3" width="18" height="18" rx="3" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <path d="M21 15l-5-5L5 21" />
-                        </svg>
-                    </div>
-                }
-
-                <div class="concern-location">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                         stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="10" r="3" />
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-                    </svg>
-                    @concern.LocationName
-                    @if (concern.Latitude.HasValue && concern.Longitude.HasValue)
-                    {
-                        <a href="https://maps.google.com/?q=@concern.Latitude,@concern.Longitude"
-                               target="_blank" class="view-in-map-btn ms-auto">
-                            View in Map
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 8 16 12 12 16" />
-                                <line x1="8" y1="12" x2="16" y2="12" />
-                            </svg>
-                        </a>
-                    }
-                </div>
+        <div class="concern-card" data-id="@concern.Id">
+            <div class="concern-status @statusCss">
+                @concern.Status
             </div>
 
-            <div class="concern-card-footer">
-                <span class="concern-status-badge @statusKey">● @badgeLabel</span>
-                <div class="concern-card-actions">
-                    @if (concern.Status == "Unresolved")
-                    {
+            <div class="card-header">
+                <div class="author-info">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="author-name">@concern.CitizenName</div>
+                    </div>
+                </div>
+                <div class="card-date">@timeAgo</div>
+            </div>
+
+            <div class="card-meta">
+                <span class="meta-label">
+                    Category: <span class="meta-value">@concern.Category</span>
+                </span>
+            </div>
+
+            <div class="card-body">
+                <p class="concern-excerpt">@concern.Description</p>
+            </div>
+
+            @if (concern.FirstAttachmentPath != null)
+            {
+                <div class="concern-attachments">
+                    <div class="concern-photo">
+                        <img src="@concern.FirstAttachmentPath" alt="Concern photo" />
+                    </div>
+                </div>
+            }
+
+            <div class="card-footer-lgu">
+                <div class="concern-location">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 13 6 13s6-7.75 6-13c0-3.314-2.686-6-6-6z" />
+                        <circle cx="12" cy="8" r="2" />
+                    </svg>
+                    @concern.Latitude, @concern.Longitude
+                </div>
+
+                @if (concern.Status == "Unresolved")
+                {
+                    <div class="action-container">
                         <form method="post" asp-page="/LGU/Index" asp-page-handler="ChooseConcern">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="concernId" value="@concern.Id" />
-                            <button type="submit" class="btn-choose-concern">Choose Concern</button>
+                            <button type="submit" class="btn-dark-pill">Choose Concern</button>
                         </form>
-                        <button class="btn-update-status" style="display:none;"
-                                data-bs-toggle="modal" data-bs-target="#statusModal">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
+                    </div>
+                }
+                else if (concern.Status == "Chosen" || concern.Status == "In Progress")
+                {
+                    <div class="action-container">
+                        <button type="button" class="btn-dark-pill" data-bs-toggle="modal" data-bs-target="#statusModal" onclick="openStatusModal(@concern.Id, '@concern.CitizenName')">
                             Update Status
                         </button>
-                    }
-                    else if (concern.Status == "Chosen" || concern.Status == "In Progress")
-                    {
-                        <button class="btn-update-status" style="display:inline-flex;"
-                                data-bs-toggle="modal" data-bs-target="#statusModal">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                            Update Status
-                        </button>
-                    }
-                    @* Resolved concerns get no action buttons *@
-                </div>
+                    </div>
+                }
             </div>
         </div>
     }
@@ -153,14 +116,9 @@
     @if (!Model.Concerns.Any())
     {
         <div class="feed-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 12l2 2 4-4" />
-                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
             <p>No concerns submitted yet.</p>
         </div>
     }
-
 </div>
 
 
@@ -211,6 +169,14 @@
     <script>
         let activeCard = null;
 
+        // ── Open Status Modal ──
+        function openStatusModal(concernId, citizenName) {
+            document.getElementById('modal-citizen-name').textContent = citizenName;
+            document.getElementById('modal-concern-id').value = concernId;
+            document.getElementById('modal-status-select').value = '';
+            document.getElementById('modal-notes').value = '';
+        }
+
         // ── Choose Concern → reveal Update Status ──
         document.getElementById('concern-feed').addEventListener('click', function (e) {
             const chooseBtn = e.target.closest('.btn-choose-concern');
@@ -225,21 +191,10 @@
                 card.querySelector('.concern-card-body').prepend(banner);
                 return;
             }
+        });
 
-            // ── Update Status → open modal ──
-            const updateBtn = e.target.closest('.btn-update-status');
-            if (updateBtn) {
-                activeCard = updateBtn.closest('.concern-card');
-                const citizenName = activeCard.querySelector('.concern-author-name').textContent.trim();
-                const concernId = activeCard.dataset.id;
-                document.getElementById('modal-citizen-name').textContent = citizenName;
-                document.getElementById('modal-concern-id').value = concernId;
-                document.getElementById('modal-status-select').value = '';
-                document.getElementById('modal-notes').value = '';
-            }
-        }); // ← this was missing, causing setInterval to be inside the click handler
-
-               setInterval(() => {
+        // ── Auto-refresh feed every 15 seconds ──
+        setInterval(() => {
             fetch(window.location.href)
                 .then(res => res.text())
                 .then(html => {
@@ -256,8 +211,7 @@
                         }
                     }
                 })
-                .catch(() => {});
+                .catch(() => { });
         }, 15000);
     </script>
 }
-

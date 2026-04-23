@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="~/css/dashboard_lgu.css" asp-append-version="true" />
 }
 
+<div class="content-header">
+    <h1 class="page-title">Dashboard</h1>
+</div>
+
 <div class="dashboard-grid">
 
     <!-- Total Concerns -->
@@ -19,7 +23,7 @@
             <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
         <div class="stat-number">@Model.TotalConcerns.ToString("D2")</div>
-        <div class="stat-label">Total Concerns</div>
+        <div class="stat-label">Concerns</div>
     </div>
 
     <!-- Total Unresolved -->
@@ -29,7 +33,7 @@
             <line x1="8" y1="12" x2="16" y2="12" />
         </svg>
         <div class="stat-number">@Model.TotalUnresolved.ToString("D2")</div>
-        <div class="stat-label">Total Unresolved</div>
+        <div class="stat-label">Unresolved</div>
     </div>
 
     <!-- Total Chosen -->
@@ -39,7 +43,7 @@
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
         </svg>
         <div class="stat-number">@Model.TotalChosen.ToString("D2")</div>
-        <div class="stat-label">Total Chosen</div>
+        <div class="stat-label">Chosen</div>
     </div>
 
     <!-- Total In Progress -->
@@ -49,17 +53,81 @@
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
         </svg>
         <div class="stat-number">@Model.TotalInProgress.ToString("D2")</div>
-        <div class="stat-label">Total In Progress</div>
-    </div>
-
-    <!-- Total Resolved -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-        <div class="stat-number">@Model.TotalResolved.ToString("D2")</div>
-        <div class="stat-label">Total Resolved</div>
+        <div class="stat-label">In Progress</div>
     </div>
 
 </div>
+
+<div class="visuals-container">
+    <div class="main-visual-row">
+        <div class="viz-card trend-chart">
+            <h3 class="viz-title">Concern Trends</h3>
+            <div class="chart-wrapper">
+                <canvas id="concernTrendChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="viz-card activity-card">
+            <div class="viz-header">
+                <h3 class="viz-title">Recent Activity</h3>
+                <span class="viz-subtitle">Live updates from the field</span>
+            </div>
+    
+            <div class="activity-feed">
+                <div class="activity-item high-urgency">
+                    <div class="activity-status-dot"></div>
+                    <div class="activity-info">
+                        <p class="activity-text"><strong>New Concern:</strong> Burst Pipe at Brgy. Balibago</p>
+                        <span class="activity-time">2 mins ago</span>
+                    </div>
+                </div>
+
+                <div class="activity-item update">
+                    <div class="activity-status-dot"></div>
+                    <div class="activity-info">
+                        <p class="activity-text"><strong>Status Update:</strong> Road repair in Brgy. Cutcut moved to <em>In Progress</em></p>
+                        <span class="activity-time">15 mins ago</span>
+                    </div>
+                </div>
+
+                <div class="activity-item resolved">
+                    <div class="activity-status-dot"></div>
+                    <div class="activity-info">
+                        <p class="activity-text"><strong>Resolved:</strong> Waste collection concern in Brgy. Pulung Bulu</p>
+                        <span class="activity-time">1 hour ago</span>
+                    </div>
+                </div>
+              
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
+
+    <script>
+        // 1. Concern Trend Chart
+        const trendCtx = document.getElementById('concernTrendChart').getContext('2d');
+        new Chart(trendCtx, {
+        type: 'line',
+        data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+        label: 'New Reports',
+        data: [5, 12, 8, 15, 10, 20, 18],
+        borderColor: '#2D46B9',
+        backgroundColor: 'rgba(45, 70, 185, 0.1)',
+        fill: true,
+        tension: 0.4
+        }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+        });
+             
+    </script>
+}
