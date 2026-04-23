@@ -1,0 +1,173 @@
+﻿.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 16px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.page-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--sidebar-bg);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin: 0;
+}
+
+/* --- Filter Bar Styles --- */
+.filter-bar {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.filter-group {
+    display: inline-flex;
+    background: var(--page-bg); /* Use that soft off-white/grey */
+    padding: 6px;
+    border-radius: 50px;
+    gap: 8px;
+    /* Recessed track look */
+    box-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.5), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+}
+
+.filter-btn {
+    padding: 8px 24px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+    .filter-btn.active {
+        background: var(--card-bg);
+        color: var(--sidebar-bg);
+        /* Raised button inside the recessed track */
+        box-shadow: 4px 4px 8px rgba(163, 177, 198, 0.4), -2px -2px 6px rgba(255, 255, 255, 0.9);
+    }
+
+    .filter-btn:hover:not(.active) {
+        color: var(--primary-blue);
+    }
+
+/* --- Table Container --- */
+.table-container {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+    overflow: hidden;
+    width: 100%;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+    /* Header Styles */
+    .data-table thead th {
+        padding: 16px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        border-bottom: 2px solid #ebf0f7;
+        font-weight: 500;
+    }
+
+    /* Row Styles */
+    .data-table tbody td {
+        padding: 16px;
+        font-size: 14.5px;
+        color: var(--text-main);
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+/* Face Match Confidence */
+.confidence {
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+    .confidence.high {
+        color: #16a34a;
+    }
+
+    .confidence.low {
+        color: #dc2626;
+    }
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    box-shadow: var(--nm-inner);
+}
+
+.status-pending {
+    background: #fffbeb;
+    color: #92400e;
+    box-shadow: var(--nm-inner);
+}
+
+.status-approved {
+    background: #f0fdf4;
+    color: #166534;
+    box-shadow: var(--nm-inner);
+}
+
+.status-rejected {
+    background: #fef2f2;
+    color: #991b1b;
+    box-shadow: var(--nm-inner);
+}
+
+/* Review Button */
+.btn-review {
+    display: inline-block;
+    padding: 8px 18px;
+    background: var(--sidebar-bg);
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 500;
+    font-size: 13px;
+    box-shadow: 3px 3px 6px rgba(163, 177, 198, 0.4), -2px -2px 5px rgba(255, 255, 255, 0.8);
+    transition: all 0.2s ease;
+}
+
+    .btn-review:hover {
+        transform: translateY(-1px);
+        background: var(--card-bg);
+        box-shadow: inset 2px 2px 5px rgba(163, 177, 198, 0.3), inset -2px -2px 5px rgba(255, 255, 255, 0.5);
+        color: var(--sidebar-bg);
+    }
+
+/* Empty State */
+.empty-row {
+    text-align: center;
+    padding: 40px !important;
+    color: var(--text-muted);
+    font-style: italic;
+}

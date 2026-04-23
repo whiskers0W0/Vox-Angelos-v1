@@ -1,0 +1,337 @@
+﻿.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 16px;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.page-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--sidebar-bg);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin: 0;
+}
+
+.btn-create {
+    /* Colors */
+    background: var(--sidebar-bg);
+    color: #ffffff;
+    /* Shape & Typography */
+    padding: 10px 28px;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+    /* Smooth transition for the "press" effect */
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+    .btn-create:hover {
+        background: var(--sidebar-bg); /* Slightly lighter on hover */
+        transform: translateY(-2px);
+        box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 8px 8px 16px rgba(45, 84, 196, 0.4), -6px -6px 12px rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-create:active {
+        /* The "Pressed" effect: Switch to Inset shadows */
+        transform: translateY(1px);
+        box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3), inset -3px -3px 8px rgba(255, 255, 255, 0.2);
+    }
+
+/* --- Table Container (The Plate) --- */
+.table-container {
+    background: var(--card-bg);
+    border-radius: 30px;
+    padding: 25px;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+    overflow-x: auto;
+    width: 100%;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px; /* Creates spacing between rows for the "floating" look */
+    text-align: left;
+}
+
+    /* --- Header Styling --- */
+    .data-table thead th {
+        padding: 15px 20px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        border: none;
+    }
+
+    /* --- Row & Cell Styling --- */
+    .data-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .data-table tbody td {
+        padding: 18px 20px;
+        background: var(--card-bg);
+        font-size: 14.5px;
+        color: var(--text-main);
+        border-top: 1px solid rgba(255, 255, 255, 0.5); /* Subtle highlight */
+        vertical-align: middle;
+    }
+
+/* --- Status Badges --- */
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: var(--nm-inner); /* Recessed status look */
+}
+
+    .status-badge.status-approved {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .status-badge.status-rejected {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+/* --- Toggle Button --- */
+.btn-review {
+    background: var(--meta-red);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+    .btn-review:hover {
+        background: var(--card-bg);
+        box-shadow: var(--nm-inner);
+        color: var(--meta-red);
+        transform: translateY(1px);
+    }
+
+    .btn-enable {
+        background: #16a34a;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+    }
+
+        .btn-enable:hover {
+            background: #f0fdf4;
+            color: #16a34a;
+            box-shadow: var(--nm-inner);
+            transform: translateY(1px);
+        }
+
+/* --- Disable State (Red) --- */
+.btn-disable {
+    background: #dc2626; /* Danger Red */
+}
+
+    .btn-disable:hover {
+        background: #fef2f2;
+        color: #dc2626;
+        box-shadow: var(--nm-inner);
+        transform: translateY(1px);
+    }
+
+/* --- Empty State --- */
+.empty-row {
+    text-align: center;
+    padding: 50px !important;
+    color: var(--text-muted);
+    font-style: italic;
+    background: transparent !important;
+}
+
+/* --- Alerts/Notifications --- */
+.alert-error, .alert-success {
+    padding: 16px 25px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: var(--nm-inner); /* Using the outer shadow from your root */
+}
+
+.alert-error {
+    background: #fff1f2;
+    color: #e11d48;
+    border-left: 5px solid #e11d48;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    color: #16a34a;
+    border-left: 5px solid #16a34a;
+}
+
+/* --- Table Styles (Matches your previous pages) --- */
+/* (Assuming .table-container and .data-table classes are shared or defined similarly) */
+
+/* --- Modal Overlay --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #00000050; /* Semi-transparent version of your bg-page */
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+/* --- Neumorphic Modal Box --- */
+.modal-box {
+    background: var(--card-bg);
+    width: 100%;
+    max-width: 500px;
+    border-radius: 30px;
+    padding: 35px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+    .modal-header h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary-blue);
+        margin: 0;
+    }
+
+.modal-close {
+    background: var(--card-bg);
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    box-shadow: var(--nm-outer);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+    .modal-close:hover {
+        box-shadow: var(--nm-inner);
+        color: #e11d48;
+    }
+
+/* --- Form Elements (The "Well" Look) --- */
+.form-group {
+    margin-bottom: 20px;
+}
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        margin-left: 5px;
+    }
+
+.form-control {
+    width: 100%;
+    padding: 12px 18px;
+    background: var(--bg-page);
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--text-main);
+    /* Inset shadow makes fields look carved into the modal */
+    box-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.4), inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+    transition: box-shadow 0.3s;
+}
+
+    .form-control:focus {
+        outline: none;
+        box-shadow: inset 5px 5px 10px rgba(163, 177, 198, 0.5), inset -5px -5px 10px rgba(255, 255, 255, 1);
+    }
+
+/* --- Modal Actions --- */
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.btn-cancel, .btn-approve {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn-cancel {
+    background: var(--card-bg);
+    color: var(--text-muted);
+    box-shadow: var(--nm-inner);
+}
+
+    .btn-cancel:hover {
+        box-shadow: var(--nm-inner);
+    }
+
+.btn-approve {
+    background: var(--sidebar-bg);
+    color: white;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+    .btn-approve:hover {
+        transform: translateY(-2px);
+        background: #1e40af;
+    }

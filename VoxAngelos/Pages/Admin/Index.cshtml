@@ -6,30 +6,49 @@
 
 }
 @section Styles {
-    <link rel="stylesheet" href="~/css/dashboard_admin.css" />
+    <link rel="stylesheet" href="~/css/admin-dashboard.css" />
 }
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="page-header">
-                <h1>Welcome, Admin!</h1>
-            </div>
+
+        <div class="content-header">
+            <h1 class="page-title">Welcome, Admin</h1>
+        </div>
 
             <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">⚠</div>
-                    <div class="stat-number">@Model.UnreviewedProjects</div>
-                    <div class="stat-label">Unreviewed Projects</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⊖</div>
-                    <div class="stat-number">@Model.UnverifiedAccounts</div>
-                    <div class="stat-label">Unverified Accounts</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">✔</div>
-                    <div class="stat-number">@Model.VerifiedAccounts</div>
-                    <div class="stat-label">Verified Accounts</div>
-                </div>
-            </div>
-        </main>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </div>
+        <div class="stat-number">@Model.UnreviewedProjects</div>
+        <div class="stat-label">Unreviewed Projects</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="18" y1="8" x2="23" y2="13"></line>
+                <line x1="23" y1="8" x2="18" y2="13"></line>
+            </svg>
+        </div>
+        <div class="stat-number">@Model.UnverifiedAccounts</div>
+        <div class="stat-label">Unverified Accounts</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <polyline points="17 11 19 13 23 9"></polyline>
+            </svg>
+        </div>
+        <div class="stat-number">@Model.VerifiedAccounts</div>
+        <div class="stat-label">Verified Accounts</div>
+    </div>
+</div>
