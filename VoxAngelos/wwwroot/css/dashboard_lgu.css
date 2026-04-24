@@ -232,3 +232,7 @@
         grid-template-columns: 1fr;
     }
 }
+
+.activity-item.new .activity-status-dot {
+    background-color: #2D46B9;
+}

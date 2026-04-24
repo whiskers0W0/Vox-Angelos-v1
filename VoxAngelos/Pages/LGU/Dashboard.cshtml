@@ -60,66 +60,52 @@
 
 <div class="visuals-container">
     <div class="main-visual-row">
+
         <div class="viz-card trend-chart">
             <h3 class="viz-title">Concern Trends</h3>
             <div class="chart-wrapper">
                 <canvas id="concernTrendChart"></canvas>
             </div>
         </div>
-        
+
         <div class="viz-card activity-card">
             <div class="viz-header">
                 <h3 class="viz-title">Recent Activity</h3>
                 <span class="viz-subtitle">Live updates from the field</span>
             </div>
-    
+
             <div class="activity-feed">
-                <div class="activity-item high-urgency">
-                    <div class="activity-status-dot"></div>
-                    <div class="activity-info">
-                        <p class="activity-text"><strong>New Concern:</strong> Burst Pipe at Brgy. Balibago</p>
-                        <span class="activity-time">2 mins ago</span>
+                @foreach (var item in Model.RecentActivities)
+                {
+                    <div class="activity-item @item.Type">
+                        <div class="activity-status-dot"></div>
+                        <div class="activity-info">
+                            <p class="activity-text">@Html.Raw(item.Text)</p>
+                            <span class="activity-time">@item.TimeAgo</span>
+                        </div>
                     </div>
-                </div>
-
-                <div class="activity-item update">
-                    <div class="activity-status-dot"></div>
-                    <div class="activity-info">
-                        <p class="activity-text"><strong>Status Update:</strong> Road repair in Brgy. Cutcut moved to <em>In Progress</em></p>
-                        <span class="activity-time">15 mins ago</span>
-                    </div>
-                </div>
-
-                <div class="activity-item resolved">
-                    <div class="activity-status-dot"></div>
-                    <div class="activity-info">
-                        <p class="activity-text"><strong>Resolved:</strong> Waste collection concern in Brgy. Pulung Bulu</p>
-                        <span class="activity-time">1 hour ago</span>
-                    </div>
-                </div>
-              
+                }
+                @if (!Model.RecentActivities.Any())
+                {
+                    <p style="color:#999; font-size:13px; padding:12px 0;">No recent activity yet.</p>
+                }
             </div>
-
         </div>
+
     </div>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
-
     <script>
-        // 1. Concern Trend Chart
         const trendCtx = document.getElementById('concernTrendChart').getContext('2d');
         new Chart(trendCtx, {
         type: 'line',
         data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: @Html.Raw(Model.TrendLabels),
         datasets: [{
         label: 'New Reports',
-        data: [5, 12, 8, 15, 10, 20, 18],
+        data: @Html.Raw(Model.TrendData),
         borderColor: '#2D46B9',
         backgroundColor: 'rgba(45, 70, 185, 0.1)',
         fill: true,
@@ -128,6 +114,5 @@
         },
         options: { responsive: true, maintainAspectRatio: false }
         });
-             
     </script>
 }
