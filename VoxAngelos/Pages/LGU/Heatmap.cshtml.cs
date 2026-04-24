@@ -20,6 +20,8 @@ namespace VoxAngelos.Pages.LGU
 
         public string ConcernsJson { get; set; } = "[]";
         public string GoogleMapsApiKey => _configuration["GoogleMaps:ApiKey"] ?? "";
+        public string BarangayGeoJson { get; set; } = "{}";
+
 
         public async Task OnGetAsync()
         {
@@ -44,6 +46,13 @@ namespace VoxAngelos.Pages.LGU
                 .ToListAsync();
 
             ConcernsJson = JsonSerializer.Serialize(concerns);
+
+            var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "geojson", "angeles-city-barangays.geojson");
+            if (System.IO.File.Exists(geoJsonPath))
+            {
+                BarangayGeoJson = await System.IO.File.ReadAllTextAsync(geoJsonPath);
+            }
+
         }
     }
 }
