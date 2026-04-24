@@ -34,6 +34,11 @@
         .info-window .iw-status.resolved { background:#d4edda; color:#155724; }
         .info-window .iw-label { color: #666; font-size: 11px; }
         .info-window .iw-value { color: #222; margin-bottom: 4px; }
+
+        #choropleth-map {
+            width: 100%;
+            height: 600px;
+        }
     </style>
 }
 
@@ -53,9 +58,9 @@
     <div id="map"></div>
 </div>
 
-<!-- Concern Locations View -->
-<div class="heatmap-wrapper">
-    <div id="map"></div>
+<!-- Heatmap View -->
+<div class="heatmap-wrapper" style="display:none;">
+    <div id="choropleth-map"></div>
 </div>
 
 @section Scripts {
@@ -63,30 +68,25 @@
         const concerns = @Html.Raw(Model.ConcernsJson)
 
         // ── Tab Switching ──
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const view = this.dataset.view;
-                
-                // Update active tab button
+        
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
 
-                // Update tab indicator position
                 const tabGroup = document.querySelector('.tab-group');
                 const indicator = tabGroup.querySelector('.tab-indicator');
                 const btnIndex = Array.from(document.querySelectorAll('.tab-btn')).indexOf(this);
                 indicator.style.transform = `translateX(calc(${btnIndex} * (100% + 8px)))`;
 
-                // Update page title
-                const pageTitle = document.getElementById('page-title');
-                pageTitle.textContent = view === 'locations' ? 'Concern Locations' : 'Concern Heatmap';
-
-                // Show/hide views
-                document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
                 if (view === 'locations') {
-                    document.getElementById('locations-view').classList.add('active');
+                    document.querySelector('.locations-wrapper').style.display = 'block';
+                    document.querySelector('.heatmap-wrapper').style.display = 'none';
                 } else {
-                    document.getElementById('heatmap-view').classList.add('active');
+                    document.querySelector('.locations-wrapper').style.display = 'none';
+                    document.querySelector('.heatmap-wrapper').style.display = 'block';
+                    initHeatmap();
                 }
             });
         });
@@ -169,7 +169,112 @@
                 });
             });
         }
+
+        let choroplethInitialized = false;
+
+        function initHeatmap() {
+            if (choroplethInitialized) return;
+            choroplethInitialized = true;
+
+            const angelesCityCenter = { lat: 15.1450, lng: 120.5887 };
+
+            const map = new google.maps.Map(document.getElementById('choropleth-map'), {
+                center: angelesCityCenter,
+                zoom: 13,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+                zoomControl: true,
+                styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
+            });
+
+            function normalizeStr(str) {
+                return str.toLowerCase()
+                    .replace(/\./g, '')
+                    .replace(/\(.*?\)/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            function matchBarangay(locationName, featureName) {
+                const loc = normalizeStr(locationName);
+                const feat = normalizeStr(featureName);
+                return loc.includes(feat);
+            }
+
+            function getChoroColor(count) {
+                if (count === 0)  return '#f7f7f7';
+                if (count <= 2)   return '#fdd49e';
+                if (count <= 5)   return '#fdbb84';
+                if (count <= 10)  return '#fc8d59';
+                if (count <= 20)  return '#e34a33';
+                return '#b30000';
+            }
+
+            const geojson = @Html.Raw(Model.BarangayGeoJson);
+
+            geojson.features.forEach(feature => {
+                const barangayName = feature.properties.name;
+                let count = 0;
+                concerns.forEach(concern => {
+                    if (concern.location && matchBarangay(concern.location, barangayName)) {
+                        count++;
+                    }
+                });
+                feature.properties.concernCount = count;
+            });
+
+            map.data.addGeoJson(geojson);
+
+            map.data.setStyle(feature => {
+                const count = feature.getProperty('concernCount') || 0;
+                return {
+                    fillColor: getChoroColor(count),
+                    fillOpacity: 0.7,
+                    strokeColor: '#333',
+                    strokeWeight: 1
+                };
+            });
+
+            const infoWindow = new google.maps.InfoWindow();
+
+            map.data.addListener('mouseover', function(event) {
+                const name = event.feature.getProperty('name');
+                const count = event.feature.getProperty('concernCount') || 0;
+                map.data.overrideStyle(event.feature, { strokeWeight: 2.5, strokeColor: '#000' });
+                infoWindow.setContent(`
+                    <div style="font-family:sans-serif; padding:4px;">
+                        <strong>${name}</strong><br/>
+                        Concerns: <b>${count}</b>
+                    </div>
+                `);
+                infoWindow.setPosition(event.latLng);
+                infoWindow.open(map);
+            });
+
+            map.data.addListener('mouseout', function() {
+                map.data.revertStyle();
+                infoWindow.close();
+            });
+
+            const legend = document.createElement('div');
+            legend.style.cssText = `
+                background: white; padding: 10px 14px; margin: 10px;
+                border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                font-family: sans-serif; font-size: 12px; line-height: 1.8;
+            `;
+            legend.innerHTML = `
+                <strong style="display:block; margin-bottom:6px;">Concerns per Barangay</strong>
+                <span style="background:#f7f7f7;padding:1px 10px;border:1px solid #ccc;">&nbsp;</span> 0<br>
+                <span style="background:#fdd49e;padding:1px 10px;">&nbsp;</span> 1–2<br>
+                <span style="background:#fdbb84;padding:1px 10px;">&nbsp;</span> 3–5<br>
+                <span style="background:#fc8d59;padding:1px 10px;">&nbsp;</span> 6–10<br>
+                <span style="background:#e34a33;padding:1px 10px;">&nbsp;</span> 11–20<br>
+                <span style="background:#b30000;padding:1px 10px;color:white;">&nbsp;</span> 21+
+            `;
+            map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
+        }
     </script>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&callback=initMap" async defer></script>
 }
