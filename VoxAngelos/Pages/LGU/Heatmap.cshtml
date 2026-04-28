@@ -94,13 +94,24 @@
         function initMap() {
             const angelesCityCenter = { lat: 15.1450, lng: 120.5887 };
 
+            const angelesBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(15.0800, 120.4700),
+                new google.maps.LatLng(15.2200, 120.6500)
+            );
+
             const map = new google.maps.Map(document.getElementById('map'), {
                 center: angelesCityCenter,
                 zoom: 13,
+                minZoom: 12,
+                maxZoom: 17,
                 mapTypeControl: false,
                 streetViewControl: false,
                 fullscreenControl: true,
                 zoomControl: true,
+                restriction: {
+                    latLngBounds: angelesBounds,
+                    strictBounds: false
+                },
                 styles: [
                     {
                         featureType: 'poi',
@@ -178,13 +189,24 @@
 
             const angelesCityCenter = { lat: 15.1450, lng: 120.5887 };
 
+            const angelesBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(15.0800, 120.4700), // SW corner
+                new google.maps.LatLng(15.2200, 120.6500)  // NE corner
+            );
+
             const map = new google.maps.Map(document.getElementById('choropleth-map'), {
                 center: angelesCityCenter,
                 zoom: 13,
+                minZoom: 12,
+                maxZoom: 17,
                 mapTypeControl: false,
                 streetViewControl: false,
                 fullscreenControl: true,
                 zoomControl: true,
+                restriction: {
+                    latLngBounds: angelesBounds,
+                    strictBounds: false
+                },
                 styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
             });
 
@@ -211,51 +233,55 @@
                 return '#b30000';
             }
 
-            const geojson = @Html.Raw(Model.BarangayGeoJson);
+            fetch('/geojson/angeles-city-barangays.geojson')
+    .then(res => res.json())
+    .then(geojson => {
 
-            geojson.features.forEach(feature => {
-                const barangayName = feature.properties.name;
-                let count = 0;
-                concerns.forEach(concern => {
-                    if (concern.location && matchBarangay(concern.location, barangayName)) {
-                        count++;
-                    }
-                });
-                feature.properties.concernCount = count;
+        geojson.features.forEach(feature => {
+            const barangayName = feature.properties.name;
+            let count = 0;
+            concerns.forEach(concern => {
+                if (concern.location && matchBarangay(concern.location, barangayName)) {
+                    count++;
+                }
             });
+            feature.properties.concernCount = count;
+        });
 
-            map.data.addGeoJson(geojson);
+        map.data.addGeoJson(geojson);
 
-            map.data.setStyle(feature => {
-                const count = feature.getProperty('concernCount') || 0;
-                return {
-                    fillColor: getChoroColor(count),
-                    fillOpacity: 0.7,
-                    strokeColor: '#333',
-                    strokeWeight: 1
-                };
-            });
+        map.data.setStyle(feature => {
+            const count = feature.getProperty('concernCount') || 0;
+            return {
+                fillColor: getChoroColor(count),
+                fillOpacity: 0.7,
+                strokeColor: '#333',
+                strokeWeight: 1
+            };
+        });
 
-            const infoWindow = new google.maps.InfoWindow();
+        const infoWindow = new google.maps.InfoWindow();
 
-            map.data.addListener('mouseover', function(event) {
-                const name = event.feature.getProperty('name');
-                const count = event.feature.getProperty('concernCount') || 0;
-                map.data.overrideStyle(event.feature, { strokeWeight: 2.5, strokeColor: '#000' });
-                infoWindow.setContent(`
-                    <div style="font-family:sans-serif; padding:4px;">
-                        <strong>${name}</strong><br/>
-                        Concerns: <b>${count}</b>
-                    </div>
-                `);
-                infoWindow.setPosition(event.latLng);
-                infoWindow.open(map);
-            });
+        map.data.addListener('mouseover', function(event) {
+            const name = event.feature.getProperty('name');
+            const count = event.feature.getProperty('concernCount') || 0;
+            map.data.overrideStyle(event.feature, { strokeWeight: 2.5, strokeColor: '#000' });
+            infoWindow.setContent(`
+                <div style="font-family:sans-serif; padding:4px;">
+                    <strong>${name}</strong><br/>
+                    Concerns: <b>${count}</b>
+                </div>
+            `);
+            infoWindow.setPosition(event.latLng);
+            infoWindow.open(map);
+        });
 
-            map.data.addListener('mouseout', function() {
-                map.data.revertStyle();
-                infoWindow.close();
-            });
+        map.data.addListener('mouseout', function() {
+            map.data.revertStyle();
+            infoWindow.close();
+        });
+
+    });
 
             const legend = document.createElement('div');
             legend.style.cssText = `
