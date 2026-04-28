@@ -112,6 +112,11 @@
 
             <!-- STEP 1: Project Type -->
             <div class="step-content active" id="step1">
+                <div class="form-group">
+                    <label class="form-label">Why are you recommending this? Justify your recommendation below.</label>
+                    <textarea class="form-textarea" id="projectJustification" placeholder="Briefly explain how this project solves a specific community or technical problem..."></textarea>
+                </div>
+
                 <p class="step-question">What type of recommendation would you like to propose?</p>
                 <div class="category-grid">
                     <button class="category-btn" data-value="Infrastructure">Infrastructure</button>
@@ -181,6 +186,7 @@
             <div class="step-content" id="step4">
                 <p class="review-section-title">Review Your Recommendation</p>
                 <div class="review-box" id="reviewBox">
+                    <div><strong>Justification:</strong> <span id="r-justification"></span></div>
                     <div><strong>Recommendation Type:</strong> <span id="r-type"></span></div>
                     <div><strong>Recommendation Title:</strong> <span id="r-title"></span></div>
                     <div><strong>Location:</strong> <span id="r-location"></span></div>
@@ -361,13 +367,14 @@
             fileLabel.textContent = files.length ? files.map(f => f.name).join(', ') : '';
         });
 
-                // UPDATED: Modified renderReview to show the custom "Other" value
+                // UPDATED: Modified renderReview to show the custom "Other" value and justification
         function renderReview() {
             let categoryDisplay = selectedCategory;
             if (selectedCategory === "Others") {
                 categoryDisplay = otherInput.value.trim() || "Other (Not specified)";
             }
 
+            document.getElementById('r-justification').textContent = document.getElementById('projectJustification').value || '—';
             document.getElementById('r-type').textContent = categoryDisplay || '—';
             document.getElementById('r-title').textContent = document.getElementById('projectTitle').value || '—';
             document.getElementById('r-location').textContent = document.getElementById('projectLocation').value || '—';
@@ -428,6 +435,12 @@
             document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
 
             if (step === 1) {
+                // Validate Justification - NEWLY ADDED
+                const justification = document.getElementById('projectJustification');
+                if (!justification.value.trim()) {
+                    invalidate(justification);
+                }
+
                 // Validate Category Selection
                 if (!selectedCategory) {
                     document.querySelector('.category-grid').classList.add('input-error');
@@ -486,6 +499,7 @@
             currentStep = 1;
             selectedCategory = '';
             document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('projectJustification').value = '';
             document.getElementById('projectTitle').value = '';
             document.getElementById('projectLocation').value = '';
             document.getElementById('projectDescription').value = '';
