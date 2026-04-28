@@ -35,6 +35,34 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
 
+        private static readonly Dictionary<string, (string Office, string Email)> DepartmentMap = new()
+        {
+            { "Health", ("City Health Office", "health@voxangelos.gov.ph") },
+            { "Medical", ("City Health Office", "health@voxangelos.gov.ph") },
+            { "Safety", ("Public Safety Office", "publicsafety@voxangelos.gov.ph") },
+            { "Justice", ("Public Safety Office", "publicsafety@voxangelos.gov.ph") },
+            { "Crime", ("Public Safety Office", "publicsafety@voxangelos.gov.ph") },
+            { "Environment", ("Agriculture Office", "agriculture@voxangelos.gov.ph") },
+            { "Nature", ("Agriculture Office", "agriculture@voxangelos.gov.ph") },
+            { "Agriculture", ("Agriculture Office", "agriculture@voxangelos.gov.ph") },
+            { "Infrastructure", ("Engineering Office", "engineering@voxangelos.gov.ph") },
+            { "Construction", ("Engineering Office", "engineering@voxangelos.gov.ph") },
+            { "Road", ("Engineering Office", "engineering@voxangelos.gov.ph") },
+            { "Social", ("Social Welfare Office", "socialwelfare@voxangelos.gov.ph") },
+            { "Welfare", ("Social Welfare Office", "socialwelfare@voxangelos.gov.ph") },
+            { "Poverty", ("Social Welfare Office", "socialwelfare@voxangelos.gov.ph") },
+        };
+
+        private static (string Office, string Email) MapToOffice(string googleCategory)
+        {
+            foreach (var key in DepartmentMap.Keys)
+            {
+                if (googleCategory.Contains(key, StringComparison.OrdinalIgnoreCase))
+                    return DepartmentMap[key];
+            }
+            return ("General Services Office", "engineering@voxangelos.gov.ph");
+        }
+
         public async Task<IActionResult> OnGetAsync()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -50,6 +78,110 @@ namespace VoxAngelos.Pages.User
             return Page();
         }
 
+        public async Task<IActionResult> OnPostClassifyAsync([FromBody] ClassifyRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.Description))
+                return new JsonResult(new { success = false, error = "Description is required." });
+
+            try
+            {
+                var client = Google.Cloud.Language.V1.LanguageServiceClient.Create();
+                var googleDoc = new Google.Cloud.Language.V1.Document
+                {
+                    Content = PadToMinimumWords(request.Description),
+                    Type = Google.Cloud.Language.V1.Document.Types.Type.PlainText
+                };
+
+                var response = await client.ClassifyTextAsync(googleDoc);
+                var bestMatch = response.Categories
+                    .OrderByDescending(c => c.Confidence)
+                    .FirstOrDefault();
+
+                string category;
+                string office;
+                string email;
+
+                if (bestMatch != null)
+                {
+                    category = bestMatch.Name;
+                    (office, email) = MapToOffice(bestMatch.Name);
+                }
+                else
+                {
+                    (category, office, email) = ClassifyByKeywords(request.Description);
+                }
+
+                return new JsonResult(new { success = true, category, office, email });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("NLP Error: " + ex.Message);
+                var (category, office, email) = ClassifyByKeywords(request.Description);
+                return new JsonResult(new { success = true, category, office, email });
+            }
+        }
+
+        private string PadToMinimumWords(string text)
+        {
+            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length >= 20) return text;
+            var padding = "This is a community concern report submitted by a resident regarding a local issue that requires attention from the appropriate government office.";
+            return text + " " + padding;
+        }
+
+        private static (string Category, string Office, string Email) ClassifyByKeywords(string text)
+        {
+            text = text.ToLower();
+
+            var rules = new[]
+            {
+                (Keywords: new[] { "sick", "sakit", "ospital", "gamot", "dengue", "rabies",
+                                   "doktor", "clinic", "fever", "lagnat", "medical", "health",
+                                   "masakit", "sanitation" },
+                 Category: "Health", Office: "City Health Office", Email: "health@voxangelos.gov.ph"),
+
+                (Keywords: new[] { "daan", "road", "pothole", "tubo", "drainage", "baha",
+                                   "flood", "kalsada", "tulay", "bridge", "ilaw", "streetlight",
+                                   "kuryente", "gripo", "leaking", "broken", "repair", "sidewalk" },
+                 Category: "Infrastructure", Office: "Engineering Office", Email: "engineering@voxangelos.gov.ph"),
+
+                (Keywords: new[] { "robbery", "holdap", "droga", "drugs", "patay", "crime",
+                                   "pulis", "police", "violence", "away", "saksak",
+                                   "suspicious", "magnanakaw", "nakaw", "vandal", "banta" },
+                 Category: "Public Safety", Office: "Public Safety Office", Email: "publicsafety@voxangelos.gov.ph"),
+
+                (Keywords: new[] { "basura", "garbage", "polusyon", "pollution", "ilog", "river",
+                                   "farm", "tanim", "hayop", "animal", "isda", "usok", "smoke",
+                                   "puno", "tree", "dumping", "waste", "kalat", "lupa", "soil" },
+                 Category: "Environment/Agriculture", Office: "Agriculture Office", Email: "agriculture@voxangelos.gov.ph"),
+
+                (Keywords: new[] { "mahirap", "poor", "matanda", "elderly", "ulila", "orphan",
+                                   "tulong", "help", "assistance", "welfare", "ayuda", "gutom",
+                                   "hungry", "homeless", "bata", "abused", "pwd" },
+                 Category: "Social Welfare", Office: "Social Welfare Office", Email: "socialwelfare@voxangelos.gov.ph"),
+            };
+
+            var best = rules
+                .Select(r => new {
+                    r.Category,
+                    r.Office,
+                    r.Email,
+                    Score = r.Keywords.Count(kw => text.Contains(kw))
+                })
+                .Where(r => r.Score > 0)
+                .OrderByDescending(r => r.Score)
+                .FirstOrDefault();
+
+            return best != null
+                ? (best.Category, best.Office, best.Email)
+                : ("General", "General Services Office", "engineering@voxangelos.gov.ph");
+        }
+
+        public class ClassifyRequest
+        {
+            public string Description { get; set; } = string.Empty;
+        }
+
         public async Task<IActionResult> OnPostAsync()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -57,10 +189,8 @@ namespace VoxAngelos.Pages.User
 
             if (string.IsNullOrWhiteSpace(Description))
                 ModelState.AddModelError("Description", "Description is required.");
-
             if (string.IsNullOrWhiteSpace(LocationName) || Latitude == null || Longitude == null)
                 ModelState.AddModelError("LocationName", "Please pin your location using the map.");
-
             if (Attachments == null || Attachments.Count == 0)
                 ModelState.AddModelError("Attachments", "Please upload at least one image or video.");
 
@@ -70,6 +200,9 @@ namespace VoxAngelos.Pages.User
                 return Page();
             }
 
+            var confirmedCategory = Request.Form["ConfirmedCategory"].ToString();
+            var confirmedOffice = Request.Form["ConfirmedOffice"].ToString();
+
             var concern = new Concern
             {
                 CitizenId = user.Id,
@@ -78,7 +211,8 @@ namespace VoxAngelos.Pages.User
                 Latitude = Latitude,
                 Longitude = Longitude,
                 Status = "Unresolved",
-                Category = null,
+                Category = string.IsNullOrEmpty(confirmedCategory) ? "General" : confirmedCategory,
+                AssignedOffice = string.IsNullOrEmpty(confirmedOffice) ? "General Services Office" : confirmedOffice,
                 SubmittedAt = DateTime.UtcNow
             };
 
@@ -93,16 +227,12 @@ namespace VoxAngelos.Pages.User
                 foreach (var file in Attachments)
                 {
                     if (file.Length == 0) continue;
-
                     var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
                     var fileName = $"{Guid.NewGuid()}{ext}";
                     var filePath = Path.Combine(uploadsFolder, fileName);
-
                     using var stream = new FileStream(filePath, FileMode.Create);
                     await file.CopyToAsync(stream);
-
                     var fileType = file.ContentType.StartsWith("video") ? "video" : "image";
-
                     _db.ConcernAttachments.Add(new ConcernAttachment
                     {
                         ConcernId = concern.Id,
@@ -111,7 +241,6 @@ namespace VoxAngelos.Pages.User
                         UploadedAt = DateTime.UtcNow
                     });
                 }
-
                 await _db.SaveChangesAsync();
             }
 

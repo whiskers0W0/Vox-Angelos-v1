@@ -16,6 +16,8 @@ namespace VoxAngelos.Data
         // Populated by NLP after submission — starts null
         public string? Category { get; set; }
 
+        public string? AssignedOffice { get; set; }
+
         // "Unresolved", "In Progress", "Resolved"
         public string Status { get; set; } = "Unresolved";
 
