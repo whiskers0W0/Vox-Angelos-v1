@@ -212,6 +212,20 @@ body {
         box-shadow: inset 4px 4px 10px rgba(0,0,0,0.2);
     }
 
+.tech-link {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tech-link:hover {
+    color: var(--color-primary-light);
+    text-decoration: underline;
+}
+
 /* ── MOBILE ── */
 @media (max-width: 850px) {
     .tech-wrapper {
