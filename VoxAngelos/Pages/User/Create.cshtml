@@ -247,6 +247,47 @@
     </div>
 </div>
 
+<!-- AI Category Confirmation Modal -->
+<div class="map-modal-overlay" id="categoryModalOverlay">
+    <div class="map-modal" style="max-width:420px; padding: 24px;">
+        <div style="text-align:center; margin-bottom:16px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#2B45B0" stroke-width="2"
+                 style="width:48px;height:48px;margin-bottom:8px;">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <h3 style="margin:0;font-size:18px;font-weight:700;color:#1a1a2e;">Concern Categorized</h3>
+        </div>
+        <p style="text-align:center;color:#555;margin-bottom:8px;">
+            Our AI has categorized your concern as:
+        </p>
+        <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:12px;text-align:center;">
+            <strong id="modalCategory" style="color:#2B45B0;font-size:16px;"></strong>
+        </div>
+        <p style="text-align:center;color:#555;margin-bottom:6px;">
+            This will be sent to:
+        </p>
+        <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:20px;text-align:center;">
+            <strong id="modalOffice" style="color:#1a1a2e;"></strong><br>
+            <span id="modalEmail" style="color:#2B45B0;font-size:13px;"></span>
+        </div>
+        <p style="text-align:center;color:#888;font-size:13px;margin-bottom:20px;">
+            Is this correct? You can confirm or cancel to edit your description.
+        </p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+            <button id="categoryConfirmBtn" class="btn-submit"
+                    style="padding:10px 28px;">
+                ✓ Confirm & Submit
+            </button>
+            <button id="categoryCancelBtn"
+                    style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:white;cursor:pointer;font-size:14px;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         /* ── Tab switching ──────────────────────────── */
@@ -606,7 +647,12 @@
         });
 
         // Concern submit
-        document.getElementById('concernSubmitBtn').addEventListener('click', () => {
+                // Hidden fields for confirmed category
+        let confirmedCategory = '';
+        let confirmedOffice = '';
+
+        // Concern submit — Step 1: validate then classify
+        document.getElementById('concernSubmitBtn').addEventListener('click', async () => {
             let valid = true;
 
             document.getElementById('err-description').textContent = '';
@@ -631,9 +677,77 @@
                 valid = false;
             }
 
-            if (valid) {
-                document.getElementById('concernForm').submit();
+            if (!valid) return;
+
+            // Show loading state
+            const submitBtn = document.getElementById('concernSubmitBtn');
+            submitBtn.textContent = 'Analyzing...';
+            submitBtn.disabled = true;
+
+            try {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const response = await fetch('?handler=Classify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({ description: desc })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    confirmedCategory = result.category;
+                    confirmedOffice = result.office;
+
+                    // Show confirmation popup
+                    document.getElementById('modalCategory').textContent = result.category;
+                    document.getElementById('modalOffice').textContent = result.office;
+                    document.getElementById('modalEmail').textContent = result.email;
+                    document.getElementById('categoryModalOverlay').classList.add('active');
+                } else {
+                    alert('Could not classify concern. Please try again.');
+                }
+            } catch (e) {
+                alert('Error connecting to AI service. Please try again.');
+            } finally {
+                submitBtn.textContent = 'Submit';
+                submitBtn.disabled = false;
             }
+        });
+
+        // Step 2: Citizen confirms — add hidden fields and submit form
+        document.getElementById('categoryConfirmBtn').addEventListener('click', () => {
+            const form = document.getElementById('concernForm');
+
+            // Add hidden fields for confirmed category/office
+            let catField = document.getElementById('ConfirmedCategory');
+            if (!catField) {
+                catField = document.createElement('input');
+                catField.type = 'hidden';
+                catField.id = 'ConfirmedCategory';
+                catField.name = 'ConfirmedCategory';
+                form.appendChild(catField);
+            }
+            catField.value = confirmedCategory;
+
+            let officeField = document.getElementById('ConfirmedOffice');
+            if (!officeField) {
+                officeField = document.createElement('input');
+                officeField.type = 'hidden';
+                officeField.id = 'ConfirmedOffice';
+                officeField.name = 'ConfirmedOffice';
+                form.appendChild(officeField);
+            }
+            officeField.value = confirmedOffice;
+
+            document.getElementById('categoryModalOverlay').classList.remove('active');
+            form.submit();
+        });
+
+        document.getElementById('categoryCancelBtn').addEventListener('click', () => {
+            document.getElementById('categoryModalOverlay').classList.remove('active');
         });
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&libraries=places&v=beta&callback=initMap" async defer></script>
