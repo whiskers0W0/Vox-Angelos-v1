@@ -7,15 +7,11 @@
     <UserSecretsId>aspnet-VoxAngelos-920e3be0-8759-4646-915e-02107fbcbe1d</UserSecretsId>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Remove="wwwroot\geojson\angeles-city-barangays.geojson" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Include="wwwroot\geojson\angeles-city-barangays.geojson">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Page>
-  </ItemGroup>
+	<ItemGroup>
+		<Content Include="wwwroot\geojson\angeles-city-barangays.geojson">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
