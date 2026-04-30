@@ -1,13 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
       "Bash(dotnet build *)",
-      "Bash(grep -E \"\\\\.cs$\")",
-      "Bash(grep \"\\\\.cs$\")",
-      "WebSearch",
-      "WebFetch(domain:docs.cloud.google.com)",
-      "Bash(dotnet add package *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git rebase *)"
     ]
   }
 }
