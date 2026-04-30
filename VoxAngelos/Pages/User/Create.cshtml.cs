@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace VoxAngelos.Pages.User
@@ -14,16 +15,19 @@ namespace VoxAngelos.Pages.User
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
+        private readonly ConcernClassificationService _classifier;
 
         public CreateModel(ApplicationDbContext db,
                            UserManager<ApplicationUser> userManager,
                            IWebHostEnvironment env,
-                           IConfiguration configuration)
+                           IConfiguration configuration,
+                           ConcernClassificationService classifier)
         {
             _db = db;
             _userManager = userManager;
             _env = env;
             _configuration = configuration;
+            _classifier = classifier;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
@@ -78,7 +82,7 @@ namespace VoxAngelos.Pages.User
                 Latitude = Latitude,
                 Longitude = Longitude,
                 Status = "Unresolved",
-                Category = null,
+                Category = _classifier.Classify(Description),
                 SubmittedAt = DateTime.UtcNow
             };
 

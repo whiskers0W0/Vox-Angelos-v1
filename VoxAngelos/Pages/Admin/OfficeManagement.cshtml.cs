@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
 
 namespace VoxAngelos.Pages.Admin
@@ -12,6 +11,19 @@ namespace VoxAngelos.Pages.Admin
     {
         private readonly UserManager<ApplicationUser> _userManager;
 
+        public const string DefaultLguPassword = "Lgu@123456";
+
+        private static readonly HashSet<string> SeededEmails = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "swdo@voxangelos.gov.ph",
+            "engineering@voxangelos.gov.ph",
+            "environment@voxangelos.gov.ph",
+            "acdo@voxangelos.gov.ph",
+            "pptro@voxangelos.gov.ph",
+            "osca@voxangelos.gov.ph",
+            "pwdao@voxangelos.gov.ph"
+        };
+
         public OfficeManagementModel(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
@@ -19,17 +31,14 @@ namespace VoxAngelos.Pages.Admin
 
         public List<LguAccountViewModel> LguAccounts { get; set; } = new();
 
-        [BindProperty]
-        public string NewEmployeeId { get; set; } = string.Empty;
+        [BindProperty] public string NewEmployeeId { get; set; } = string.Empty;
+        [BindProperty] public string NewEmail { get; set; } = string.Empty;
+        [BindProperty] public string NewDepartment { get; set; } = string.Empty;
 
-        [BindProperty]
-        public string NewEmail { get; set; } = string.Empty;
-
-        [BindProperty]
-        public string NewDepartment { get; set; } = string.Empty;
-
-        [BindProperty]
-        public string NewPassword { get; set; } = string.Empty;
+        [BindProperty] public string EditUserId { get; set; } = string.Empty;
+        [BindProperty] public string EditEmployeeId { get; set; } = string.Empty;
+        [BindProperty] public string EditEmail { get; set; } = string.Empty;
+        [BindProperty] public string EditPassword { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
@@ -41,28 +50,23 @@ namespace VoxAngelos.Pages.Admin
 
         public async Task<IActionResult> OnPostCreateAsync()
         {
-            // Validate
             if (string.IsNullOrWhiteSpace(NewEmployeeId) ||
                 string.IsNullOrWhiteSpace(NewEmail) ||
-                string.IsNullOrWhiteSpace(NewDepartment) ||
-                string.IsNullOrWhiteSpace(NewPassword))
+                string.IsNullOrWhiteSpace(NewDepartment))
             {
                 ErrorMessage = "All fields are required.";
                 await LoadAccountsAsync();
                 return Page();
             }
 
-            // Check if EmployeeId already exists
-            var existing = _userManager.Users
-                .FirstOrDefault(u => u.EmployeeId == NewEmployeeId);
-            if (existing != null)
+            var existingEmpId = _userManager.Users.FirstOrDefault(u => u.EmployeeId == NewEmployeeId);
+            if (existingEmpId != null)
             {
                 ErrorMessage = "An account with this Employee ID already exists.";
                 await LoadAccountsAsync();
                 return Page();
             }
 
-            // Check if email already exists
             var existingEmail = await _userManager.FindByEmailAsync(NewEmail);
             if (existingEmail != null)
             {
@@ -71,7 +75,6 @@ namespace VoxAngelos.Pages.Admin
                 return Page();
             }
 
-            // Create the LGU account
             var lguUser = new ApplicationUser
             {
                 UserName = NewEmail,
@@ -84,11 +87,11 @@ namespace VoxAngelos.Pages.Admin
                 TwoFactorEnabled = false
             };
 
-            var result = await _userManager.CreateAsync(lguUser, NewPassword);
+            var result = await _userManager.CreateAsync(lguUser, DefaultLguPassword);
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(lguUser, "LGU");
-                SuccessMessage = $"LGU account for {NewDepartment} created successfully.";
+                SuccessMessage = $"Account for {NewDepartment} created. Default password: {DefaultLguPassword}";
             }
             else
             {
@@ -104,7 +107,6 @@ namespace VoxAngelos.Pages.Admin
             var user = await _userManager.FindByIdAsync(userId);
             if (user != null)
             {
-                // Toggle lockout
                 if (await _userManager.IsLockedOutAsync(user))
                 {
                     await _userManager.SetLockoutEndDateAsync(user, null);
@@ -112,11 +114,123 @@ namespace VoxAngelos.Pages.Admin
                 }
                 else
                 {
-                    await _userManager.SetLockoutEndDateAsync(
-                        user, DateTimeOffset.UtcNow.AddYears(100));
+                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
                     SuccessMessage = "Account disabled successfully.";
                 }
             }
+            await LoadAccountsAsync();
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostEditAsync()
+        {
+            if (string.IsNullOrWhiteSpace(EditUserId))
+            {
+                ErrorMessage = "Invalid account.";
+                await LoadAccountsAsync();
+                return Page();
+            }
+
+            var user = await _userManager.FindByIdAsync(EditUserId);
+            if (user == null)
+            {
+                ErrorMessage = "Account not found.";
+                await LoadAccountsAsync();
+                return Page();
+            }
+
+            if (!string.IsNullOrWhiteSpace(EditEmail) &&
+                !string.Equals(EditEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailTaken = await _userManager.FindByEmailAsync(EditEmail);
+                if (emailTaken != null && emailTaken.Id != EditUserId)
+                {
+                    ErrorMessage = "Email is already in use by another account.";
+                    await LoadAccountsAsync();
+                    return Page();
+                }
+                user.Email = EditEmail;
+                user.NormalizedEmail = EditEmail.ToUpperInvariant();
+                user.UserName = EditEmail;
+                user.NormalizedUserName = EditEmail.ToUpperInvariant();
+                user.EmailConfirmed = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(EditEmployeeId))
+            {
+                var empIdTaken = _userManager.Users.FirstOrDefault(u => u.EmployeeId == EditEmployeeId && u.Id != EditUserId);
+                if (empIdTaken != null)
+                {
+                    ErrorMessage = "Employee ID is already in use by another account.";
+                    await LoadAccountsAsync();
+                    return Page();
+                }
+                user.EmployeeId = EditEmployeeId;
+            }
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                ErrorMessage = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+                await LoadAccountsAsync();
+                return Page();
+            }
+
+            if (!string.IsNullOrWhiteSpace(EditPassword))
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var passResult = await _userManager.ResetPasswordAsync(user, token, EditPassword);
+                if (!passResult.Succeeded)
+                {
+                    ErrorMessage = string.Join(", ", passResult.Errors.Select(e => e.Description));
+                    await LoadAccountsAsync();
+                    return Page();
+                }
+            }
+
+            SuccessMessage = "Account updated successfully.";
+            await LoadAccountsAsync();
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostResetAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                ErrorMessage = "Account not found.";
+                await LoadAccountsAsync();
+                return Page();
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, DefaultLguPassword);
+            if (result.Succeeded)
+                SuccessMessage = $"Password reset to default: {DefaultLguPassword}";
+            else
+                ErrorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+
+            await LoadAccountsAsync();
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostDeleteAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                ErrorMessage = "Account not found.";
+                await LoadAccountsAsync();
+                return Page();
+            }
+
+            var label = user.Department ?? user.Email ?? "account";
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+                SuccessMessage = $"Account for {label} deleted successfully.";
+            else
+                ErrorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+
             await LoadAccountsAsync();
             return Page();
         }
@@ -133,7 +247,8 @@ namespace VoxAngelos.Pages.Admin
                     Email = user.Email ?? "N/A",
                     Department = user.Department ?? "N/A",
                     IsActive = user.LockoutEnd == null || user.LockoutEnd < DateTimeOffset.UtcNow,
-                    CreatedAt = user.CreatedAt
+                    CreatedAt = user.CreatedAt,
+                    IsSeeded = SeededEmails.Contains(user.Email ?? "")
                 });
             }
         }
@@ -147,5 +262,6 @@ namespace VoxAngelos.Pages.Admin
         public string Department { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsSeeded { get; set; }
     }
 }
