@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace VoxAngelos.Pages.User
@@ -14,16 +15,19 @@ namespace VoxAngelos.Pages.User
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
+        private readonly ConcernClassificationService _classifier;
 
         public CreateModel(ApplicationDbContext db,
                            UserManager<ApplicationUser> userManager,
                            IWebHostEnvironment env,
-                           IConfiguration configuration)
+                           IConfiguration configuration,
+                           ConcernClassificationService classifier)
         {
             _db = db;
             _userManager = userManager;
             _env = env;
             _configuration = configuration;
+            _classifier = classifier;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
@@ -35,32 +39,11 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
 
-        private static readonly Dictionary<string, (string Office, string Email)> DepartmentMap = new()
+        private string? ResolveCredentialsPath(string? path)
         {
-            { "Health", ("City Health Office", "health@voxangelos.gov.ph") },
-            { "Medical", ("City Health Office", "health@voxangelos.gov.ph") },
-            { "Safety", ("Public Safety Office", "publicsafety@voxangelos.gov.ph") },
-            { "Justice", ("Public Safety Office", "publicsafety@voxangelos.gov.ph") },
-            { "Crime", ("Public Safety Office", "publicsafety@voxangelos.gov.ph") },
-            { "Environment", ("Agriculture Office", "agriculture@voxangelos.gov.ph") },
-            { "Nature", ("Agriculture Office", "agriculture@voxangelos.gov.ph") },
-            { "Agriculture", ("Agriculture Office", "agriculture@voxangelos.gov.ph") },
-            { "Infrastructure", ("Engineering Office", "engineering@voxangelos.gov.ph") },
-            { "Construction", ("Engineering Office", "engineering@voxangelos.gov.ph") },
-            { "Road", ("Engineering Office", "engineering@voxangelos.gov.ph") },
-            { "Social", ("Social Welfare Office", "socialwelfare@voxangelos.gov.ph") },
-            { "Welfare", ("Social Welfare Office", "socialwelfare@voxangelos.gov.ph") },
-            { "Poverty", ("Social Welfare Office", "socialwelfare@voxangelos.gov.ph") },
-        };
-
-        private static (string Office, string Email) MapToOffice(string googleCategory)
-        {
-            foreach (var key in DepartmentMap.Keys)
-            {
-                if (googleCategory.Contains(key, StringComparison.OrdinalIgnoreCase))
-                    return DepartmentMap[key];
-            }
-            return ("General Services Office", "engineering@voxangelos.gov.ph");
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            if (Path.IsPathRooted(path)) return path;
+            return Path.Combine(_env.ContentRootPath, path);
         }
 
         public async Task<IActionResult> OnGetAsync()
@@ -211,8 +194,9 @@ namespace VoxAngelos.Pages.User
                 Latitude = Latitude,
                 Longitude = Longitude,
                 Status = "Unresolved",
-                Category = string.IsNullOrEmpty(confirmedCategory) ? "General" : confirmedCategory,
-                AssignedOffice = string.IsNullOrEmpty(confirmedOffice) ? "General Services Office" : confirmedOffice,
+                Category = await _classifier.ClassifyAsync(
+                    Description,
+                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"])),
                 SubmittedAt = DateTime.UtcNow
             };
 

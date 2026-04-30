@@ -24,6 +24,7 @@ else
 builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, VoxAngelos.Services.EmailSender>();
 
 builder.Services.AddScoped<OcrService>();
+builder.Services.AddSingleton<ConcernClassificationService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -142,15 +143,32 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    // Remove old LGU seed accounts no longer in use
+    var outdatedLguEmails = new[]
+    {
+        "health@voxangelos.gov.ph",
+        "socialwelfare@voxangelos.gov.ph",
+        "publicsafety@voxangelos.gov.ph",
+        "agriculture@voxangelos.gov.ph"
+    };
+    foreach (var oldEmail in outdatedLguEmails)
+    {
+        var oldUser = await userManager.FindByEmailAsync(oldEmail);
+        if (oldUser != null)
+            await userManager.DeleteAsync(oldUser);
+    }
+
     // Seed LGU accounts
     var lguAccounts = new[]
     {
-    new { Email = "health@voxangelos.gov.ph",     EmployeeId = "LGU-HLT-001", Department = "Health Office" },
-    new { Email = "engineering@voxangelos.gov.ph", EmployeeId = "LGU-ENG-001", Department = "Engineering Office" },
-    new { Email = "socialwelfare@voxangelos.gov.ph",EmployeeId = "LGU-SWD-001", Department = "Social Welfare" },
-    new { Email = "publicsafety@voxangelos.gov.ph", EmployeeId = "LGU-PSF-001", Department = "Public Safety" },
-    new { Email = "agriculture@voxangelos.gov.ph",  EmployeeId = "LGU-AGR-001", Department = "Agriculture" },
-};
+        new { Email = "swdo@voxangelos.gov.ph",        EmployeeId = "LGU-SWDO-001",  Department = "SWDO" },
+        new { Email = "engineering@voxangelos.gov.ph",  EmployeeId = "LGU-ENG-001",   Department = "Engineering Office" },
+        new { Email = "environment@voxangelos.gov.ph",  EmployeeId = "LGU-ENV-001",   Department = "Environment" },
+        new { Email = "acdo@voxangelos.gov.ph",         EmployeeId = "LGU-ACDO-001",  Department = "ACDO" },
+        new { Email = "pptro@voxangelos.gov.ph",        EmployeeId = "LGU-PPT-001",   Department = "Pptro" },
+        new { Email = "osca@voxangelos.gov.ph",         EmployeeId = "LGU-OSCA-001",  Department = "OSCA" },
+        new { Email = "pwdao@voxangelos.gov.ph",        EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
+    };
 
     foreach (var lgu in lguAccounts)
     {

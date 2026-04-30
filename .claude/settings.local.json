@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep *)",
+      "Bash(dotnet build *)",
+      "Bash(grep -E \"\\\\.cs$\")",
+      "Bash(grep \"\\\\.cs$\")",
+      "WebSearch",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(dotnet add package *)"
+    ]
+  }
+}
