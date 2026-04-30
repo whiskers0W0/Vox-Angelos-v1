@@ -1,15 +1,64 @@
+using Google.Cloud.Language.V1;
+
 namespace VoxAngelos.Services
 {
     public class ConcernClassificationService
     {
-        // Each entry: department name → keywords that suggest that department
+        // Maps Google NLP category path segments → our 7 departments
+        private static readonly (string Keyword, string Department)[] GoogleCategoryMap =
+        [
+            // SWDO
+            ("Social",      "SWDO"),
+            ("Welfare",     "SWDO"),
+            ("Community",   "SWDO"),
+            ("Poverty",     "SWDO"),
+            ("Family",      "SWDO"),
+            ("Charity",     "SWDO"),
+            // Engineering Office
+            ("Infrastructure",  "Engineering Office"),
+            ("Construction",    "Engineering Office"),
+            ("Road",            "Engineering Office"),
+            ("Building",        "Engineering Office"),
+            ("Civil",           "Engineering Office"),
+            ("Public Works",    "Engineering Office"),
+            // Environment
+            ("Environment",  "Environment"),
+            ("Waste",        "Environment"),
+            ("Nature",       "Environment"),
+            ("Pollution",    "Environment"),
+            ("Sanitation",   "Environment"),
+            ("Ecology",      "Environment"),
+            // ACDO
+            ("Planning",     "ACDO"),
+            ("Development",  "ACDO"),
+            ("Urban",        "ACDO"),
+            ("Economic",     "ACDO"),
+            ("Land Use",     "ACDO"),
+            // Pptro
+            ("Traffic",         "Pptro"),
+            ("Transportation",  "Pptro"),
+            ("Parking",         "Pptro"),
+            ("Vehicle",         "Pptro"),
+            ("Transit",         "Pptro"),
+            // OSCA
+            ("Senior",      "OSCA"),
+            ("Elderly",     "OSCA"),
+            ("Aging",       "OSCA"),
+            ("Retirement",  "OSCA"),
+            // PWDAO
+            ("Disability",      "PWDAO"),
+            ("Accessibility",   "PWDAO"),
+            ("Disabled",        "PWDAO"),
+            ("Inclusion",       "PWDAO"),
+        ];
+
+        // Local keyword lists — fallback when Google NLP is unavailable
         private static readonly Dictionary<string, string[]> DepartmentKeywords =
             new(StringComparer.OrdinalIgnoreCase)
         {
             ["SWDO"] =
             [
-                // English — Social Services, Public Welfare, Community Development,
-                // Human Services, Social Protection
+                // English
                 "welfare", "social welfare", "social service", "social services",
                 "financial aid", "financial assistance", "disaster relief", "relief goods",
                 "relief", "calamity", "evacuation", "evacuee", "shelter",
@@ -22,7 +71,6 @@ namespace VoxAngelos.Services
                 "dswd", "social protection", "human services",
                 "family assistance", "crisis", "humanitarian", "charity",
                 "senior benefits", "burial", "burial assistance",
-
                 // Filipino / Tagalog
                 "tulong", "ayuda", "benepisyo", "mahirap", "pamilya",
                 "bata", "batang", "kabataan", "kababaihan", "babae",
@@ -30,7 +78,6 @@ namespace VoxAngelos.Services
                 "gutom", "pagkain", "likas", "lindol", "bagyo", "sakuna", "kalamidad",
                 "lumikas", "pabahay", "subsidyo", "hanapbuhay",
                 "nasunog", "nawala", "nawalan", "biktima", "nasalanta",
-
                 // Kapampangan
                 "saup", "tutulungan", "masalat", "pengari", "anak", "babai",
                 "kekatamu", "kapamilya"
@@ -38,8 +85,7 @@ namespace VoxAngelos.Services
 
             ["Engineering Office"] =
             [
-                // English — Infrastructure, Public Works, Civil Engineering,
-                // Urban Infrastructure, Construction & Maintenance
+                // English
                 "road", "roads", "street", "streets", "highway",
                 "bridge", "bridges", "overpass", "underpass",
                 "drainage", "drain", "canal", "culvert", "sewer", "sewage",
@@ -55,7 +101,6 @@ namespace VoxAngelos.Services
                 "retaining wall", "dike", "levee", "embankment",
                 "demolition", "renovation", "reblocking",
                 "civil engineering", "engineer", "engineer office",
-
                 // Filipino / Tagalog
                 "kalsada", "daan", "tulay", "imburnal", "alkantarila", "estero",
                 "gusali", "konstruksyon", "pagkukumpuni", "sira", "nasira",
@@ -63,16 +108,14 @@ namespace VoxAngelos.Services
                 "poste", "ilaw ng daan", "poste ng ilaw",
                 "patubig", "linya ng tubig", "graba", "semento",
                 "nabasa ang daan", "gumuho", "guho", "nabasag",
-
                 // Kapampangan
                 "dalan", "labuad", "tultul", "sira ing", "kapag-ula",
-                "tulay", "altu", "kalsada"
+                "altu"
             ],
 
             ["Environment"] =
             [
-                // English — Environment, Waste Management, Environmental Protection,
-                // Sustainability, Sanitation, Natural Resources
+                // English
                 "environment", "environmental",
                 "waste", "garbage", "trash", "rubbish", "litter", "littering",
                 "waste management", "waste disposal", "illegal dumping", "dump site",
@@ -87,26 +130,23 @@ namespace VoxAngelos.Services
                 "sustainability", "natural resources", "soil", "erosion",
                 "water quality", "clean water", "contamination",
                 "cenro", "environment office", "green",
-
                 // Filipino / Tagalog
                 "basura", "kalat", "dumi", "maruming", "tambak",
                 "nagtatapon", "nagtapon", "nagtatambak",
                 "usok", "amoy", "mabaho", "masamang amoy",
-                "polusyon", "polusyong",
+                "polusyon",
                 "puno", "punutin", "nagputol", "nagpaputol",
                 "ilog", "lawa", "tubig", "maputik", "putik",
                 "lamok", "ipis", "daga", "langaw",
                 "baha", "pagbabaha", "binabaha",
-
                 // Kapampangan
-                "dumi", "masamit", "ambu", "maligpit", "kalikasan",
-                "basura", "sukal", "balu"
+                "masamit", "ambu", "maligpit", "kalikasan",
+                "sukal", "balu"
             ],
 
             ["ACDO"] =
             [
-                // English — Urban Planning, Economic Development, Land Use Planning,
-                // Policy Planning, City Development, Strategic Planning
+                // English
                 "urban planning", "city planning", "land use", "land use plan",
                 "development plan", "master plan", "comprehensive plan",
                 "zoning", "rezoning", "zone", "land conversion",
@@ -116,21 +156,18 @@ namespace VoxAngelos.Services
                 "subdivision", "commercial", "land", "property",
                 "urban development", "acdo", "city development office",
                 "development office", "city planner",
-
                 // Filipino / Tagalog
                 "plano", "pagpaplano", "lupa", "titulo ng lupa",
                 "lisensya", "pahintulot", "negosyo", "pamumuhunan",
                 "komersyal", "pagpapaunlad", "proyekto ng lungsod",
                 "lungsod", "bayan", "siyudad",
-
                 // Kapampangan
-                "pamintuan", "kalungsoran", "planu", "lupa"
+                "pamintuan", "kalungsoran", "planu"
             ],
 
             ["Pptro"] =
             [
-                // English — Traffic Management, Transportation, Road Safety,
-                // Parking Management, Traffic Enforcement, Urban Mobility
+                // English
                 "traffic", "traffic flow", "traffic congestion", "traffic jam",
                 "traffic signal", "traffic light", "traffic sign", "road sign",
                 "signage", "road safety",
@@ -145,7 +182,6 @@ namespace VoxAngelos.Services
                 "jeepney", "tricycle", "motorcycle", "bus", "truck",
                 "commute", "commuter", "urban mobility",
                 "pptro", "traffic regulation", "traffic office",
-
                 // Filipino / Tagalog
                 "trapik", "trapiko", "sasakyan", "motorsiklo",
                 "traysikel", "dyipni", "dyipney",
@@ -154,16 +190,13 @@ namespace VoxAngelos.Services
                 "pasahero", "drayber", "driver", "semaporo", "senyales",
                 "kontra-agos", "kontraagos", "labis na pasahero",
                 "biyahe", "ruta", "lulan",
-
                 // Kapampangan
-                "sasakyan", "motorsiklu", "trapiku", "aksidente",
-                "nakaparada", "drayber"
+                "motorsiklu", "trapiku", "nakaparada"
             ],
 
             ["OSCA"] =
             [
-                // English — Elderly Care, Senior Citizen Services,
-                // Public Welfare, Community Support
+                // English
                 "senior", "senior citizen", "senior citizens", "elderly",
                 "old age", "aged", "aging",
                 "retirement", "retired", "pensioner",
@@ -172,24 +205,19 @@ namespace VoxAngelos.Services
                 "geriatric", "nursing home", "care home", "assisted living",
                 "lolo", "lola", "grandparent", "grandparents",
                 "manong", "manang", "elderly care",
-
                 // Filipino / Tagalog
                 "matanda", "matatanda", "nakatatanda",
-                "lolo", "lola", "ingkong", "impo",
+                "ingkong", "impo",
                 "card ng senior", "diskwento ng matanda",
                 "benepisyo ng matanda", "pensyon",
                 "retirado", "retirada",
-                "pag-aalaga ng matanda", "pangit ang pakikitungo sa matanda",
-
                 // Kapampangan
-                "matatua", "lolo", "lola", "magtua",
-                "senior", "matatanda"
+                "matatua", "magtua"
             ],
 
             ["PWDAO"] =
             [
-                // English — Disability Services, Accessibility,
-                // Inclusion, Public Welfare, Community Support
+                // English
                 "disability", "disabled", "person with disability", "persons with disability",
                 "pwd", "pwd id", "disability card", "disability benefits",
                 "wheelchair", "wheelchair ramp", "ramp", "ramps",
@@ -200,25 +228,43 @@ namespace VoxAngelos.Services
                 "amputee", "cerebral palsy", "autism", "autistic",
                 "mental health", "differently abled", "handicapped",
                 "sign language", "pwdao", "disability office",
-
                 // Filipino / Tagalog
                 "may kapansanan", "kapansanan", "may difabilidad",
                 "hindi makalakad", "bulag", "bingi", "pipi",
-                "gulong-gulong", "wheelchair", "ramp",
+                "gulong-gulong",
                 "espesyal na pangangailangan", "nangangailangan",
                 "id ng pwd", "card ng pwd", "diskwento ng pwd",
-                "hadlang", "accessibility", "may sakit",
-                "may depekto", "lumpo", "paralysado",
-
+                "hadlang", "may depekto", "lumpo", "paralysado",
                 // Kapampangan
-                "kapansanan", "pwd", "bulag", "bungul",
-                "di makatupad", "masakit", "espesyal"
+                "bungul", "di makatupad", "espesyal"
             ],
         };
 
+        // ── Public API ────────────────────────────────────────────────────────
+
         /// <summary>
-        /// Returns the best-matching department name for the given concern description,
-        /// or null if no keywords match.
+        /// Primary: tries Google NLP when credentials are configured and text is
+        /// long enough (≥ 20 words). Falls back to local keyword scoring.
+        /// </summary>
+        public async Task<string?> ClassifyAsync(string description, string? credentialsPath = null)
+        {
+            if (string.IsNullOrWhiteSpace(description))
+                return null;
+
+            // Google NLP ClassifyText requires ≥ 20 tokens
+            var wordCount = description.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            if (wordCount >= 20)
+            {
+                var googleResult = await TryGoogleNlpAsync(description, credentialsPath);
+                if (googleResult != null)
+                    return googleResult;
+            }
+
+            return Classify(description);
+        }
+
+        /// <summary>
+        /// Local keyword-only classifier — no network call, always available.
         /// </summary>
         public string? Classify(string description)
         {
@@ -238,6 +284,48 @@ namespace VoxAngelos.Services
             return scores.Count == 0
                 ? null
                 : scores.MaxBy(s => s.Value).Key;
+        }
+
+        // ── Private helpers ───────────────────────────────────────────────────
+
+        private static async Task<string?> TryGoogleNlpAsync(string description, string? credentialsPath)
+        {
+            try
+            {
+                var builder = new LanguageServiceClientBuilder();
+
+                if (!string.IsNullOrWhiteSpace(credentialsPath) && File.Exists(credentialsPath))
+                    builder.CredentialsPath = credentialsPath;
+
+                var client = await builder.BuildAsync();
+
+                var doc = new Document
+                {
+                    Content = description,
+                    Type = Document.Types.Type.PlainText
+                };
+
+                var response = await client.ClassifyTextAsync(doc);
+                var best = response.Categories
+                    .OrderByDescending(c => c.Confidence)
+                    .FirstOrDefault();
+
+                return best == null ? null : MapGoogleCategory(best.Name);
+            }
+            catch
+            {
+                return null; // silently fall back to local classifier
+            }
+        }
+
+        private static string? MapGoogleCategory(string googleCategory)
+        {
+            foreach (var (keyword, department) in GoogleCategoryMap)
+            {
+                if (googleCategory.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    return department;
+            }
+            return null;
         }
     }
 }

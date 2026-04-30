@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 appsettings.Development.json
 **/secrets.json
+
+# Google Cloud service account keys
+**/*-[0-9a-f]*.json

@@ -39,6 +39,13 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
 
+        private string? ResolveCredentialsPath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            if (Path.IsPathRooted(path)) return path;
+            return Path.Combine(_env.ContentRootPath, path);
+        }
+
         public async Task<IActionResult> OnGetAsync()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -82,7 +89,9 @@ namespace VoxAngelos.Pages.User
                 Latitude = Latitude,
                 Longitude = Longitude,
                 Status = "Unresolved",
-                Category = _classifier.Classify(Description),
+                Category = await _classifier.ClassifyAsync(
+                    Description,
+                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"])),
                 SubmittedAt = DateTime.UtcNow
             };
 

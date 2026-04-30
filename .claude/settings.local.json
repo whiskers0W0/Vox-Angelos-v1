@@ -6,7 +6,8 @@
       "Bash(grep -E \"\\\\.cs$\")",
       "Bash(grep \"\\\\.cs$\")",
       "WebSearch",
-      "WebFetch(domain:docs.cloud.google.com)"
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(dotnet add package *)"
     ]
   }
 }
