@@ -88,7 +88,13 @@ else
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "application/json"
+});
+
 app.UseRouting();
 
 app.UseAuthentication();
