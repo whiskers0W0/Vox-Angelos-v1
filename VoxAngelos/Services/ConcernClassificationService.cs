@@ -15,31 +15,31 @@ namespace VoxAngelos.Services
             ("Family",      "SWDO"),
             ("Charity",     "SWDO"),
             // Engineering Office
-            ("Infrastructure",  "Engineering Office"),
-            ("Construction",    "Engineering Office"),
-            ("Road",            "Engineering Office"),
-            ("Building",        "Engineering Office"),
-            ("Civil",           "Engineering Office"),
-            ("Public Works",    "Engineering Office"),
+            ("Infrastructure",  "CEO"),
+            ("Construction",    "CEO"),
+            ("Road",            "CEO"),
+            ("Building",        "CEO"),
+            ("Civil",           "CEO"),
+            ("Public Works",    "CEO"),
             // Environment
-            ("Environment",  "Environment"),
-            ("Waste",        "Environment"),
-            ("Nature",       "Environment"),
-            ("Pollution",    "Environment"),
-            ("Sanitation",   "Environment"),
-            ("Ecology",      "Environment"),
+            ("CENRO",  "CENRO"),
+            ("Waste",        "CENRO"),
+            ("Nature",       "CENRO"),
+            ("Pollution",    "CENRO"),
+            ("Sanitation",   "CENRO"),
+            ("Ecology",      "CENRO"),
             // ACDO
             ("Planning",     "ACDO"),
             ("Development",  "ACDO"),
             ("Urban",        "ACDO"),
             ("Economic",     "ACDO"),
             ("Land Use",     "ACDO"),
-            // Pptro
-            ("Traffic",         "Pptro"),
-            ("Transportation",  "Pptro"),
-            ("Parking",         "Pptro"),
-            ("Vehicle",         "Pptro"),
-            ("Transit",         "Pptro"),
+            // PPTRO
+            ("Traffic",         "PPTRO"),
+            ("Transportation",  "PPTRO"),
+            ("Parking",         "PPTRO"),
+            ("Vehicle",         "PPTRO"),
+            ("Transit",         "PPTRO"),
             // OSCA
             ("Senior",      "OSCA"),
             ("Elderly",     "OSCA"),
@@ -83,7 +83,7 @@ namespace VoxAngelos.Services
                 "kekatamu", "kapamilya"
             ],
 
-            ["Engineering Office"] =
+            ["CEO"] =
             [
                 // English
                 "road", "roads", "street", "streets", "highway",
@@ -113,7 +113,7 @@ namespace VoxAngelos.Services
                 "altu"
             ],
 
-            ["Environment"] =
+            ["CENRO"] =
             [
                 // English
                 "environment", "environmental",
@@ -165,7 +165,7 @@ namespace VoxAngelos.Services
                 "pamintuan", "kalungsoran", "planu"
             ],
 
-            ["Pptro"] =
+            ["PPTRO"] =
             [
                 // English
                 "traffic", "traffic flow", "traffic congestion", "traffic jam",

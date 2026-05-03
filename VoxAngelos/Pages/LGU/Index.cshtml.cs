@@ -27,17 +27,7 @@ namespace VoxAngelos.Pages.LGU
             CurrentFilter = filter ?? "Unresolved";
 
             var user = await _userManager.GetUserAsync(User);
-            var userEmail = user?.Email ?? "";
-
-            // Map LGU email to their assigned office
-            var officeMap = new Dictionary<string, string>
-    {
-        { "health@voxangelos.gov.ph", "City Health Office" },
-        { "engineering@voxangelos.gov.ph", "Engineering Office" },
-        { "socialwelfare@voxangelos.gov.ph", "Social Welfare Office" },
-        { "publicsafety@voxangelos.gov.ph", "Public Safety Office" },
-        { "agriculture@voxangelos.gov.ph", "Agriculture Office" },
-    };
+            var userDepartment = user?.Department;
 
             var query = _db.Concerns
                 .Include(c => c.Attachments)
@@ -45,12 +35,10 @@ namespace VoxAngelos.Pages.LGU
                 .ThenInclude(u => u.UserProfile)
                 .AsQueryable();
 
-            // Filter by this LGU's assigned office
-            if (officeMap.TryGetValue(userEmail, out var assignedOffice))
+            // Show concerns whose classified category matches this LGU's department
+            if (!string.IsNullOrEmpty(userDepartment))
             {
-                query = query.Where(c => c.AssignedOffice == assignedOffice
-                                      || c.AssignedOffice == null
-                                      || c.AssignedOffice == "General Services Office");
+                query = query.Where(c => c.Category == userDepartment || c.Category == null);
             }
 
             if (CurrentFilter != "All")

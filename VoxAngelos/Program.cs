@@ -161,13 +161,16 @@ using (var scope = app.Services.CreateScope())
     // Seed LGU accounts
     var lguAccounts = new[]
     {
-        new { Email = "swdo@voxangelos.gov.ph",        EmployeeId = "LGU-SWDO-001",  Department = "SWDO" },
-        new { Email = "engineering@voxangelos.gov.ph",  EmployeeId = "LGU-ENG-001",   Department = "Engineering Office" },
-        new { Email = "environment@voxangelos.gov.ph",  EmployeeId = "LGU-ENV-001",   Department = "Environment" },
-        new { Email = "acdo@voxangelos.gov.ph",         EmployeeId = "LGU-ACDO-001",  Department = "ACDO" },
-        new { Email = "pptro@voxangelos.gov.ph",        EmployeeId = "LGU-PPT-001",   Department = "Pptro" },
-        new { Email = "osca@voxangelos.gov.ph",         EmployeeId = "LGU-OSCA-001",  Department = "OSCA" },
-        new { Email = "pwdao@voxangelos.gov.ph",        EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
+        new { Email = "swdo@voxangelos.gov.ph",          EmployeeId = "LGU-SWDO-001",  Department = "SWDO" },
+        new { Email = "engineering@voxangelos.gov.ph",   EmployeeId = "LGU-ENG-001",   Department = "CEO" },
+        new { Email = "environment@voxangelos.gov.ph",   EmployeeId = "LGU-ENV-001",   Department = "CENRO" },
+        new { Email = "acdo@voxangelos.gov.ph",          EmployeeId = "LGU-ACDO-001",  Department = "ACDO" },
+        new { Email = "pptro@voxangelos.gov.ph",         EmployeeId = "LGU-PPT-001",   Department = "PPTRO" },
+        new { Email = "osca@voxangelos.gov.ph",          EmployeeId = "LGU-OSCA-001",  Department = "OSCA" },
+        new { Email = "pwdao@voxangelos.gov.ph",         EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
+        new { Email = "mikaellagomez102004@gmail.com",   EmployeeId = "LGU-EXT-001",   Department = "SWDO" },
+        new { Email = "adrndgaming@gmail.com",           EmployeeId = "LGU-EXT-002",   Department = "CEO" },
+        new { Email = "carlostannnn29@gmail.com",        EmployeeId = "LGU-EXT-003",   Department = "ACDO" },
     };
 
     foreach (var lgu in lguAccounts)
@@ -190,6 +193,11 @@ using (var scope = app.Services.CreateScope())
             {
                 await userManager.AddToRoleAsync(lguUser, "LGU");
             }
+        }
+        else if (existing.Department != lgu.Department)
+        {
+            existing.Department = lgu.Department;
+            await userManager.UpdateAsync(existing);
         }
     }
 

@@ -21,7 +21,10 @@ namespace VoxAngelos.Pages.Admin
             "acdo@voxangelos.gov.ph",
             "pptro@voxangelos.gov.ph",
             "osca@voxangelos.gov.ph",
-            "pwdao@voxangelos.gov.ph"
+            "pwdao@voxangelos.gov.ph",
+            "mikaellagomez102004@gmail.com",
+            "adrndgaming@gmail.com",
+            "carlostannnn29@gmail.com"
         };
 
         public OfficeManagementModel(UserManager<ApplicationUser> userManager)

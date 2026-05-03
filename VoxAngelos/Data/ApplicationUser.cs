@@ -13,8 +13,7 @@ namespace VoxAngelos.Data
         // Used by LGU and Admin accounts
         public string? EmployeeId { get; set; }
 
-        // "Health Office", "Engineering Office", "Social Welfare", 
-        // "Public Safety", "Agriculture"
+        // "SWDO", "CEO", "CENRO", "ACDO", "PPTRO", "OSCA", "PWDAO"
         public string? Department { get; set; }
 
         // Navigation properties
