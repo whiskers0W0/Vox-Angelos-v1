@@ -18,6 +18,9 @@ namespace VoxAngelos.Data
         public DbSet<UserLoginAudit> UserLoginAudits { get; set; }
         public DbSet<Concern> Concerns { get; set; }
         public DbSet<ConcernAttachment> ConcernAttachments { get; set; }
+        public DbSet<Recommendation> Recommendations { get; set; }
+        public DbSet<RecommendationVote> RecommendationVotes { get; set; }
+        public DbSet<RecommendationAttachment> RecommendationAttachments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -82,6 +85,28 @@ namespace VoxAngelos.Data
                 .HasOne(ula => ula.User)
                 .WithMany(u => u.LoginAudits)
                 .HasForeignKey(ula => ula.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Recommendation>()
+                .HasOne(r => r.Citizen)
+                .WithMany()
+                .HasForeignKey(r => r.CitizenId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<RecommendationVote>()
+                .HasOne(v => v.Recommendation)
+                .WithMany(r => r.Votes)
+                .HasForeignKey(v => v.RecommendationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<RecommendationVote>()
+                .HasIndex(v => new { v.RecommendationId, v.CitizenId })
+                .IsUnique();
+
+            builder.Entity<RecommendationAttachment>()
+                .HasOne(a => a.Recommendation)
+                .WithMany(r => r.Attachments)
+                .HasForeignKey(a => a.RecommendationId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

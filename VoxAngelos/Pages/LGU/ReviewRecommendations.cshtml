@@ -1,0 +1,106 @@
+﻿@page
+@model VoxAngelos.Pages.LGU.ReviewRecommendationsModel
+@{
+    Layout = "_LGULayout";
+    ViewData["Title"] = "Review Recommendations";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/lgu_review_recommendations.css" asp-append-version="true" />
+}
+
+<div class="content-header">
+    <h1 class="page-title">Citizen Recommendations</h1>
+</div>
+
+@if (!Model.Recommendations.Any())
+{
+    <div class="empty-state">
+        <p>No citizen recommendations to review yet.</p>
+        <p class="muted">This section will be available once citizens begin submitting recommendations.</p>
+    </div>
+}
+else
+{
+    <div class="recommendations-list">
+        @foreach (var rec in Model.Recommendations)
+        {
+            <div class="rec-card">
+                <div class="rec-card-header">
+                    <div>
+                        <span class="rec-category">@rec.Category</span>
+                        <h3 class="rec-title">@rec.Title</h3>
+                        <span class="rec-meta">by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    <span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span>
+                </div>
+
+                <div class="rec-body">
+                    <p><strong>Justification:</strong> @rec.Justification</p>
+                    <p><strong>Description:</strong> @rec.Description</p>
+                    <p><strong>Location:</strong> @rec.Location</p>
+                    <p><strong>Beneficiaries:</strong> @rec.Beneficiaries</p>
+                    <p><strong>Est. People Affected:</strong> @rec.EstimatedPeopleAffected</p>
+                    @if (rec.AttachmentPaths.Any())
+                    {
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+                            @for (int i = 0; i < rec.AttachmentPaths.Count; i++)
+                            {
+                                var path = rec.AttachmentPaths[i];
+                                var type = rec.AttachmentTypes[i];
+                                if (type == "image")
+                                {
+                                    <img src="@path" style="width:100px;height:100px;object-fit:cover;border-radius:8px;" />
+                                }
+                                else if (type == "video")
+                                {
+                                    <video src="@path" style="width:100px;height:100px;border-radius:8px;" controls></video>
+                                }
+                                else
+                                {
+                                    <a href="@path" target="_blank"
+                                           style="display:flex;align-items:center;padding:8px 12px;background:#f0f4ff;border-radius:8px;font-size:12px;color:#2D46B9;text-decoration:none;">
+                                        📄 Document
+                                    </a>
+                                }
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p><strong>Attachments:</strong> None</p>
+                    }
+                </div>
+
+                @if (rec.Status == "Pending")
+                {
+                    <div class="rec-actions">
+                        <form method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="recommendationId" value="@rec.Id" />
+                            <textarea name="lguNotes" class="rec-notes-input"
+                                      placeholder="Add notes (optional)..."></textarea>
+                            <div class="rec-action-btns">
+                                <button type="submit" asp-page-handler="Approve"
+                                        class="btn-approve">
+                                    ✓ Approve
+                                </button>
+                                <button type="submit" asp-page-handler="Reject"
+                                        class="btn-reject">
+                                    ✗ Reject
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <div class="rec-reviewed">
+                        <p><strong>LGU Notes:</strong> @(rec.LguNotes ?? "—")</p>
+                        <p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}

@@ -1,0 +1,134 @@
+﻿.recommendations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.rec-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 1px 1px 4px rgba(0,0,0,0.08);
+}
+
+.rec-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.rec-category {
+    font-size: 12px;
+    color: #2D46B9;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rec-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 4px 0;
+}
+
+.rec-meta {
+    font-size: 12px;
+    color: #999;
+}
+
+.rec-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.rec-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.rec-notes-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 70px;
+    margin-bottom: 10px;
+}
+
+.rec-action-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-approve {
+    padding: 8px 20px;
+    background: #2D46B9;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.btn-reject {
+    padding: 8px 20px;
+    background: white;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.rec-reviewed {
+    font-size: 13px;
+    color: #666;
+}
+
+.rec-reviewed-at {
+    color: #999;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+    .empty-state .muted {
+        color: #999;
+        font-size: 13px;
+    }
