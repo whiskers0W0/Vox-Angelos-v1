@@ -149,7 +149,10 @@ using (var scope = app.Services.CreateScope())
         "health@voxangelos.gov.ph",
         "socialwelfare@voxangelos.gov.ph",
         "publicsafety@voxangelos.gov.ph",
-        "agriculture@voxangelos.gov.ph"
+        "agriculture@voxangelos.gov.ph",
+        "swdo@voxangelos.gov.ph",
+        "engineering@voxangelos.gov.ph",
+        "acdo@voxangelos.gov.ph",
     };
     foreach (var oldEmail in outdatedLguEmails)
     {
@@ -161,10 +164,7 @@ using (var scope = app.Services.CreateScope())
     // Seed LGU accounts
     var lguAccounts = new[]
     {
-        new { Email = "swdo@voxangelos.gov.ph",          EmployeeId = "LGU-SWDO-001",  Department = "SWDO" },
-        new { Email = "engineering@voxangelos.gov.ph",   EmployeeId = "LGU-ENG-001",   Department = "CEO" },
         new { Email = "environment@voxangelos.gov.ph",   EmployeeId = "LGU-ENV-001",   Department = "CENRO" },
-        new { Email = "acdo@voxangelos.gov.ph",          EmployeeId = "LGU-ACDO-001",  Department = "ACDO" },
         new { Email = "pptro@voxangelos.gov.ph",         EmployeeId = "LGU-PPT-001",   Department = "PPTRO" },
         new { Email = "osca@voxangelos.gov.ph",          EmployeeId = "LGU-OSCA-001",  Department = "OSCA" },
         new { Email = "pwdao@voxangelos.gov.ph",         EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
