@@ -15,13 +15,13 @@ namespace VoxAngelos.Pages.Admin
 
         private static readonly HashSet<string> SeededEmails = new(StringComparer.OrdinalIgnoreCase)
         {
-            "environment@voxangelos.gov.ph",
             "pptro@voxangelos.gov.ph",
             "osca@voxangelos.gov.ph",
             "pwdao@voxangelos.gov.ph",
             "mikaellagomez102004@gmail.com",
             "adrndgaming@gmail.com",
-            "carlostannnn29@gmail.com"
+            "carlostannnn29+lgu@gmail.com",
+            "alcuizargiogio+lgu@gmail.com"
         };
 
         public OfficeManagementModel(UserManager<ApplicationUser> userManager)

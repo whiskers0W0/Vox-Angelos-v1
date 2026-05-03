@@ -72,7 +72,7 @@ namespace VoxAngelos.Pages.LGU
             _logger.LogWarning("LGU OTP for {Email}: {Otp}", user.Email, otp);
 
             await _emailSender.SendEmailAsync(
-                "adrndgaming@gmail.com",
+                user.Email!,
                 "Your Vox Angelos LGU Login Code",
                 $"LGU login OTP for <strong>{user.Email}</strong>: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
 

@@ -143,62 +143,54 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Remove old LGU seed accounts no longer in use
-    var outdatedLguEmails = new[]
+    // Delete ALL existing LGU accounts for a clean slate
+    var allLguUsers = await userManager.GetUsersInRoleAsync("LGU");
+    foreach (var lguUser in allLguUsers)
+        await userManager.DeleteAsync(lguUser);
+
+    // Clear leftover LGU fields from plain User accounts
+    var usersWithFields = userManager.Users
+        .Where(u => u.Department != null || u.EmployeeId != null)
+        .ToList();
+    foreach (var u in usersWithFields)
     {
-        "health@voxangelos.gov.ph",
-        "socialwelfare@voxangelos.gov.ph",
-        "publicsafety@voxangelos.gov.ph",
-        "agriculture@voxangelos.gov.ph",
-        "swdo@voxangelos.gov.ph",
-        "engineering@voxangelos.gov.ph",
-        "acdo@voxangelos.gov.ph",
-    };
-    foreach (var oldEmail in outdatedLguEmails)
-    {
-        var oldUser = await userManager.FindByEmailAsync(oldEmail);
-        if (oldUser != null)
-            await userManager.DeleteAsync(oldUser);
+        var isLgu = await userManager.IsInRoleAsync(u, "LGU");
+        var isAdmin = await userManager.IsInRoleAsync(u, "Admin");
+        if (!isLgu && !isAdmin)
+        {
+            u.Department = null;
+            u.EmployeeId = null;
+            await userManager.UpdateAsync(u);
+        }
     }
 
     // Seed LGU accounts
     var lguAccounts = new[]
     {
-        new { Email = "environment@voxangelos.gov.ph",   EmployeeId = "LGU-ENV-001",   Department = "CENRO" },
+        new { Email = "mikaellagomez102004@gmail.com",   EmployeeId = "LGU-EXT-001",   Department = "SWDO" },
+        new { Email = "adrndgaming@gmail.com",           EmployeeId = "LGU-EXT-002",   Department = "CEO" },
+        new { Email = "carlostannnn29+lgu@gmail.com",    EmployeeId = "LGU-EXT-003",   Department = "ACDO" },
+        new { Email = "alcuizargiogio+lgu@gmail.com",    EmployeeId = "LGU-ENV-001",   Department = "CENRO" },
         new { Email = "pptro@voxangelos.gov.ph",         EmployeeId = "LGU-PPT-001",   Department = "PPTRO" },
         new { Email = "osca@voxangelos.gov.ph",          EmployeeId = "LGU-OSCA-001",  Department = "OSCA" },
         new { Email = "pwdao@voxangelos.gov.ph",         EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
-        new { Email = "mikaellagomez102004@gmail.com",   EmployeeId = "LGU-EXT-001",   Department = "SWDO" },
-        new { Email = "adrndgaming@gmail.com",           EmployeeId = "LGU-EXT-002",   Department = "CEO" },
-        new { Email = "carlostannnn29@gmail.com",        EmployeeId = "LGU-EXT-003",   Department = "ACDO" },
     };
 
     foreach (var lgu in lguAccounts)
     {
-        var existing = await userManager.FindByEmailAsync(lgu.Email);
-        if (existing == null)
+        var lguUser = new ApplicationUser
         {
-            var lguUser = new ApplicationUser
-            {
-                UserName = lgu.Email,
-                Email = lgu.Email,
-                EmailConfirmed = true,
-                EmployeeId = lgu.EmployeeId,
-                Department = lgu.Department,
-                ApprovalStatus = "Approved",
-                CreatedAt = DateTime.UtcNow
-            };
-            var lguResult = await userManager.CreateAsync(lguUser, "Lgu@123456");
-            if (lguResult.Succeeded)
-            {
-                await userManager.AddToRoleAsync(lguUser, "LGU");
-            }
-        }
-        else if (existing.Department != lgu.Department)
-        {
-            existing.Department = lgu.Department;
-            await userManager.UpdateAsync(existing);
-        }
+            UserName = lgu.Email,
+            Email = lgu.Email,
+            EmailConfirmed = true,
+            EmployeeId = lgu.EmployeeId,
+            Department = lgu.Department,
+            ApprovalStatus = "Approved",
+            CreatedAt = DateTime.UtcNow
+        };
+        var lguResult = await userManager.CreateAsync(lguUser, "Lgu@123456");
+        if (lguResult.Succeeded)
+            await userManager.AddToRoleAsync(lguUser, "LGU");
     }
 
     // Seed Citizen accounts
