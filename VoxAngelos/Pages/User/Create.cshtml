@@ -194,7 +194,7 @@
                     <br>
                     <div><strong>Beneficiaries:</strong> <span id="r-beneficiaries"></span></div>
                     <div><strong>Est. people affected:</strong> <span id="r-people"></span></div>
-                    <div><strong>Attachments:</strong> <span id="r-attachments"></span></div>
+                    <div><strong>Attachments:</strong> <div id="r-attachments" style="display:flex;flex-wrap:wrap;margin-top:6px;"></div></div>
                 </div>
             </div>
 
@@ -387,7 +387,26 @@
             document.getElementById('r-people').textContent = people || '—';
     
             const files = Array.from(fileInput.files);
-            document.getElementById('r-attachments').textContent = files.length ? files.map(f => f.name).join(', ') : 'None';
+            const attachmentContainer = document.getElementById('r-attachments');
+            attachmentContainer.innerHTML = '';
+
+            if (files.length === 0) {
+                attachmentContainer.textContent = 'None';
+            } else {
+                files.forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;margin:4px;';
+                        img.src = URL.createObjectURL(file);
+                        attachmentContainer.appendChild(img);
+                    } else {
+                        const span = document.createElement('span');
+                        span.style.cssText = 'display:inline-block;padding:4px 8px;background:#f0f0f0;border-radius:6px;font-size:12px;margin:4px;';
+                        span.textContent = file.name;
+                        attachmentContainer.appendChild(span);
+                    }
+                });
+            }
         }
 
         function goToStep(step) {
@@ -413,13 +432,44 @@
                     currentStep++;
                     goToStep(currentStep);
                 }
-            } else {
-                // Final Submission
-                stepFooter.style.display = 'none';
-                steps.forEach(s => s.classList.remove('active'));
-                successState.classList.add('active');
+                } else {
+                const formData = new FormData();
+                formData.append('RecJustification', document.getElementById('projectJustification').value);
+                formData.append('RecCategory', selectedCategory === 'Others'
+                    ? document.getElementById('otherSpecification').value
+                    : selectedCategory);
+                formData.append('RecTitle', document.getElementById('projectTitle').value);
+                formData.append('RecLocation', document.getElementById('projectLocation').value);
+                formData.append('RecDescription', document.getElementById('projectDescription').value);
+
+                const checked = Array.from(document.querySelectorAll('input[name="beneficiary"]:checked'))
+                    .map(c => c.value).join(', ');
+                formData.append('RecBeneficiaries', checked);
+                formData.append('RecPeopleAffected', document.getElementById('peopleAffected').value);
+
+                const files = document.getElementById('fileInput').files;
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('RecAttachments', files[i]);
+                }
+
+                formData.append('__RequestVerificationToken',
+                    document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+                fetch('?handler=Recommendation', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        stepFooter.style.display = 'none';
+                        steps.forEach(s => s.classList.remove('active'));
+                        successState.classList.add('active');
+                    }
+                })
+                .catch(err => console.error('Submission error:', err));
             }
-        });
+            });
 
         function validateStep(step) {
             let isValid = true;
@@ -766,4 +816,4 @@
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&libraries=places&v=beta&callback=initMap" async defer></script>
    
-}make the 
+}

@@ -38,6 +38,14 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public double? Latitude { get; set; }
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
+        [BindProperty] public string RecJustification { get; set; } = string.Empty;
+        [BindProperty] public string RecCategory { get; set; } = string.Empty;
+        [BindProperty] public string RecTitle { get; set; } = string.Empty;
+        [BindProperty] public string RecLocation { get; set; } = string.Empty;
+        [BindProperty] public string RecDescription { get; set; } = string.Empty;
+        [BindProperty] public string RecBeneficiaries { get; set; } = string.Empty;
+        [BindProperty] public int RecPeopleAffected { get; set; }
+        [BindProperty] public List<IFormFile> RecAttachments { get; set; } = new();
 
         private string? ResolveCredentialsPath(string? path)
         {
@@ -123,6 +131,61 @@ namespace VoxAngelos.Pages.User
 
             TempData["ConcernSuccess"] = "Your concern has been submitted successfully!";
             return RedirectToPage();
+        }
+
+
+        public async Task<IActionResult> OnPostRecommendationAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToPage("/Login");
+
+            var recommendation = new Recommendation
+            {
+                CitizenId = user.Id,
+                Justification = RecJustification,
+                Category = RecCategory,
+                Title = RecTitle,
+                Location = RecLocation,
+                Description = RecDescription,
+                Beneficiaries = RecBeneficiaries,
+                EstimatedPeopleAffected = RecPeopleAffected,
+                Status = "Pending",
+                SubmittedAt = DateTime.UtcNow
+            };
+
+            _db.Recommendations.Add(recommendation);
+            await _db.SaveChangesAsync();
+
+            if (RecAttachments != null && RecAttachments.Count > 0)
+            {
+                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "recommendations");
+                Directory.CreateDirectory(uploadsFolder);
+
+                foreach (var file in RecAttachments)
+                {
+                    if (file.Length == 0) continue;
+                    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                    var fileName = $"{Guid.NewGuid()}{ext}";
+                    var filePath = Path.Combine(uploadsFolder, fileName);
+                    using var stream = new FileStream(filePath, FileMode.Create);
+                    await file.CopyToAsync(stream);
+
+                    var fileType = file.ContentType.StartsWith("video") ? "video"
+                                 : file.ContentType.StartsWith("image") ? "image"
+                                 : "document";
+
+                    _db.RecommendationAttachments.Add(new RecommendationAttachment
+                    {
+                        RecommendationId = recommendation.Id,
+                        FilePath = $"/uploads/recommendations/{fileName}",
+                        FileType = fileType,
+                        UploadedAt = DateTime.UtcNow
+                    });
+                }
+                await _db.SaveChangesAsync();
+            }
+
+            return new JsonResult(new { success = true });
         }
     }
 }

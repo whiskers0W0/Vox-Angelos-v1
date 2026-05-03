@@ -1,5 +1,5 @@
 ﻿@page
-@model IndexModel
+@model VoxAngelos.Pages.User.IndexModel
 @{
     Layout = "_CitizenLayout";
     ViewData["Title"] = "Discover";
@@ -13,7 +13,7 @@
     <h1 class="page-title">Discover</h1>
     <div class="header-right">
         <div class="search-box">
-            <input type="text" placeholder="Search" class="search-input" />
+            <input type="text" placeholder="Search" class="search-input" id="searchInput" />
             <button class="search-btn" aria-label="Search">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <circle cx="11" cy="11" r="8" />
@@ -23,6 +23,8 @@
         </div>
     </div>
 </div>
+@* to prove the request is coming from your own page and not from a malicious site *@
+@Html.AntiForgeryToken()
 
 <!-- Toggle Tabs -->
 <div class="tab-group">
@@ -33,295 +35,195 @@
 
 <!-- Proposals View -->
 <div id="proposalsView" class="view-section active-view">
-    <div class="proposals-feed">
+    <div class="proposals-feed" id="proposalsFeed">
 
-        <!-- Proposal Card -->
-        <div class="proposal-card">
-            <div class="card-header">
-                <div class="author-info">
-                    <div class="avatar">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="8" r="4" />
-                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        @if (!Model.Recommendations.Any())
+        {
+            <div style="text-align:center;padding:60px;color:#888;">
+                <p>No approved recommendations yet.</p>
+            </div>
+        }
+
+        @foreach (var rec in Model.Recommendations)
+        {
+            <div class="proposal-card" data-title="@rec.Title.ToLower()" data-description="@rec.Description.ToLower()">
+                <div class="card-header">
+                    <div class="author-info">
+                        <div class="avatar">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="8" r="4" />
+                                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                            </svg>
+                        </div>
+                        <div class="author-name">@rec.CitizenName</div>
+                    </div>
+                    <div class="card-date">@rec.ApprovedAt.ToString("MM/dd/yy")</div>
+                </div>
+
+                <div class="card-meta">
+                    <span class="meta-label">Category: <span class="meta-value">@rec.Category</span></span>
+                    @if (!string.IsNullOrEmpty(rec.AssignedOffice))
+                    {
+                        <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
+                    }
+                </div>
+
+                <div class="card-body">
+                    <h3 class="proposal-title">Citizen Recommendation: @rec.Title</h3>
+                    <p class="proposal-excerpt">@rec.Description</p>
+                </div>
+
+                @if (rec.AttachmentPaths.Any())
+                {
+                    <div class="attachments">
+                        @{
+                            var maxShow = Math.Min(2, rec.AttachmentPaths.Count);
+                            var extra = rec.AttachmentPaths.Count - maxShow;
+                        }
+                        @for (int i = 0; i < maxShow; i++)
+                        {
+                            var path = rec.AttachmentPaths[i];
+                            var type = rec.AttachmentTypes[i];
+                            <div class="attachment-thumb">
+                                @if (type.StartsWith("image/"))
+                                {
+                                    <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                }
+                                else
+                                {
+                                    <div class="thumb-placeholder">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                            <polyline points="14,2 14,8 20,8" />
+                                        </svg>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        @if (extra > 0)
+                        {
+                            <div class="attachment-thumb more-files">
+                                <span>@extra+</span>
+                                <small>Files</small>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="vote-bar">
+                    <button class="vote-btn upvote @(rec.CurrentUserVote == "up" ? "voted" : "")"
+                            data-rec-id="@rec.Id" data-vote-type="up" aria-label="Upvote">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
+                            <path d="M12 3 Q12.8 3 13.3 3.7 L21.2 18.5 Q21.6 19.3 21.1 20 Q20.6 20.7 19.7 20.7 H4.3 Q3.4 20.7 2.9 20 Q2.4 19.3 2.8 18.5 L10.7 3.7 Q11.2 3 12 3 Z" />
                         </svg>
-                    </div>
-                    <div>
-                        <div class="author-name">Anne Curtis</div>
-                    </div>
-                </div>
-                <div class="card-date">09/22/25</div>
-            </div>
-
-            <div class="card-meta">
-                <span class="meta-label">Category: <span class="meta-value">Disaster Risk Reduction</span></span>
-                <span class="meta-label">Office: <span class="meta-value">Disaster Office (ACDRRMO)</span></span>
-            </div>
-
-            <div class="card-body">
-                <h3 class="proposal-title">
-                    Citizen Recommendation: Flood Preparedness and Emergency Response Enhancement
-                </h3>
-                <p class="proposal-excerpt">
-                    This recommendation addresses recurring challenges related to flood evacuations,
-                    emergency rescue operations, and the dissemination of typhoon advisories. During severe
-                    weather events, delays in response and limited public awareness increase risks to lives and
-                    property. Strengthening preparedness and communication systems is essential to minimize
-                    disaster-related impacts.
-                </p>
-                <a href="#" class="view-more">View More</a>
-            </div>
-
-            <div class="attachments">
-                <div class="attachment-thumb">
-                    <div class="thumb-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14,2 14,8 20,8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10,9 9,9 8,9" />
+                        <span class="upvote-count">@rec.Upvotes</span>
+                    </button>
+                    <button class="vote-btn downvote @(rec.CurrentUserVote == "down" ? "voted" : "")"
+                            data-rec-id="@rec.Id" data-vote-type="down" aria-label="Downvote">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
+                            <path d="M12 21 Q11.2 21 10.7 20.3 L2.8 5.5 Q2.4 4.7 2.9 4 Q3.4 3.3 4.3 3.3 H19.7 Q20.6 3.3 21.1 4 Q21.6 4.7 21.2 5.5 L13.3 20.3 Q12.8 21 12 21 Z" />
                         </svg>
-                    </div>
-                </div>
-                <div class="attachment-thumb">
-                    <div class="thumb-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14,2 14,8 20,8" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="attachment-thumb more-files">
-                    <span>2+</span>
-                    <small>Files</small>
+                        <span class="downvote-count">@rec.Downvotes</span>
+                    </button>
                 </div>
             </div>
-
-            <div class="vote-bar">
-                <button class="vote-btn upvote" aria-label="Upvote">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
-                        <path d="M12 3 Q12.8 3 13.3 3.7 L21.2 18.5 Q21.6 19.3 21.1 20 Q20.6 20.7 19.7 20.7 H4.3 Q3.4 20.7 2.9 20 Q2.4 19.3 2.8 18.5 L10.7 3.7 Q11.2 3 12 3 Z" />
-                    </svg>
-                    <span>100</span>
-                </button>
-                <button class="vote-btn downvote" aria-label="Downvote">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
-                        <path d="M12 21 Q11.2 21 10.7 20.3 L2.8 5.5 Q2.4 4.7 2.9 4 Q3.4 3.3 4.3 3.3 H19.7 Q20.6 3.3 21.1 4 Q21.6 4.7 21.2 5.5 L13.3 20.3 Q12.8 21 12 21 Z" />
-                    </svg>
-                    <span>12</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Proposal Card 2 -->
-        <div class="proposal-card">
-            <div class="card-header">
-                <div class="author-info">
-                    <div class="avatar">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="8" r="4" />
-                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="author-name">Anne Curtis</div>
-                    </div>
-                </div>
-                <div class="card-date">09/22/25</div>
-            </div>
-
-            <div class="card-meta">
-                <span class="meta-label">Category: <span class="meta-value">Disaster Risk Reduction</span></span>
-                <span class="meta-label">Office: <span class="meta-value">Disaster Office (ACDRRMO)</span></span>
-            </div>
-
-            <div class="card-body">
-                <h3 class="proposal-title">
-                    Citizen Recommendation: Flood Preparedness and Emergency Response Enhancement
-                </h3>
-                <p class="proposal-excerpt">
-                    This recommendation addresses recurring challenges related to flood evacuations,
-                    emergency rescue operations, and the dissemination of typhoon advisories. During severe
-                    weather events, delays in response and limited public awareness increase risks to lives and
-                    property. Strengthening preparedness and communication systems is essential to minimize
-                    disaster-related impacts.
-                </p>
-                <a href="#" class="view-more">View More</a>
-            </div>
-
-            <div class="attachments">
-                <div class="attachment-thumb">
-                    <div class="thumb-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14,2 14,8 20,8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10,9 9,9 8,9" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="attachment-thumb">
-                    <div class="thumb-placeholder">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14,2 14,8 20,8" />
-                        </svg>
-                    </div>
-                </div>
-                <div class="attachment-thumb more-files">
-                    <span>2+</span>
-                    <small>Files</small>
-                </div>
-            </div>
-
-            <div class="vote-bar">
-                <button class="vote-btn upvote" aria-label="Upvote">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
-                        <path d="M12 3 Q12.8 3 13.3 3.7 L21.2 18.5 Q21.6 19.3 21.1 20 Q20.6 20.7 19.7 20.7 H4.3 Q3.4 20.7 2.9 20 Q2.4 19.3 2.8 18.5 L10.7 3.7 Q11.2 3 12 3 Z" />
-                    </svg>
-                    <span>100</span>
-                </button>
-                <button class="vote-btn downvote" aria-label="Downvote">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
-                        <path d="M12 21 Q11.2 21 10.7 20.3 L2.8 5.5 Q2.4 4.7 2.9 4 Q3.4 3.3 4.3 3.3 H19.7 Q20.6 3.3 21.1 4 Q21.6 4.7 21.2 5.5 L13.3 20.3 Q12.8 21 12 21 Z" />
-                    </svg>
-                    <span>12</span>
-                </button>
-            </div>
-        </div>
-
+        }
     </div>
 </div>
 
 <!-- Leaderboard View -->
 <div id="leaderboardView" class="view-section">
     <div class="leaderboard-wrapper">
-
         <div class="leaderboard-feed">
 
-            <div class="leaderboard-item">
-                <div class="rank-col">
-                    <div class="rank-arrow up">▲</div>
-                    <div class="rank-number">1</div>
+            @if (!Model.TopVotes.Any())
+            {
+                <div style="text-align:center;padding:60px;color:#888;">
+                    <p>No recommendations yet.</p>
                 </div>
-                <div class="proposal-card leaderboard-card">
-                    <div class="card-header">
-                        <div class="author-info">
-                            <div class="avatar">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="8" r="4" />
-                                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="author-name">Anne Curtis</div>
-                            </div>
-                        </div>
-                        <div class="card-date">09/22/25</div>
-                    </div>
-                    <div class="card-meta">
-                        <span class="meta-label">Category: <span class="meta-value">Disaster Risk Reduction</span></span>
-                        <span class="meta-label">Office: <span class="meta-value">Disaster Office (ACDRRMO)</span></span>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="proposal-title">
-                            Citizen Recommendation: Flood Preparedness and Emergency Response Enhancement
-                        </h3>
-                        <p class="proposal-excerpt">
-                            This recommendation addresses recurring challenges related to flood evacuations,
-                            emergency rescue operations, and the dissemination of typhoon advisories. During severe
-                            weather events, delays in response and limited public awareness increase risks to lives and
-                            property. Strengthening preparedness and communication systems is essential to minimize
-                            disaster-related impacts.
-                        </p>
-                        <a href="#" class="view-more">View More</a>
-                    </div>
-                    <div class="attachments">
-                        <div class="attachment-thumb">
-                            <div class="thumb-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="attachment-thumb">
-                            <div class="thumb-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="attachment-thumb more-files">
-                            <span>2+</span>
-                            <small>Files</small>
-                        </div>
-                    </div>
-                    <div class="leaderboard-votes">
-                        <span class="leader-upvotes">100 Upvotes</span>
-                        <span class="leader-downvotes">12 Downvotes</span>
-                    </div>
-                </div>
-            </div>
+            }
 
-            <div class="leaderboard-item">
-                <div class="rank-col">
-                    <div class="rank-arrow down">▼</div>
-                    <div class="rank-number">2</div>
+            @for (int rank = 0; rank < Model.TopVotes.Count; rank++)
+            {
+                var rec = Model.TopVotes[rank];
+                var isUp = rank == 0 || rec.Upvotes >= (rank > 0 ? Model.TopVotes[rank - 1].Upvotes : 0);
+                <div class="leaderboard-item">
+                    <div class="rank-col">
+                        <div class="rank-arrow @(rank == 0 ? "up" : "down")">@(rank == 0 ? "▲" : "▼")</div>
+                        <div class="rank-number">@(rank + 1)</div>
+                    </div>
+                    <div class="proposal-card leaderboard-card">
+                        <div class="card-header">
+                            <div class="author-info">
+                                <div class="avatar">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="12" cy="8" r="4" />
+                                        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                                    </svg>
+                                </div>
+                                <div class="author-name">@rec.CitizenName</div>
+                            </div>
+                            <div class="card-date">@rec.ApprovedAt.ToString("MM/dd/yy")</div>
+                        </div>
+                        <div class="card-meta">
+                            <span class="meta-label">Category: <span class="meta-value">@rec.Category</span></span>
+                            @if (!string.IsNullOrEmpty(rec.AssignedOffice))
+                            {
+                                <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <h3 class="proposal-title">Citizen Recommendation: @rec.Title</h3>
+                            <p class="proposal-excerpt">@rec.Description</p>
+                        </div>
+
+                        @if (rec.AttachmentPaths.Any())
+                        {
+                            <div class="attachments">
+                                @{
+                                    var maxShow2 = Math.Min(2, rec.AttachmentPaths.Count);
+                                    var extra2 = rec.AttachmentPaths.Count - maxShow2;
+                                }
+                                @for (int i = 0; i < maxShow2; i++)
+                                {
+                                    var path = rec.AttachmentPaths[i];
+                                    var type = rec.AttachmentTypes[i];
+                                    <div class="attachment-thumb">
+                                        @if (type.StartsWith("image/"))
+                                        {
+                                            <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="thumb-placeholder">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                    <polyline points="14,2 14,8 20,8" />
+                                                </svg>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                @if (extra2 > 0)
+                                {
+                                    <div class="attachment-thumb more-files">
+                                        <span>@extra2+</span>
+                                        <small>Files</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="leaderboard-votes">
+                            <span class="leader-upvotes">@rec.Upvotes Upvotes</span>
+                            <span class="leader-downvotes">@rec.Downvotes Downvotes</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="proposal-card leaderboard-card">
-                    <div class="card-header">
-                        <div class="author-info">
-                            <div class="avatar">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="8" r="4" />
-                                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="author-name">Marian Rivera</div>
-                            </div>
-                        </div>
-                        <div class="card-date">09/22/25</div>
-                    </div>
-                    <div class="card-meta">
-                        <span class="meta-label">Category: <span class="meta-value">Disaster Risk Reduction</span></span>
-                        <span class="meta-label">Office: <span class="meta-value">Disaster Office (ACDRRMO)</span></span>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="proposal-title">
-                            Citizen Recommendation: Community Flood Warning System Upgrade
-                        </h3>
-                        <p class="proposal-excerpt">
-                            This recommendation focuses on improving flood warning distribution, barangay-level alerts,
-                            and public coordination during weather disturbances.
-                        </p>
-                        <a href="#" class="view-more">View More</a>
-                    </div>
-                    <div class="attachments">
-                        <div class="attachment-thumb">
-                            <div class="thumb-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="attachment-thumb more-files">
-                            <span>1+</span>
-                            <small>Files</small>
-                        </div>
-                    </div>
-                    <div class="leaderboard-votes">
-                        <span class="leader-upvotes">82 Upvotes</span>
-                        <span class="leader-downvotes">7 Downvotes</span>
-                    </div>
-                </div>
-            </div>
+            }
         </div>
-        
+
+        <!-- Sidebar: Top 10 mini list -->
         <aside class="ranking-sidebar">
             <div class="ranking-box">
                 <div class="ranking-header">
@@ -330,118 +232,22 @@
                     </svg>
                     <h2 class="ranking-title">TOP 10 RECOMMENDATIONS <br /> (ALL TIME)</h2>
                 </div>
-
                 <div class="ranking-list">
-                    <div class="mini-rank-item">
-                        <span class="mini-number">1</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Flood preparedness and E...</p>
-                            <div class="mini-votes">
-                                <span class="up">100 ▲ <small>votes</small></span>
-                                <span class="down">12 ▼ <small>votes</small></span>
+                    @for (int i = 0; i < Model.TopVotes.Count; i++)
+                    {
+                        var r = Model.TopVotes[i];
+                        var shortTitle = r.Title.Length > 22 ? r.Title.Substring(0, 22) + "..." : r.Title;
+                        <div class="mini-rank-item">
+                            <span class="mini-number">@(i + 1)</span>
+                            <div class="mini-content">
+                                <p class="mini-title">@shortTitle</p>
+                                <div class="mini-votes">
+                                    <span class="up">@r.Upvotes ▲ <small>votes</small></span>
+                                    <span class="down">@r.Downvotes ▼ <small>votes</small></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">2</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">3</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">4</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">5</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">6</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">7</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">8</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">9</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">10</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
+                    }
                 </div>
             </div>
         </aside>
@@ -450,40 +256,77 @@
 
 @section Scripts {
     <script>
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            const proposalsView = document.getElementById('proposalsView');
-            const leaderboardView = document.getElementById('leaderboardView');
-            const pageTitle = document.querySelector('.page-title');
-            const headerRight = document.querySelector('.header-right');
-            const tabIndicator = document.querySelector('.tab-indicator');
+        // Tab switching
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const proposalsView = document.getElementById('proposalsView');
+        const leaderboardView = document.getElementById('leaderboardView');
+        const pageTitle = document.querySelector('.page-title');
+        const headerRight = document.querySelector('.header-right');
+        const tabIndicator = document.querySelector('.tab-indicator');
 
-            tabButtons.forEach((btn, index) => {
-                btn.addEventListener('click', () => {
-                    tabButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-
-                    tabIndicator.style.transform = `translateX(${index * 100}%)`;
-
-                    const selectedView = btn.dataset.view;
-
-                    if (selectedView === "proposals") {
-                        proposalsView.classList.add("active-view");
-                        leaderboardView.classList.remove("active-view");
-                        headerRight.style.display = "flex";
-                        pageTitle.textContent = "Discover";
-                    } else {
-                        proposalsView.classList.remove("active-view");
-                        leaderboardView.classList.add("active-view");
-                        headerRight.style.display = "none";
-                        pageTitle.textContent = "Leaderboard";
-                    }
-                });
+        tabButtons.forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                tabButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tabIndicator.style.transform = `translateX(${index * 100}%)`;
+                if (btn.dataset.view === "proposals") {
+                    proposalsView.classList.add("active-view");
+                    leaderboardView.classList.remove("active-view");
+                    headerRight.style.display = "flex";
+                    pageTitle.textContent = "Discover";
+                } else {
+                    proposalsView.classList.remove("active-view");
+                    leaderboardView.classList.add("active-view");
+                    headerRight.style.display = "none";
+                    pageTitle.textContent = "Leaderboard";
+                }
             });
+        });
 
-            document.querySelectorAll('.vote-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    btn.classList.toggle('voted');
-                });
+        // Search filter
+        document.getElementById('searchInput').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#proposalsFeed .proposal-card').forEach(card => {
+                const title = card.dataset.title || '';
+                const desc = card.dataset.description || '';
+                card.style.display = (title.includes(query) || desc.includes(query)) ? '' : 'none';
             });
+        });
+
+        // Voting
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                   ?? document.cookie.split('; ').find(r => r.startsWith('XSRF-TOKEN'))?.split('=')[1];
+
+        document.querySelectorAll('.vote-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const recId = btn.dataset.recId;
+                const voteType = btn.dataset.voteType;
+                const card = btn.closest('.proposal-card');
+
+                const formData = new FormData();
+                formData.append('recommendationId', recId);
+                formData.append('voteType', voteType);
+                formData.append('__RequestVerificationToken', token);
+
+                const res = await fetch('?handler=Vote', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // Update counts
+                card.querySelector('.upvote-count').textContent = data.upvotes;
+                card.querySelector('.downvote-count').textContent = data.downvotes;
+
+                setTimeout(() => location.reload(), 300); //refreshes the page so the top vote updates
+                // Update voted state
+                const upBtn = card.querySelector('.upvote');
+                const downBtn = card.querySelector('.downvote');
+                upBtn.classList.toggle('voted', data.userVote === 'up');
+                downBtn.classList.toggle('voted', data.userVote === 'down');
+            });
+        });
     </script>
 }
