@@ -13,6 +13,14 @@
     <h1 class="page-title">Citizen Recommendations</h1>
 </div>
 
+<div class="feed-filter-group">
+    @foreach (var f in new[] { "Pending", "Approved", "Rejected", "All" })
+    {
+        var isActive = Model.CurrentFilter == f ? "active" : "";
+        <a class="filter-btn @isActive" href="?filter=@f">@f</a>
+    }
+</div>
+
 @if (!Model.Recommendations.Any())
 {
     <div class="empty-state">
