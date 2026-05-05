@@ -20,6 +20,7 @@ namespace VoxAngelos.Pages.LGU
         }
 
         public List<RecommendationViewModel> Recommendations { get; set; } = new();
+        public string CurrentFilter { get; set; } = "Pending";
 
         public class RecommendationViewModel
         {
@@ -40,21 +41,28 @@ namespace VoxAngelos.Pages.LGU
             public List<string> AttachmentTypes { get; set; } = new();
         }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string filter = "Pending")
         {
-            var recs = await _db.Recommendations
-             .Include(r => r.Citizen)
-             .ThenInclude(u => u.UserProfile)
-             .Include(r => r.Attachments)
-             .OrderByDescending(r => r.SubmittedAt)
-             .ToListAsync();
+            CurrentFilter = filter;
+
+            var query = _db.Recommendations
+                .Include(r => r.Citizen).ThenInclude(u => u.UserProfile)
+                .Include(r => r.Attachments)
+                .AsQueryable();
+
+            if (filter != "All")
+                query = query.Where(r => r.Status == filter);
+
+            var recs = await query
+                .OrderByDescending(r => r.SubmittedAt)
+                .ToListAsync();
 
             Recommendations = recs.Select(r => new RecommendationViewModel
             {
                 Id = r.Id,
                 CitizenName = r.Citizen.UserProfile != null
-                ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
-                : r.Citizen.Email ?? "Citizen",
+                    ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
+                    : r.Citizen.Email ?? "Citizen",
                 Justification = r.Justification,
                 Category = r.Category,
                 Title = r.Title,
@@ -83,7 +91,7 @@ namespace VoxAngelos.Pages.LGU
             rec.ReviewedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
-            return RedirectToPage();
+            return RedirectToPage(new { filter = "Pending" });
         }
 
         public async Task<IActionResult> OnPostRejectAsync(int recommendationId, string? lguNotes)
@@ -98,7 +106,7 @@ namespace VoxAngelos.Pages.LGU
             rec.ReviewedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
-            return RedirectToPage();
+            return RedirectToPage(new { filter = "Pending" });
         }
     }
 }

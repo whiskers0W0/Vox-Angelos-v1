@@ -18,128 +18,97 @@
 
         <div class="leaderboard-feed">
 
-            <div class="leaderboard-item">
-                <div class="rank-col">
-                    <div class="rank-arrow up">▲</div>
-                    <div class="rank-number">1</div>
+            @if (!Model.TopVotes.Any())
+            {
+                <div style="text-align:center;padding:60px;color:#888;">
+                    <p>No approved recommendations yet.</p>
                 </div>
-                <div class="proposal-card leaderboard-card">
-                    <div class="card-header">
-                        <div class="author-info">
-                            <div class="avatar">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="8" r="4" />
-                                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="author-name">Anne Curtis</div>
-                            </div>
-                        </div>
-                        <div class="card-date">09/22/25</div>
-                    </div>
-                    <div class="card-meta">
-                        <span class="meta-label">Category: <span class="meta-value">Disaster Risk Reduction</span></span>
-                        <span class="meta-label">Office: <span class="meta-value">Disaster Office (ACDRRMO)</span></span>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="proposal-title">
-                            Citizen Recommendation: Flood Preparedness and Emergency Response Enhancement
-                        </h3>
-                        <p class="proposal-excerpt">
-                            This recommendation addresses recurring challenges related to flood evacuations,
-                            emergency rescue operations, and the dissemination of typhoon advisories. During severe
-                            weather events, delays in response and limited public awareness increase risks to lives and
-                            property. Strengthening preparedness and communication systems is essential to minimize
-                            disaster-related impacts.
-                        </p>
-                        <a href="#" class="view-more">View More</a>
-                    </div>
-                    <div class="attachments">
-                        <div class="attachment-thumb">
-                            <div class="thumb-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="attachment-thumb">
-                            <div class="thumb-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="attachment-thumb more-files">
-                            <span>2+</span>
-                            <small>Files</small>
-                        </div>
-                    </div>
-                    <div class="leaderboard-votes">
-                        <span class="leader-upvotes">100 Upvotes</span>
-                        <span class="leader-downvotes">12 Downvotes</span>
-                    </div>
-                </div>
-            </div>
+            }
 
-            <div class="leaderboard-item">
-                <div class="rank-col">
-                    <div class="rank-arrow down">▼</div>
-                    <div class="rank-number">2</div>
+            @for (int rank = 0; rank < Model.TopVotes.Count; rank++)
+            {
+                var rec = Model.TopVotes[rank];
+                <div class="leaderboard-item">
+                    <div class="rank-col">
+                        <div class="rank-arrow @(rank == 0 ? "up" : "down")">@(rank == 0 ? "▲" : "▼")</div>
+                        <div class="rank-number">@(rank + 1)</div>
+                    </div>
+                    <div class="proposal-card leaderboard-card">
+                        <div class="card-header">
+                            <div class="author-info">
+                                <div class="avatar">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="12" cy="8" r="4" />
+                                        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="author-name">@rec.CitizenName</div>
+                                </div>
+                            </div>
+                            <div class="card-date">@rec.ApprovedAt.ToString("MM/dd/yy")</div>
+                        </div>
+
+                        <div class="card-meta">
+                            <span class="meta-label">Category: <span class="meta-value">@rec.Category</span></span>
+                            @if (!string.IsNullOrEmpty(rec.AssignedOffice))
+                            {
+                                <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
+                            }
+                        </div>
+
+                        <div class="card-body">
+                            <h3 class="proposal-title">Citizen Recommendation: @rec.Title</h3>
+                            <p class="proposal-excerpt">@rec.Description</p>
+                            <a href="#" class="view-more">View More</a>
+                        </div>
+
+                        @if (rec.AttachmentPaths.Any())
+                        {
+                            <div class="attachments">
+                                @{
+                                    var maxShow = Math.Min(2, rec.AttachmentPaths.Count);
+                                    var extra = rec.AttachmentPaths.Count - maxShow;
+                                }
+                                @for (int i = 0; i < maxShow; i++)
+                                {
+                                    var path = rec.AttachmentPaths[i];
+                                    var type = rec.AttachmentTypes[i];
+                                    <div class="attachment-thumb">
+                                        @if (type.StartsWith("image/"))
+                                        {
+                                            <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="thumb-placeholder">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                    <polyline points="14,2 14,8 20,8" />
+                                                </svg>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                @if (extra > 0)
+                                {
+                                    <div class="attachment-thumb more-files">
+                                        <span>@extra+</span>
+                                        <small>Files</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="leaderboard-votes">
+                            <span class="leader-upvotes">@rec.Upvotes Upvotes</span>
+                            <span class="leader-downvotes">@rec.Downvotes Downvotes</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="proposal-card leaderboard-card">
-                    <div class="card-header">
-                        <div class="author-info">
-                            <div class="avatar">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="8" r="4" />
-                                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="author-name">Marian Rivera</div>
-                            </div>
-                        </div>
-                        <div class="card-date">09/22/25</div>
-                    </div>
-                    <div class="card-meta">
-                        <span class="meta-label">Category: <span class="meta-value">Disaster Risk Reduction</span></span>
-                        <span class="meta-label">Office: <span class="meta-value">Disaster Office (ACDRRMO)</span></span>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="proposal-title">
-                            Citizen Recommendation: Community Flood Warning System Upgrade
-                        </h3>
-                        <p class="proposal-excerpt">
-                            This recommendation focuses on improving flood warning distribution, barangay-level alerts,
-                            and public coordination during weather disturbances.
-                        </p>
-                        <a href="#" class="view-more">View More</a>
-                    </div>
-                    <div class="attachments">
-                        <div class="attachment-thumb">
-                            <div class="thumb-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="attachment-thumb more-files">
-                            <span>1+</span>
-                            <small>Files</small>
-                        </div>
-                    </div>
-                    <div class="leaderboard-votes">
-                        <span class="leader-upvotes">82 Upvotes</span>
-                        <span class="leader-downvotes">7 Downvotes</span>
-                    </div>
-                </div>
-            </div>
+            }
         </div>
-        
+
         <aside class="ranking-sidebar">
             <div class="ranking-box">
                 <div class="ranking-header">
@@ -150,116 +119,25 @@
                 </div>
 
                 <div class="ranking-list">
-                    <div class="mini-rank-item">
-                        <span class="mini-number">1</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Flood preparedness and E...</p>
-                            <div class="mini-votes">
-                                <span class="up">100 ▲ <small>votes</small></span>
-                                <span class="down">12 ▼ <small>votes</small></span>
+                    @if (!Model.TopVotes.Any())
+                    {
+                        <p style="color:#888;font-size:13px;text-align:center;padding:16px;">No data yet.</p>
+                    }
+                    @for (int i = 0; i < Model.TopVotes.Count; i++)
+                    {
+                        var r = Model.TopVotes[i];
+                        var shortTitle = r.Title.Length > 22 ? r.Title.Substring(0, 22) + "..." : r.Title;
+                        <div class="mini-rank-item">
+                            <span class="mini-number">@(i + 1)</span>
+                            <div class="mini-content">
+                                <p class="mini-title">@shortTitle</p>
+                                <div class="mini-votes">
+                                    <span class="up">@r.Upvotes ▲ <small>votes</small></span>
+                                    <span class="down">@r.Downvotes ▼ <small>votes</small></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">2</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">3</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">4</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">5</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">6</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">7</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">8</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">9</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mini-rank-item">
-                        <span class="mini-number">10</span>
-                        <div class="mini-content">
-                            <p class="mini-title">Covered Court near Sto. Ro...</p>
-                            <div class="mini-votes">
-                                <span class="up">89 ▲ <small>votes</small></span>
-                                <span class="down">9 ▼ <small>votes</small></span>
-                            </div>
-                        </div>
-                    </div>
-
+                    }
                 </div>
             </div>
         </aside>
@@ -268,15 +146,12 @@
 
 @section Scripts {
     <script>
-        // ── View More / View Less toggle ──
-        // Only show "View More" if text is actually clamped
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.proposal-description').forEach(desc => {
                 const btn = desc.nextElementSibling;
                 if (desc.scrollHeight > desc.clientHeight) {
                     btn.classList.add('visible');
                 }
-
                 btn.addEventListener('click', () => {
                     const isCollapsed = desc.classList.contains('collapsed');
                     desc.classList.toggle('collapsed');
