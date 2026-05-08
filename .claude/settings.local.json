@@ -8,7 +8,11 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git push *)",
-      "Bash(git rebase *)"
+      "Bash(git rebase *)",
+      "PowerShell(icacls *)",
+      "PowerShell(icacls \"C:\\\\Users\\\\user\\\\.config\\\\git\\\\ignore\" /grant \"$env:USERNAME:\\(R\\)\" /inheritance:e)",
+      "PowerShell(icacls \"C:\\\\Users\\\\user\\\\.config\\\\git\\\\ignore\" /grant \"${env:USERNAME}:\\(R\\)\")",
+      "PowerShell(Test-Path *)"
     ]
   }
 }

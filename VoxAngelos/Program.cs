@@ -123,7 +123,7 @@ using (var scope = app.Services.CreateScope())
 
     // Seed Admin account
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-    var adminEmail = "admin@voxangelos.gov.ph";
+    var adminEmail = "carlostannnn29@gmail.com";
     var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
     if (existingAdmin == null)
     {
@@ -191,22 +191,6 @@ using (var scope = app.Services.CreateScope())
         var lguResult = await userManager.CreateAsync(lguUser, "Lgu@123456");
         if (lguResult.Succeeded)
             await userManager.AddToRoleAsync(lguUser, "LGU");
-    }
-
-    // Remove specific citizen accounts
-    var emailsToRemove = new[] { "carlostannnn29@gmail.com", "carlostannnn@gmail.com" };
-    foreach (var email in emailsToRemove)
-    {
-        var toRemove = await userManager.FindByEmailAsync(email);
-        if (toRemove != null)
-        {
-            var faceVerifications = dbContext.UserFaceVerifications.Where(f => f.UserId == toRemove.Id);
-            dbContext.UserFaceVerifications.RemoveRange(faceVerifications);
-            var ocrVerifications = dbContext.UserOcrVerifications.Where(o => o.UserId == toRemove.Id);
-            dbContext.UserOcrVerifications.RemoveRange(ocrVerifications);
-            await dbContext.SaveChangesAsync();
-            await userManager.DeleteAsync(toRemove);
-        }
     }
 
     // Seed Citizen accounts
