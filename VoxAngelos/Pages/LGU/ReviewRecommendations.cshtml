@@ -34,13 +34,15 @@ else
         @foreach (var rec in Model.Recommendations)
         {
             <div class="rec-card">
+                <!-- Floating Status Badge -->
+                <span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span>
+
                 <div class="rec-card-header">
                     <div>
                         <span class="rec-category">@rec.Category</span>
                         <h3 class="rec-title">@rec.Title</h3>
                         <span class="rec-meta">by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span>
                     </div>
-                    <span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span>
                 </div>
 
                 <div class="rec-body">
@@ -91,11 +93,11 @@ else
                             <div class="rec-action-btns">
                                 <button type="submit" asp-page-handler="Approve"
                                         class="btn-approve">
-                                    ✓ Approve
+                                    Publish
                                 </button>
                                 <button type="submit" asp-page-handler="Reject"
                                         class="btn-reject">
-                                    ✗ Reject
+                                    Reject
                                 </button>
                             </div>
                         </form>
