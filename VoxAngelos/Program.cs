@@ -193,6 +193,22 @@ using (var scope = app.Services.CreateScope())
             await userManager.AddToRoleAsync(lguUser, "LGU");
     }
 
+    // Remove specific citizen accounts
+    var emailsToRemove = new[] { "carlostannnn29@gmail.com", "carlostannnn@gmail.com" };
+    foreach (var email in emailsToRemove)
+    {
+        var toRemove = await userManager.FindByEmailAsync(email);
+        if (toRemove != null)
+        {
+            var faceVerifications = dbContext.UserFaceVerifications.Where(f => f.UserId == toRemove.Id);
+            dbContext.UserFaceVerifications.RemoveRange(faceVerifications);
+            var ocrVerifications = dbContext.UserOcrVerifications.Where(o => o.UserId == toRemove.Id);
+            dbContext.UserOcrVerifications.RemoveRange(ocrVerifications);
+            await dbContext.SaveChangesAsync();
+            await userManager.DeleteAsync(toRemove);
+        }
+    }
+
     // Seed Citizen accounts
     var citizenAccounts = new[]
     {

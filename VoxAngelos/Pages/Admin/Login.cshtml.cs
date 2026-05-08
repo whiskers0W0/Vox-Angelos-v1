@@ -72,7 +72,7 @@ namespace VoxAngelos.Pages.Admin
             _logger.LogWarning("Admin OTP for {Email}: {Otp}", user.Email, otp);
 
             await _emailSender.SendEmailAsync(
-                "adrndgaming@gmail.com",
+                "carlostannnn@gmail.com",
                 "Your Vox Angelos Admin Login Code",
                 $"Admin login OTP for <strong>{user.Email}</strong>: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
 
