@@ -312,7 +312,7 @@
 
 /* ── Modal buttons ── */
 .btn-va-primary {
-    background: var(--accent);
+    background: #2d32a8;
     color: white;
     border: none;
     border-radius: 8px;
@@ -325,7 +325,7 @@
 }
 
     .btn-va-primary:hover {
-        background: #2d32a8;
+        border: 1px solid var(--text-secondary);
     }
 
 .btn-va-secondary {
