@@ -85,7 +85,7 @@ namespace VoxAngelos.Pages.LGU
             if (rec == null) return NotFound();
 
             var user = await _userManager.GetUserAsync(User);
-            rec.Status = "Approved";
+            rec.Status = "Published";
             rec.LguNotes = lguNotes;
             rec.ReviewedByLguId = user?.Id;
             rec.ReviewedAt = DateTime.UtcNow;

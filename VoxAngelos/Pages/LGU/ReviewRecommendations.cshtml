@@ -14,7 +14,7 @@
 </div>
 
 <div class="feed-filter-group">
-    @foreach (var f in new[] { "Pending", "Approved", "Rejected", "All" })
+    @foreach (var f in new[] { "Pending", "Published", "Rejected", "All" })
     {
         var isActive = Model.CurrentFilter == f ? "active" : "";
         <a class="filter-btn @isActive" href="?filter=@f">@f</a>
@@ -58,18 +58,22 @@ else
                             {
                                 var path = rec.AttachmentPaths[i];
                                 var type = rec.AttachmentTypes[i];
-                                if (type == "image")
+                                if (type == "image" || type.StartsWith("image/"))
                                 {
-                                    <img src="@path" style="width:100px;height:100px;object-fit:cover;border-radius:8px;" />
+                                    <img src="@path"
+                                         style="width:100px;height:100px;object-fit:cover;border-radius:8px;cursor:pointer;"
+                                         onclick="openLightbox('@path', 'image')" />
                                 }
-                                else if (type == "video")
+                                else if (type == "video" || type.StartsWith("video/"))
                                 {
-                                    <video src="@path" style="width:100px;height:100px;border-radius:8px;" controls></video>
+                                    <video src="@path"
+                                           style="width:100px;height:100px;border-radius:8px;cursor:pointer;"
+                                           onclick="openLightbox('@path', 'video')"></video>
                                 }
                                 else
                                 {
                                     <a href="@path" target="_blank"
-                                           style="display:flex;align-items:center;padding:8px 12px;background:#f0f4ff;border-radius:8px;font-size:12px;color:#2D46B9;text-decoration:none;">
+                                       style="display:flex;align-items:center;padding:8px 12px;background:#f0f4ff;border-radius:8px;font-size:12px;color:#2D46B9;text-decoration:none;">
                                         📄 Document
                                     </a>
                                 }
@@ -113,4 +117,58 @@ else
             </div>
         }
     </div>
+
+
+}
+
+<!-- Lightbox Modal -->
+<div id="lightboxOverlay" onclick="closeLightbox()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
+    <button onclick="closeLightbox()"
+            style="position:absolute;top:20px;right:28px;background:none;border:none;color:white;font-size:32px;cursor:pointer;line-height:1;">
+        ✕
+    </button>
+    <div onclick="event.stopPropagation()" style="max-width:90vw;max-height:90vh;display:flex;align-items:center;justify-content:center;">
+        <img id="lightboxImg" src="" alt=""
+             style="display:none;max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;" />
+        <video id="lightboxVideo" src="" controls
+               style="display:none;max-width:90vw;max-height:90vh;border-radius:12px;"></video>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openLightbox(src, type) {
+            const overlay = document.getElementById('lightboxOverlay');
+            const img = document.getElementById('lightboxImg');
+            const video = document.getElementById('lightboxVideo');
+
+            img.style.display = 'none';
+            video.style.display = 'none';
+            video.pause();
+
+            if (type === 'image') {
+                img.src = src;
+                img.style.display = 'block';
+            } else if (type === 'video') {
+                video.src = src;
+                video.style.display = 'block';
+            }
+
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const overlay = document.getElementById('lightboxOverlay');
+            const video = document.getElementById('lightboxVideo');
+            video.pause();
+            overlay.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
+        });
+    </script>
 }
