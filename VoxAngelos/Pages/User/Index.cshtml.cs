@@ -45,7 +45,7 @@ namespace VoxAngelos.Pages.User
             CurrentUserId = user?.Id ?? string.Empty;
 
             var recs = await _db.Recommendations
-                .Where(r => r.Status == "Approved")
+                .Where(r => r.Status == "Published")
                 .Include(r => r.Citizen).ThenInclude(u => u.UserProfile)
                 .Include(r => r.Attachments)
                 .Include(r => r.Votes)

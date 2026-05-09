@@ -36,7 +36,7 @@ namespace VoxAngelos.Pages.LGU
         public async Task OnGetAsync()
         {
             var recs = await _db.Recommendations
-                .Where(r => r.Status == "Approved")
+                .Where(r => r.Status == "Published")
                 .Include(r => r.Citizen).ThenInclude(u => u.UserProfile)
                 .Include(r => r.Attachments)
                 .OrderByDescending(r => r.ReviewedAt)

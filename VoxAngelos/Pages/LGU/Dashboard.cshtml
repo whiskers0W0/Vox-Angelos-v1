@@ -112,7 +112,23 @@
         tension: 0.4
         }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 0,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            if (value <= 10) return value;
+                            if (value % 5 === 0) return value;
+                            return null;
+                        }
+                    }
+                }
+            }
+        }
         });
     </script>
 }

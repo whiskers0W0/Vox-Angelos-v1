@@ -76,7 +76,9 @@
             {
                 <div class="concern-attachments">
                     <div class="concern-photo">
-                        <img src="@concern.FirstAttachmentPath" alt="Concern photo" />
+                        <img src="@concern.FirstAttachmentPath" alt="Concern photo"
+                             style="cursor:pointer;"
+                             onclick="openLightbox('@concern.FirstAttachmentPath', 'image')" />
                     </div>
                 </div>
             }
@@ -165,6 +167,23 @@
     </div>
 </div>
 
+
+<!-- Lightbox Modal -->
+<div id="lightboxOverlay" onclick="closeLightbox()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
+    <button onclick="closeLightbox()"
+            style="position:absolute;top:20px;right:28px;background:none;border:none;color:white;font-size:32px;cursor:pointer;line-height:1;">
+        ✕
+    </button>
+    <div onclick="event.stopPropagation()" style="max-width:90vw;max-height:90vh;display:flex;align-items:center;justify-content:center;">
+        <img id="lightboxImg" src="" alt=""
+             style="display:none;max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;" />
+        <video id="lightboxVideo" src="" controls
+               style="display:none;max-width:90vw;max-height:90vh;border-radius:12px;"></video>
+    </div>
+</div>
+
+
 @section Scripts {
     <script>
         let activeCard = null;
@@ -213,5 +232,39 @@
                 })
                 .catch(() => { });
         }, 15000);
+
+
+        function openLightbox(src, type) {
+            const overlay = document.getElementById('lightboxOverlay');
+            const img = document.getElementById('lightboxImg');
+            const video = document.getElementById('lightboxVideo');
+
+            img.style.display = 'none';
+            video.style.display = 'none';
+            video.pause();
+
+            if (type === 'image') {
+                img.src = src;
+                img.style.display = 'block';
+            } else if (type === 'video') {
+                video.src = src;
+                video.style.display = 'block';
+            }
+
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const overlay = document.getElementById('lightboxOverlay');
+            const video = document.getElementById('lightboxVideo');
+            video.pause();
+            overlay.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
+        });
     </script>
 }
