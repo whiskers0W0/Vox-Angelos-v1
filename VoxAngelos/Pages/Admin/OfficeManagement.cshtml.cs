@@ -107,16 +107,20 @@ namespace VoxAngelos.Pages.Admin
             var user = await _userManager.FindByIdAsync(userId);
             if (user != null)
             {
+                IdentityResult result;
                 if (await _userManager.IsLockedOutAsync(user))
                 {
-                    await _userManager.SetLockoutEndDateAsync(user, null);
-                    SuccessMessage = "Account re-enabled successfully.";
+                    result = await _userManager.SetLockoutEndDateAsync(user, null);
+                    if (result.Succeeded) SuccessMessage = "Account re-enabled successfully.";
                 }
                 else
                 {
-                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
-                    SuccessMessage = "Account disabled successfully.";
+                    result = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+                    if (result.Succeeded) SuccessMessage = "Account disabled successfully.";
                 }
+
+                if (!result.Succeeded)
+                    ErrorMessage = "Could not update this account — it may have just been changed by another admin.";
             }
             await LoadAccountsAsync();
             return Page();

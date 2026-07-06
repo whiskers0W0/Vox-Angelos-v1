@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.User
 {
@@ -12,15 +13,17 @@ namespace VoxAngelos.Pages.User
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RecommendationRatingService _ratingService;
 
-        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RecommendationRatingService ratingService)
         {
             _db = db;
             _userManager = userManager;
+            _ratingService = ratingService;
         }
 
         public List<RecommendationCardViewModel> Recommendations { get; set; } = new();
-        public List<RecommendationCardViewModel> TopVotes { get; set; } = new();
+        public List<RecommendationCardViewModel> TopRated { get; set; } = new();
         public string CurrentUserId { get; set; } = string.Empty;
 
         public class RecommendationCardViewModel
@@ -32,9 +35,14 @@ namespace VoxAngelos.Pages.User
             public string Title { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
             public DateTime ApprovedAt { get; set; }
-            public int Upvotes { get; set; }
-            public int Downvotes { get; set; }
-            public string? CurrentUserVote { get; set; } // "up", "down", or null
+            public int RatingCount { get; set; }
+            public double AvgUrgency { get; set; }
+            public double AvgRelevance { get; set; }
+            public double AvgFeasibility { get; set; }
+            public double CompositeScore { get; set; }
+            public int MyUrgency { get; set; }
+            public int MyRelevance { get; set; }
+            public int MyFeasibility { get; set; }
             public List<string> AttachmentPaths { get; set; } = new();
             public List<string> AttachmentTypes { get; set; } = new();
         }
@@ -48,27 +56,22 @@ namespace VoxAngelos.Pages.User
                 .Where(r => r.Status == "Published")
                 .Include(r => r.Citizen).ThenInclude(u => u.UserProfile)
                 .Include(r => r.Attachments)
-                .Include(r => r.Votes)
                 .OrderByDescending(r => r.ReviewedAt)
                 .ToListAsync();
 
-            var userVotes = await _db.RecommendationVotes
-                .Where(v => v.CitizenId == CurrentUserId)
-                .ToDictionaryAsync(v => v.RecommendationId, v => v.VoteType);
+            var myRatings = await _ratingService.GetMyRatingsAsync(CurrentUserId);
 
-            Recommendations = recs.Select(r => MapToViewModel(r, userVotes)).ToList();
+            Recommendations = recs.Select(r => MapToViewModel(r, myRatings)).ToList();
 
-            TopVotes = recs
-                .OrderByDescending(r => r.Upvotes)
-                .Take(10)
-                .Select(r => MapToViewModel(r, userVotes))
-                .ToList();
+            var topRated = await _ratingService.GetTopRecommendationsAsync(forLgu: false);
+            TopRated = topRated.Select(r => MapToViewModel(r, myRatings)).ToList();
         }
 
-        private RecommendationCardViewModel MapToViewModel(
-            Recommendation r,
-            Dictionary<int, string> userVotes)
+        private static RecommendationCardViewModel MapToViewModel(
+            Recommendation r, Dictionary<int, RecommendationRating> myRatings)
         {
+            myRatings.TryGetValue(r.Id, out var mine);
+
             return new RecommendationCardViewModel
             {
                 Id = r.Id,
@@ -80,65 +83,50 @@ namespace VoxAngelos.Pages.User
                 Title = r.Title,
                 Description = r.Description,
                 ApprovedAt = r.ReviewedAt ?? r.SubmittedAt,
-                Upvotes = r.Upvotes,
-                Downvotes = r.Downvotes,
-                CurrentUserVote = userVotes.TryGetValue(r.Id, out var v) ? v : null,
+                RatingCount = r.RatingCount,
+                AvgUrgency = r.AvgUrgency,
+                AvgRelevance = r.AvgRelevance,
+                AvgFeasibility = r.AvgFeasibility,
+                CompositeScore = r.CompositeScore,
+                MyUrgency = mine?.UrgencyStars ?? 0,
+                MyRelevance = mine?.RelevanceStars ?? 0,
+                MyFeasibility = mine?.FeasibilityStars ?? 0,
                 AttachmentPaths = r.Attachments.Select(a => a.FilePath).ToList(),
                 AttachmentTypes = r.Attachments.Select(a => a.FileType).ToList()
             };
         }
 
-        public async Task<IActionResult> OnPostVoteAsync(int recommendationId, string voteType)
+        public async Task<IActionResult> OnPostRateAsync(
+            int recommendationId, int urgencyStars, int relevanceStars, int feasibilityStars)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            var rec = await _db.Recommendations.FindAsync(recommendationId);
+            try
+            {
+                await _ratingService.SubmitRatingAsync(
+                    recommendationId, user.Id, urgencyStars, relevanceStars, feasibilityStars);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+            var rec = await _db.Recommendations.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == recommendationId);
             if (rec == null) return NotFound();
-
-            var existing = await _db.RecommendationVotes
-                .FirstOrDefaultAsync(v => v.RecommendationId == recommendationId && v.CitizenId == user.Id);
-
-            string? finalVote = null;
-
-            if (existing != null)
-            {
-                if (existing.VoteType == voteType)
-                {
-                    _db.RecommendationVotes.Remove(existing);
-                    if (voteType == "up") rec.Upvotes = Math.Max(0, rec.Upvotes - 1);
-                    else rec.Downvotes = Math.Max(0, rec.Downvotes - 1);
-                    finalVote = null;
-                }
-                else
-                {
-                    if (existing.VoteType == "up") { rec.Upvotes = Math.Max(0, rec.Upvotes - 1); rec.Downvotes++; }
-                    else { rec.Downvotes = Math.Max(0, rec.Downvotes - 1); rec.Upvotes++; }
-                    existing.VoteType = voteType;
-                    finalVote = voteType;
-                }
-            }
-            else
-            {
-                _db.RecommendationVotes.Add(new RecommendationVote
-                {
-                    RecommendationId = recommendationId,
-                    CitizenId = user.Id,
-                    VoteType = voteType
-                });
-                if (voteType == "up") rec.Upvotes++;
-                else rec.Downvotes++;
-                finalVote = voteType;
-            }
-
-            await _db.SaveChangesAsync();
 
             return new JsonResult(new
             {
                 success = true,
-                upvotes = rec.Upvotes,
-                downvotes = rec.Downvotes,
-                userVote = finalVote
+                ratingCount = rec.RatingCount,
+                avgUrgency = Math.Round(rec.AvgUrgency, 1),
+                avgRelevance = Math.Round(rec.AvgRelevance, 1),
+                avgFeasibility = Math.Round(rec.AvgFeasibility, 1),
+                compositeScore = Math.Round(rec.CompositeScore, 1),
+                myUrgency = urgencyStars,
+                myRelevance = relevanceStars,
+                myFeasibility = feasibilityStars
             });
         }
     }

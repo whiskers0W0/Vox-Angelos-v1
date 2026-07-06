@@ -139,6 +139,8 @@ namespace VoxAngelos.Pages.User
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage("/Login");
 
+            var classificationText = $"{RecTitle} {RecDescription} {RecJustification}";
+
             var recommendation = new Recommendation
             {
                 CitizenId = user.Id,
@@ -150,6 +152,9 @@ namespace VoxAngelos.Pages.User
                 Beneficiaries = RecBeneficiaries,
                 EstimatedPeopleAffected = RecPeopleAffected,
                 Status = "Pending",
+                AssignedOffice = await _classifier.ClassifyAsync(
+                    classificationText,
+                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"])),
                 SubmittedAt = DateTime.UtcNow
             };
 

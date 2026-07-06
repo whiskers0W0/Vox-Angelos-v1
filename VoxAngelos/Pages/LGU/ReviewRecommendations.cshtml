@@ -13,6 +13,11 @@
     <h1 class="page-title">Review Recommendations</h1>
 </div>
 
+@if (TempData["RecError"] != null)
+{
+    <div class="alert-error">@TempData["RecError"]</div>
+}
+
 <div class="feed-filter-group">
     @foreach (var f in new[] { "Pending", "Published", "Rejected", "All" })
     {
@@ -40,6 +45,7 @@ else
                 <div class="rec-card-header">
                     <div>
                         <span class="rec-category">@rec.Category</span>
+                        <span class="rec-category" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span>
                         <h3 class="rec-title">@rec.Title</h3>
                         <span class="rec-meta">by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span>
                     </div>

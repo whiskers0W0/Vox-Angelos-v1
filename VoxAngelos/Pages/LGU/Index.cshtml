@@ -23,6 +23,11 @@
     <h1 class="page-title">Citizen Concerns</h1>
 </div>
 
+@if (TempData["ConcernError"] != null)
+{
+    <div class="alert-error">@TempData["ConcernError"]</div>
+}
+
 <!-- ── Feed header ── -->
 <div class="feed-filter-group">
     @{
@@ -67,6 +72,27 @@
                     Category: <span class="meta-value">@concern.Category</span>
                 </span>
             </div>
+
+            @if (concern.RawCategory != null)
+            {
+                <div class="classification-feedback">
+                    @if (concern.HasFeedback)
+                    {
+                        <span class="feedback-logged">✓ Classification reviewed</span>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page="/LGU/Index" asp-page-handler="ConfirmCategory" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="concernId" value="@concern.Id" />
+                            <button type="submit" class="btn-feedback-correct">✓ Category Correct</button>
+                        </form>
+                        <button type="button" class="btn-feedback-wrong" data-bs-toggle="modal"
+                                data-bs-target="#reassignModal"
+                                onclick="openReassignModal(@concern.Id)">✕ Wrong Department</button>
+                    }
+                </div>
+            }
 
             <div class="card-body">
                 <p class="concern-excerpt">@concern.Description</p>
@@ -168,6 +194,41 @@
 </div>
 
 
+<!-- ── Reassign Category Modal ── -->
+<div class="modal fade modal-va" id="reassignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header justify-content-center border-0 pb-0">
+                <div class="modal-title text-center">Reassign to Correct Department</div>
+                <button type="button" class="btn-close position-absolute end-0 me-3"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="post" asp-page="/LGU/Index" asp-page-handler="ReassignCategory">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="concernId" id="reassign-concern-id" />
+
+                <div class="modal-body pt-3">
+                    <label class="form-label text-center w-100"
+                           style="color: var(--accent); font-weight: 600;">Correct Department</label>
+                    <select class="form-select" name="newCategory" required>
+                        <option value="" disabled selected>Select department...</option>
+                        @foreach (var dept in Model.Departments)
+                        {
+                            <option value="@dept">@dept</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="button" class="btn-va-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-va-primary">Reassign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Lightbox Modal -->
 <div id="lightboxOverlay" onclick="closeLightbox()"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
@@ -187,6 +248,11 @@
 @section Scripts {
     <script>
         let activeCard = null;
+
+        // ── Open Reassign Category Modal ──
+        function openReassignModal(concernId) {
+            document.getElementById('reassign-concern-id').value = concernId;
+        }
 
         // ── Open Status Modal ──
         function openStatusModal(concernId, citizenName) {

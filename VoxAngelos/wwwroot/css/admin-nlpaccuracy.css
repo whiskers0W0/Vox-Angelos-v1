@@ -1,0 +1,95 @@
+.threshold-banner {
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    font-size: 14.5px;
+    font-weight: 600;
+}
+
+.threshold-met {
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #86efac;
+}
+
+.threshold-unmet {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-main, #1a1a1a);
+    margin: 28px 0 12px;
+}
+
+.table-container {
+    background: var(--card-bg, #fff);
+    border-radius: 16px;
+    padding: 12px;
+    overflow-x: auto;
+    width: 100%;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+    .data-table thead th {
+        padding: 16px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted, #666);
+        border-bottom: 2px solid #ebf0f7;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .data-table tbody td {
+        padding: 16px;
+        font-size: 14.5px;
+        color: var(--text-main, #1a1a1a);
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+.empty-row {
+    text-align: center;
+    color: var(--text-muted, #666);
+    padding: 24px !important;
+}
+
+.concern-excerpt-cell {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.accuracy-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.pill-good {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.pill-bad {
+    background: #fee2e2;
+    color: #dc2626;
+}

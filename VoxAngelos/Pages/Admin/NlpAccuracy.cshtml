@@ -1,0 +1,108 @@
+@page
+@model VoxAngelos.Pages.Admin.NlpAccuracyModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "NLP Accuracy";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin-dashboard.css" />
+    <link rel="stylesheet" href="~/css/admin-nlpaccuracy.css" asp-append-version="true" />
+}
+
+<div class="content-header">
+    <h1 class="page-title">NLP Classification Accuracy</h1>
+</div>
+
+<div class="threshold-banner @(Model.ThresholdMet ? "threshold-met" : "threshold-unmet")">
+    @if (Model.TotalReviewed == 0)
+    {
+        <span>No classification feedback logged yet. Accuracy will appear once LGU staff start confirming/reassigning concern categories.</span>
+    }
+    else if (Model.ThresholdMet)
+    {
+        <span>✓ Target reached — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</span>
+    }
+    else
+    {
+        <span>Below target — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</span>
+    }
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">@Model.TotalReviewed</div>
+        <div class="stat-label">Total Reviewed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" style="color:#16a34a;">@Model.CorrectCount</div>
+        <div class="stat-label">Correct on First Try</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" style="color:#dc2626;">@Model.IncorrectCount</div>
+        <div class="stat-label">Misclassified</div>
+    </div>
+</div>
+
+<h2 class="section-title">Accuracy by Department</h2>
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Department</th>
+                <th>Reviewed</th>
+                <th>Correct</th>
+                <th>Accuracy</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.ByDepartment.Any())
+            {
+                <tr><td colspan="4" class="empty-row">No data yet.</td></tr>
+            }
+            @foreach (var dept in Model.ByDepartment)
+            {
+                <tr>
+                    <td>@dept.Department</td>
+                    <td>@dept.Total</td>
+                    <td>@dept.Correct</td>
+                    <td>
+                        <span class="accuracy-pill @(dept.AccuracyPercent >= VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent ? "pill-good" : "pill-bad")">
+                            @dept.AccuracyPercent%
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h2 class="section-title">Recent Misclassifications</h2>
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Concern</th>
+                <th>Guessed</th>
+                <th>Actual</th>
+                <th>Reviewed By</th>
+                <th>When</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.RecentMisclassifications.Any())
+            {
+                <tr><td colspan="5" class="empty-row">No misclassifications logged yet.</td></tr>
+            }
+            @foreach (var m in Model.RecentMisclassifications)
+            {
+                <tr>
+                    <td class="concern-excerpt-cell" title="@m.Description">#@m.ConcernId — @(m.Description.Length > 60 ? m.Description[..60] + "…" : m.Description)</td>
+                    <td>@m.GuessedCategory</td>
+                    <td>@m.ActualCategory</td>
+                    <td>@m.ReviewedByEmail</td>
+                    <td>@m.ReviewedAt.ToString("MMM dd, yyyy h:mm tt")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

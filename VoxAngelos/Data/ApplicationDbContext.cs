@@ -19,8 +19,10 @@ namespace VoxAngelos.Data
         public DbSet<Concern> Concerns { get; set; }
         public DbSet<ConcernAttachment> ConcernAttachments { get; set; }
         public DbSet<Recommendation> Recommendations { get; set; }
-        public DbSet<RecommendationVote> RecommendationVotes { get; set; }
+        public DbSet<RecommendationRating> RecommendationRatings { get; set; }
         public DbSet<RecommendationAttachment> RecommendationAttachments { get; set; }
+        public DbSet<ClassificationCorrection> ClassificationCorrections { get; set; }
+        public DbSet<LearnedKeyword> LearnedKeywords { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -93,21 +95,57 @@ namespace VoxAngelos.Data
                 .HasForeignKey(r => r.CitizenId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Entity<RecommendationVote>()
-                .HasOne(v => v.Recommendation)
-                .WithMany(r => r.Votes)
-                .HasForeignKey(v => v.RecommendationId)
+            builder.Entity<RecommendationRating>()
+                .HasOne(r => r.Recommendation)
+                .WithMany(rec => rec.Ratings)
+                .HasForeignKey(r => r.RecommendationId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Entity<RecommendationVote>()
-                .HasIndex(v => new { v.RecommendationId, v.CitizenId })
+            builder.Entity<RecommendationRating>()
+                .HasOne(r => r.Citizen)
+                .WithMany()
+                .HasForeignKey(r => r.CitizenId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // One rating per citizen per recommendation — re-rating upserts this row
+            // instead of accumulating duplicates.
+            builder.Entity<RecommendationRating>()
+                .HasIndex(r => new { r.RecommendationId, r.CitizenId })
                 .IsUnique();
+
+            // The leaderboard reads sorted by this column directly (see
+            // RecommendationRatingService) — index it so that stays cheap even
+            // without the in-memory cache layer.
+            builder.Entity<Recommendation>()
+                .HasIndex(r => r.CompositeScore);
 
             builder.Entity<RecommendationAttachment>()
                 .HasOne(a => a.Recommendation)
                 .WithMany(r => r.Attachments)
                 .HasForeignKey(a => a.RecommendationId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ClassificationCorrection>()
+                .HasOne(cc => cc.Concern)
+                .WithMany()
+                .HasForeignKey(cc => cc.ConcernId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ClassificationCorrection>()
+                .HasOne(cc => cc.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(cc => cc.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // A concern can only ever be reviewed once — enforced at the DB level so a
+            // race between two LGU reviewers can't produce two conflicting verdicts.
+            builder.Entity<ClassificationCorrection>()
+                .HasIndex(cc => cc.ConcernId)
+                .IsUnique();
+
+            builder.Entity<LearnedKeyword>()
+                .HasIndex(lk => new { lk.Word, lk.Department })
+                .IsUnique();
         }
     }
 }

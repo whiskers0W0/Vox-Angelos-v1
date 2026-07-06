@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model VoxAngelos.Pages.User.IndexModel
 @{
     Layout = "_CitizenLayout";
@@ -30,7 +30,7 @@
 <div class="tab-group">
     <div class="tab-indicator"></div>
     <button class="tab-btn active" data-view="proposals">Citizen Recommendations</button>
-    <button class="tab-btn" data-view="leaderboard">Top Votes</button>
+    <button class="tab-btn" data-view="leaderboard">Top Rated</button>
 </div>
 
 <!-- Proposals View -->
@@ -110,22 +110,7 @@
                     </div>
                 }
 
-                <div class="vote-bar">
-                    <button class="vote-btn upvote @(rec.CurrentUserVote == "up" ? "voted" : "")"
-                            data-rec-id="@rec.Id" data-vote-type="up" aria-label="Upvote">
-                        <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
-                            <path d="M12 3 Q12.8 3 13.3 3.7 L21.2 18.5 Q21.6 19.3 21.1 20 Q20.6 20.7 19.7 20.7 H4.3 Q3.4 20.7 2.9 20 Q2.4 19.3 2.8 18.5 L10.7 3.7 Q11.2 3 12 3 Z" />
-                        </svg>
-                        <span class="upvote-count">@rec.Upvotes</span>
-                    </button>
-                    <button class="vote-btn downvote @(rec.CurrentUserVote == "down" ? "voted" : "")"
-                            data-rec-id="@rec.Id" data-vote-type="down" aria-label="Downvote">
-                        <svg viewBox="0 0 24 24" fill="none" stroke-width="3">
-                            <path d="M12 21 Q11.2 21 10.7 20.3 L2.8 5.5 Q2.4 4.7 2.9 4 Q3.4 3.3 4.3 3.3 H19.7 Q20.6 3.3 21.1 4 Q21.6 4.7 21.2 5.5 L13.3 20.3 Q12.8 21 12 21 Z" />
-                        </svg>
-                        <span class="downvote-count">@rec.Downvotes</span>
-                    </button>
-                </div>
+                @await Html.PartialAsync("_RatingWidget", rec)
             </div>
         }
     </div>
@@ -136,17 +121,16 @@
     <div class="leaderboard-wrapper">
         <div class="leaderboard-feed">
 
-            @if (!Model.TopVotes.Any())
+            @if (!Model.TopRated.Any())
             {
                 <div style="text-align:center;padding:60px;color:#888;">
                     <p>No recommendations yet.</p>
                 </div>
             }
 
-            @for (int rank = 0; rank < Model.TopVotes.Count; rank++)
+            @for (int rank = 0; rank < Model.TopRated.Count; rank++)
             {
-                var rec = Model.TopVotes[rank];
-                var isUp = rank == 0 || rec.Upvotes >= (rank > 0 ? Model.TopVotes[rank - 1].Upvotes : 0);
+                var rec = Model.TopRated[rank];
                 <div class="leaderboard-item">
                     <div class="rank-col">
                         <div class="rank-arrow @(rank == 0 ? "up" : "down")">@(rank == 0 ? "▲" : "▼")</div>
@@ -214,9 +198,11 @@
                             </div>
                         }
 
-                        <div class="leaderboard-votes">
-                            <span class="leader-upvotes">@rec.Upvotes Upvotes</span>
-                            <span class="leader-downvotes">@rec.Downvotes Downvotes</span>
+                        <div class="leaderboard-votes rating-summary">
+                            <span class="rating-chip urgency">Urgency @rec.AvgUrgency.ToString("0.0")★</span>
+                            <span class="rating-chip relevance">Relevance @rec.AvgRelevance.ToString("0.0")★</span>
+                            <span class="rating-chip feasibility">Feasibility @rec.AvgFeasibility.ToString("0.0")★</span>
+                            <span class="rating-count">@rec.RatingCount rating@(rec.RatingCount == 1 ? "" : "s")</span>
                         </div>
                     </div>
                 </div>
@@ -230,20 +216,20 @@
                     <svg class="trophy-icon" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M18 2H6a2 2 0 00-2 2v2c0 2.21 1.79 4 4 4h1v2c0 2.33 1.59 4.28 3.74 4.83C12.3 19.46 11 21.08 11 23h2c0-1.92-1.3-3.54-1.74-4.17 2.15-.55 3.74-2.5 3.74-4.83v-2h1c2.21 0 4-1.79 4-4V4a2 2 0 00-2-2zM6 8c-1.1 0-2-.9-2-2V4h2v4zm14-2c0 1.1-.9 2-2 2V4h2v2z" />
                     </svg>
-                    <h2 class="ranking-title">TOP 10 RECOMMENDATIONS <br /> (ALL TIME)</h2>
+                    <h2 class="ranking-title">TOP 10 RECOMMENDATIONS <br /> (MOST URGENT / RELEVANT)</h2>
                 </div>
                 <div class="ranking-list">
-                    @for (int i = 0; i < Model.TopVotes.Count; i++)
+                    @for (int i = 0; i < Model.TopRated.Count; i++)
                     {
-                        var r = Model.TopVotes[i];
+                        var r = Model.TopRated[i];
                         var shortTitle = r.Title.Length > 22 ? r.Title.Substring(0, 22) + "..." : r.Title;
                         <div class="mini-rank-item">
                             <span class="mini-number">@(i + 1)</span>
                             <div class="mini-content">
                                 <p class="mini-title">@shortTitle</p>
                                 <div class="mini-votes">
-                                    <span class="up">@r.Upvotes ▲ <small>votes</small></span>
-                                    <span class="down">@r.Downvotes ▼ <small>votes</small></span>
+                                    <span class="up">@r.CompositeScore.ToString("0.0")★ <small>score</small></span>
+                                    <span class="down">@r.RatingCount <small>ratings</small></span>
                                 </div>
                             </div>
                         </div>
@@ -293,39 +279,73 @@
             });
         });
 
-        // Voting
+        // Multi-category star rating
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
                    ?? document.cookie.split('; ').find(r => r.startsWith('XSRF-TOKEN'))?.split('=')[1];
 
-        document.querySelectorAll('.vote-btn').forEach(btn => {
+        function paintStars(starsEl, upTo) {
+            starsEl.querySelectorAll('.star').forEach(star => {
+                star.classList.toggle('filled', Number(star.dataset.value) <= upTo);
+            });
+        }
+
+        document.querySelectorAll('.rating-widget .stars').forEach(starsEl => {
+            starsEl.querySelectorAll('.star').forEach(star => {
+                star.addEventListener('mouseenter', () => paintStars(starsEl, Number(star.dataset.value)));
+                star.addEventListener('click', () => {
+                    starsEl.dataset.selected = star.dataset.value;
+                    paintStars(starsEl, Number(star.dataset.value));
+                });
+            });
+            starsEl.addEventListener('mouseleave', () => paintStars(starsEl, Number(starsEl.dataset.selected || 0)));
+        });
+
+        document.querySelectorAll('.rating-widget .btn-submit-rating').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const recId = btn.dataset.recId;
-                const voteType = btn.dataset.voteType;
-                const card = btn.closest('.proposal-card');
+                const widget = btn.closest('.rating-widget');
+                const feedback = widget.querySelector('.rating-feedback');
+                const recId = widget.dataset.recId;
+                const groups = widget.querySelectorAll('.stars');
+
+                const values = {};
+                for (const g of groups) {
+                    const selected = Number(g.dataset.selected || 0);
+                    if (selected < 1) {
+                        feedback.textContent = 'Please rate all three categories before submitting.';
+                        return;
+                    }
+                    values[g.dataset.category] = selected;
+                }
 
                 const formData = new FormData();
                 formData.append('recommendationId', recId);
-                formData.append('voteType', voteType);
+                formData.append('urgencyStars', values.urgency);
+                formData.append('relevanceStars', values.relevance);
+                formData.append('feasibilityStars', values.feasibility);
                 formData.append('__RequestVerificationToken', token);
 
-                const res = await fetch('?handler=Vote', {
-                    method: 'POST',
-                    body: formData
-                });
+                btn.disabled = true;
+                feedback.textContent = 'Submitting…';
 
-                if (!res.ok) return;
-                const data = await res.json();
+                try {
+                    const res = await fetch('?handler=Rate', { method: 'POST', body: formData });
+                    if (!res.ok) {
+                        feedback.textContent = 'Could not submit your rating. Please try again.';
+                        return;
+                    }
+                    const data = await res.json();
 
-                // Update counts
-                card.querySelector('.upvote-count').textContent = data.upvotes;
-                card.querySelector('.downvote-count').textContent = data.downvotes;
+                    widget.querySelector('.composite-score').textContent = data.compositeScore.toFixed(1) + '★';
+                    widget.querySelector('.rating-count-label').textContent =
+                        `(${data.ratingCount} rating${data.ratingCount === 1 ? '' : 's'})`;
+                    widget.querySelector('[data-avg-for="urgency"]').textContent = `avg ${data.avgUrgency.toFixed(1)}`;
+                    widget.querySelector('[data-avg-for="relevance"]').textContent = `avg ${data.avgRelevance.toFixed(1)}`;
+                    widget.querySelector('[data-avg-for="feasibility"]').textContent = `avg ${data.avgFeasibility.toFixed(1)}`;
 
-                setTimeout(() => location.reload(), 300); //refreshes the page so the top vote updates
-                // Update voted state
-                const upBtn = card.querySelector('.upvote');
-                const downBtn = card.querySelector('.downvote');
-                upBtn.classList.toggle('voted', data.userVote === 'up');
-                downBtn.classList.toggle('voted', data.userVote === 'down');
+                    feedback.textContent = 'Thanks for rating!';
+                } finally {
+                    btn.disabled = false;
+                }
             });
         });
     </script>

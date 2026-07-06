@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.LGU
 {
@@ -12,12 +13,16 @@ namespace VoxAngelos.Pages.LGU
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ConcernClassificationService _classifier;
 
-        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ConcernClassificationService classifier)
         {
             _db = db;
             _userManager = userManager;
+            _classifier = classifier;
         }
+
+        public string[] Departments => ConcernClassificationService.Departments;
 
         public List<ConcernViewModel> Concerns { get; set; } = new();
         public string CurrentFilter { get; set; } = "Unresolved";
@@ -46,6 +51,12 @@ namespace VoxAngelos.Pages.LGU
                 query = query.Where(c => c.Status == CurrentFilter);
             }
 
+            var reviewedConcernIds = (await _db.ClassificationCorrections
+                .Select(cc => cc.ConcernId)
+                .Distinct()
+                .ToListAsync())
+                .ToHashSet();
+
             Concerns = await query
                 .OrderByDescending(c => c.SubmittedAt)
                 .Select(c => new ConcernViewModel
@@ -59,6 +70,7 @@ namespace VoxAngelos.Pages.LGU
                         : "??",
                     Description = c.Description,
                     Category = c.Category ?? "Uncategorized",
+                    RawCategory = c.Category,
                     Status = c.Status,
                     LocationName = c.LocationName ?? "No location provided",
                     Latitude = c.Latitude,
@@ -70,31 +82,76 @@ namespace VoxAngelos.Pages.LGU
                         .FirstOrDefault()
                 })
                 .ToListAsync();
+
+            foreach (var concern in Concerns)
+                concern.HasFeedback = reviewedConcernIds.Contains(concern.Id);
+        }
+
+        public async Task<IActionResult> OnPostConfirmCategoryAsync(int concernId)
+        {
+            var concern = await _db.Concerns.FindAsync(concernId);
+            if (concern == null || string.IsNullOrEmpty(concern.Category)) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            try
+            {
+                await _classifier.RecordCorrectionAsync(concernId, concern.Category, wasCorrect: true, user!.Id);
+            }
+            catch (ConcernAlreadyReviewedException)
+            {
+                TempData["ConcernError"] = "This concern was already reviewed by another staff member.";
+            }
+
+            return RedirectToPage(new { filter = CurrentFilter });
+        }
+
+        public async Task<IActionResult> OnPostReassignCategoryAsync(int concernId, string newCategory)
+        {
+            if (!ConcernClassificationService.Departments.Contains(newCategory))
+                return BadRequest("Unknown department.");
+
+            var user = await _userManager.GetUserAsync(User);
+            try
+            {
+                await _classifier.RecordCorrectionAsync(concernId, newCategory, wasCorrect: false, user!.Id);
+            }
+            catch (ConcernAlreadyReviewedException)
+            {
+                TempData["ConcernError"] = "This concern was already reviewed by another staff member.";
+            }
+
+            return RedirectToPage(new { filter = CurrentFilter });
         }
 
         public async Task<IActionResult> OnPostUpdateStatusAsync(
             int concernId, string status, string? notes)
         {
-            var concern = await _db.Concerns.FindAsync(concernId);
-            if (concern == null) return NotFound();
+            // Guarded by current Status so two staff updating the same concern at once
+            // can't overwrite each other — only the first update lands, atomically.
+            var updated = await _db.Concerns
+                .Where(c => c.Id == concernId && c.Status != "Resolved")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.Status, status)
+                    .SetProperty(c => c.LguNotes, notes)
+                    .SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
 
-            concern.Status = status;
-            concern.LguNotes = notes;
-            concern.UpdatedAt = DateTime.UtcNow;
+            if (updated == 0)
+                TempData["ConcernError"] = "This concern could not be updated — it may already be resolved or no longer exist.";
 
-            await _db.SaveChangesAsync();
             return RedirectToPage(new { filter = CurrentFilter });
         }
 
         public async Task<IActionResult> OnPostChooseConcernAsync(int concernId)
         {
-            var concern = await _db.Concerns.FindAsync(concernId);
-            if (concern == null) return NotFound();
+            var updated = await _db.Concerns
+                .Where(c => c.Id == concernId && c.Status == "Unresolved")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.Status, "Chosen")
+                    .SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
 
-            concern.Status = "Chosen";
-            concern.UpdatedAt = DateTime.UtcNow;
+            if (updated == 0)
+                TempData["ConcernError"] = "This concern was already claimed by another staff member.";
 
-            await _db.SaveChangesAsync();
             return RedirectToPage(new { filter = "Chosen" });
         }
     }
@@ -106,6 +163,8 @@ namespace VoxAngelos.Pages.LGU
         public string Initials { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
+        public string? RawCategory { get; set; }
+        public bool HasFeedback { get; set; }
         public string Status { get; set; } = string.Empty;
         public string LocationName { get; set; } = string.Empty;
         public double? Latitude { get; set; }

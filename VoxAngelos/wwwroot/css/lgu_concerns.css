@@ -1,4 +1,15 @@
 ﻿
+.alert-error {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
 .content-header {
     display: flex;
     align-items: center;
@@ -201,6 +212,49 @@
     .btn-dark-pill:hover {
         background: #1e3a8a;
     }
+
+/* ── Classification feedback ── */
+.classification-feedback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.feedback-logged {
+    font-size: 12.5px;
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.btn-feedback-correct, .btn-feedback-wrong {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.btn-feedback-correct {
+    background: #dcfce7;
+    color: #16a34a;
+    border-color: #86efac;
+}
+
+.btn-feedback-correct:hover {
+    background: #bbf7d0;
+}
+
+.btn-feedback-wrong {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+.btn-feedback-wrong:hover {
+    background: #fecaca;
+}
 
 /* ── Update Status button ── */
 .btn-update-status {

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VoxAngelos.Data;
@@ -11,9 +12,11 @@ using VoxAngelos.Data;
 namespace VoxAngelos.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260704065318_MakeClassificationCorrectionConcernIdUnique")]
+    partial class MakeClassificationCorrectionConcernIdUnique
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -434,15 +437,6 @@ namespace VoxAngelos.Migrations
                     b.Property<string>("AssignedOffice")
                         .HasColumnType("text");
 
-                    b.Property<double>("AvgFeasibility")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("AvgRelevance")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("AvgUrgency")
-                        .HasColumnType("double precision");
-
                     b.Property<string>("Beneficiaries")
                         .IsRequired()
                         .HasColumnType("text");
@@ -455,12 +449,12 @@ namespace VoxAngelos.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<double>("CompositeScore")
-                        .HasColumnType("double precision");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("Downvotes")
+                        .HasColumnType("integer");
 
                     b.Property<int>("EstimatedPeopleAffected")
                         .HasColumnType("integer");
@@ -475,9 +469,6 @@ namespace VoxAngelos.Migrations
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int>("RatingCount")
-                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone");
@@ -496,11 +487,12 @@ namespace VoxAngelos.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Upvotes")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CitizenId");
-
-                    b.HasIndex("CompositeScore");
 
                     b.ToTable("Recommendations");
                 });
@@ -534,7 +526,7 @@ namespace VoxAngelos.Migrations
                     b.ToTable("RecommendationAttachments");
                 });
 
-            modelBuilder.Entity("VoxAngelos.Data.RecommendationRating", b =>
+            modelBuilder.Entity("VoxAngelos.Data.RecommendationVote", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -546,32 +538,22 @@ namespace VoxAngelos.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("FeasibilityStars")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("RatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int>("RecommendationId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("RelevanceStars")
-                        .HasColumnType("integer");
+                    b.Property<string>("VoteType")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<DateTime?>("UpdatedAt")
+                    b.Property<DateTime>("VotedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("UrgencyStars")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("CitizenId");
 
                     b.HasIndex("RecommendationId", "CitizenId")
                         .IsUnique();
 
-                    b.ToTable("RecommendationRatings");
+                    b.ToTable("RecommendationVotes");
                 });
 
             modelBuilder.Entity("VoxAngelos.Data.UserFaceVerification", b =>
@@ -886,21 +868,13 @@ namespace VoxAngelos.Migrations
                     b.Navigation("Recommendation");
                 });
 
-            modelBuilder.Entity("VoxAngelos.Data.RecommendationRating", b =>
+            modelBuilder.Entity("VoxAngelos.Data.RecommendationVote", b =>
                 {
-                    b.HasOne("VoxAngelos.Data.ApplicationUser", "Citizen")
-                        .WithMany()
-                        .HasForeignKey("CitizenId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("VoxAngelos.Data.Recommendation", "Recommendation")
-                        .WithMany("Ratings")
+                        .WithMany("Votes")
                         .HasForeignKey("RecommendationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Citizen");
 
                     b.Navigation("Recommendation");
                 });
@@ -1000,7 +974,7 @@ namespace VoxAngelos.Migrations
                 {
                     b.Navigation("Attachments");
 
-                    b.Navigation("Ratings");
+                    b.Navigation("Votes");
                 });
 
             modelBuilder.Entity("VoxAngelos.Data.UserIdentityDocument", b =>

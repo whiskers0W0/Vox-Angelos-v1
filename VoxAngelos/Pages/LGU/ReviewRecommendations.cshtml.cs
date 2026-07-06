@@ -28,6 +28,7 @@ namespace VoxAngelos.Pages.LGU
             public string CitizenName { get; set; } = string.Empty;
             public string Justification { get; set; } = string.Empty;
             public string Category { get; set; } = string.Empty;
+            public string? AssignedOffice { get; set; }
             public string Title { get; set; } = string.Empty;
             public string Location { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
@@ -45,10 +46,19 @@ namespace VoxAngelos.Pages.LGU
         {
             CurrentFilter = filter;
 
+            var user = await _userManager.GetUserAsync(User);
+            var userDepartment = user?.Department;
+
             var query = _db.Recommendations
                 .Include(r => r.Citizen).ThenInclude(u => u.UserProfile)
                 .Include(r => r.Attachments)
                 .AsQueryable();
+
+            // Show recommendations whose classified office matches this LGU's department
+            if (!string.IsNullOrEmpty(userDepartment))
+            {
+                query = query.Where(r => r.AssignedOffice == userDepartment || r.AssignedOffice == null);
+            }
 
             if (filter != "All")
                 query = query.Where(r => r.Status == filter);
@@ -65,6 +75,7 @@ namespace VoxAngelos.Pages.LGU
                     : r.Citizen.Email ?? "Citizen",
                 Justification = r.Justification,
                 Category = r.Category,
+                AssignedOffice = r.AssignedOffice,
                 Title = r.Title,
                 Location = r.Location,
                 Description = r.Description,
@@ -81,31 +92,39 @@ namespace VoxAngelos.Pages.LGU
 
         public async Task<IActionResult> OnPostApproveAsync(int recommendationId, string? lguNotes)
         {
-            var rec = await _db.Recommendations.FindAsync(recommendationId);
-            if (rec == null) return NotFound();
-
             var user = await _userManager.GetUserAsync(User);
-            rec.Status = "Published";
-            rec.LguNotes = lguNotes;
-            rec.ReviewedByLguId = user?.Id;
-            rec.ReviewedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            // Guarded by current Status so two staff reviewing the same recommendation
+            // at once can't both "win" — only the first review is applied.
+            var updated = await _db.Recommendations
+                .Where(r => r.Id == recommendationId && r.Status == "Pending")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.Status, "Published")
+                    .SetProperty(r => r.LguNotes, lguNotes)
+                    .SetProperty(r => r.ReviewedByLguId, user!.Id)
+                    .SetProperty(r => r.ReviewedAt, DateTime.UtcNow));
+
+            if (updated == 0)
+                TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
+
             return RedirectToPage(new { filter = "Pending" });
         }
 
         public async Task<IActionResult> OnPostRejectAsync(int recommendationId, string? lguNotes)
         {
-            var rec = await _db.Recommendations.FindAsync(recommendationId);
-            if (rec == null) return NotFound();
-
             var user = await _userManager.GetUserAsync(User);
-            rec.Status = "Rejected";
-            rec.LguNotes = lguNotes;
-            rec.ReviewedByLguId = user?.Id;
-            rec.ReviewedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            var updated = await _db.Recommendations
+                .Where(r => r.Id == recommendationId && r.Status == "Pending")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.Status, "Rejected")
+                    .SetProperty(r => r.LguNotes, lguNotes)
+                    .SetProperty(r => r.ReviewedByLguId, user!.Id)
+                    .SetProperty(r => r.ReviewedAt, DateTime.UtcNow));
+
+            if (updated == 0)
+                TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
+
             return RedirectToPage(new { filter = "Pending" });
         }
     }

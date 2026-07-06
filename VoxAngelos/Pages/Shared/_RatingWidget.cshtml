@@ -1,0 +1,38 @@
+@model VoxAngelos.Pages.User.IndexModel.RecommendationCardViewModel
+
+@{
+    var categories = new (string Key, string Label, int Mine, double Avg)[]
+    {
+        ("urgency", "Urgency", Model.MyUrgency, Model.AvgUrgency),
+        ("relevance", "Relevance", Model.MyRelevance, Model.AvgRelevance),
+        ("feasibility", "Feasibility", Model.MyFeasibility, Model.AvgFeasibility),
+    };
+}
+
+<div class="rating-widget" data-rec-id="@Model.Id">
+    <div class="rating-summary-line">
+        <span class="composite-score">@Model.CompositeScore.ToString("0.0")★</span>
+        <span class="rating-count-label">(@Model.RatingCount rating@(Model.RatingCount == 1 ? "" : "s"))</span>
+    </div>
+
+    @foreach (var cat in categories)
+    {
+        <div class="rating-category">
+            <span class="category-label">@cat.Label</span>
+            <span class="stars" data-category="@cat.Key" data-selected="@cat.Mine">
+                @for (int s = 1; s <= 5; s++)
+                {
+                    <svg class="star @(s <= cat.Mine ? "filled" : "")" data-value="@s" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="12 2 15 9 22 9.5 17 14.5 18.5 21.5 12 17.8 5.5 21.5 7 14.5 2 9.5 9 9" />
+                    </svg>
+                }
+            </span>
+            <span class="category-avg" data-avg-for="@cat.Key">avg @cat.Avg.ToString("0.0")</span>
+        </div>
+    }
+
+    <div class="rating-actions">
+        <button type="button" class="btn-submit-rating">Submit Rating</button>
+        <span class="rating-feedback" role="status"></span>
+    </div>
+</div>

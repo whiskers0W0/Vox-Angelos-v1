@@ -69,10 +69,12 @@ namespace VoxAngelos.Pages.Admin
         public async Task<IActionResult> OnPostApproveAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
+            if (user != null && user.ApprovalStatus != "Approved")
             {
                 user.ApprovalStatus = "Approved";
-                await _userManager.UpdateAsync(user);
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                    TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
             }
             return RedirectToPage(new { filterStatus = FilterStatus });
         }
@@ -80,10 +82,12 @@ namespace VoxAngelos.Pages.Admin
         public async Task<IActionResult> OnPostRejectAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
+            if (user != null && user.ApprovalStatus != "Rejected")
             {
                 user.ApprovalStatus = "Rejected";
-                await _userManager.UpdateAsync(user);
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                    TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
             }
             return RedirectToPage(new { filterStatus = FilterStatus });
         }

@@ -1,9 +1,39 @@
 using Google.Cloud.Language.V1;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using VoxAngelos.Data;
 
 namespace VoxAngelos.Services
 {
+    // Thrown when two LGU staff try to log a verdict on the same concern at once —
+    // the unique index on ClassificationCorrection.ConcernId lets only one win.
+    public class ConcernAlreadyReviewedException(int concernId, Exception inner)
+        : Exception($"Concern {concernId} was already reviewed by another staff member.", inner)
+    {
+        public int ConcernId { get; } = concernId;
+    }
+
     public class ConcernClassificationService
     {
+        private readonly ApplicationDbContext _db;
+
+        public ConcernClassificationService(ApplicationDbContext db)
+        {
+            _db = db;
+        }
+
+        // Departments this classifier can route to — used to validate corrections.
+        public static readonly string[] Departments =
+            ["SWDO", "CEO", "CENRO", "ACDO", "PPTRO", "OSCA", "PWDAO"];
+
+        private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "the", "a", "an", "is", "are", "was", "were", "be", "been", "and", "or", "but",
+            "of", "to", "in", "on", "at", "for", "with", "this", "that", "it", "as", "by",
+            "there", "here", "have", "has", "had", "not", "no", "yes", "please", "very",
+            "ang", "ng", "sa", "at", "na", "po", "ay", "mga", "ito", "yan", "yung", "dahil",
+            "kasi", "para", "may", "wala", "din", "rin", "kami", "kayo", "sila", "ako", "ikaw"
+        };
         // Maps Google NLP category path segments → our 7 departments
         private static readonly (string Keyword, string Department)[] GoogleCategoryMap =
         [
@@ -242,14 +272,25 @@ namespace VoxAngelos.Services
 
         // ── Public API ────────────────────────────────────────────────────────
 
+        // A department must clear this net learned-weight score, with no tie, before
+        // it's trusted enough to skip Google/static classification entirely.
+        private const int MinConfidentLearnedScore = 2;
+
         /// <summary>
-        /// Primary: tries Google NLP when credentials are configured and text is
-        /// long enough (≥ 20 words). Falls back to local keyword scoring.
+        /// Primary: LGU-verified corrections win outright once they have a confident
+        /// signal for this text. Otherwise tries Google NLP (≥ 20 words), then falls
+        /// back to local keyword scoring blended with learned weights.
         /// </summary>
         public async Task<string?> ClassifyAsync(string description, string? credentialsPath = null)
         {
             if (string.IsNullOrWhiteSpace(description))
                 return null;
+
+            var learned = await LoadLearnedWeightsAsync();
+
+            var confidentLearnedResult = ClassifyFromLearnedWeightsOnly(description, learned);
+            if (confidentLearnedResult != null)
+                return confidentLearnedResult;
 
             // Google NLP ClassifyText requires ≥ 20 tokens
             var wordCount = description.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
@@ -260,13 +301,47 @@ namespace VoxAngelos.Services
                     return googleResult;
             }
 
-            return Classify(description);
+            return Classify(description, learned);
+        }
+
+        /// <summary>
+        /// Scores only human-verified learned keywords (no static list). Returns a
+        /// department solely when the top score clearly beats the runner-up and meets
+        /// a minimum bar — a single stray correction shouldn't override everything.
+        /// </summary>
+        private static string? ClassifyFromLearnedWeightsOnly(
+            string description, IReadOnlyDictionary<string, Dictionary<string, int>> learnedWeights)
+        {
+            if (string.IsNullOrWhiteSpace(description) || learnedWeights.Count == 0)
+                return null;
+
+            var lower = description.ToLowerInvariant();
+            var scores = new Dictionary<string, int>();
+
+            foreach (var (department, wordWeights) in learnedWeights)
+            {
+                int score = wordWeights
+                    .Where(ww => ww.Value > 0 && lower.Contains(ww.Key))
+                    .Sum(ww => ww.Value);
+                if (score > 0)
+                    scores[department] = score;
+            }
+
+            if (scores.Count == 0)
+                return null;
+
+            var ranked = scores.OrderByDescending(s => s.Value).ToList();
+            var isConfident = ranked[0].Value >= MinConfidentLearnedScore
+                && (ranked.Count == 1 || ranked[0].Value > ranked[1].Value);
+
+            return isConfident ? ranked[0].Key : null;
         }
 
         /// <summary>
         /// Local keyword-only classifier — no network call, always available.
+        /// Scores the static keyword lists plus any learned weights from LGU feedback.
         /// </summary>
-        public string? Classify(string description)
+        public string? Classify(string description, IReadOnlyDictionary<string, Dictionary<string, int>>? learnedWeights = null)
         {
             if (string.IsNullOrWhiteSpace(description))
                 return null;
@@ -281,9 +356,114 @@ namespace VoxAngelos.Services
                     scores[department] = score;
             }
 
+            if (learnedWeights != null)
+            {
+                foreach (var (department, wordWeights) in learnedWeights)
+                {
+                    int score = wordWeights
+                        .Where(ww => ww.Value != 0 && lower.Contains(ww.Key))
+                        .Sum(ww => ww.Value);
+
+                    if (score == 0) continue;
+                    scores[department] = scores.GetValueOrDefault(department) + score;
+                    if (scores[department] <= 0) scores.Remove(department);
+                }
+            }
+
             return scores.Count == 0
                 ? null
                 : scores.MaxBy(s => s.Value).Key;
+        }
+
+        private async Task<Dictionary<string, Dictionary<string, int>>> LoadLearnedWeightsAsync()
+        {
+            var rows = await _db.LearnedKeywords.AsNoTracking().ToListAsync();
+            return rows
+                .GroupBy(r => r.Department)
+                .ToDictionary(g => g.Key, g => g.ToDictionary(r => r.Word, r => r.Weight));
+        }
+
+        /// <summary>
+        /// Logs an LGU verdict on a concern's classification and, when it was wrong,
+        /// reassigns the concern and nudges keyword weights toward the correct department.
+        /// A concern can only be reviewed once (enforced by a unique DB index); a second
+        /// concurrent reviewer gets <see cref="ConcernAlreadyReviewedException"/> instead
+        /// of a crash or a silently-lost verdict.
+        /// </summary>
+        public async Task RecordCorrectionAsync(int concernId, string correctedCategory, bool wasCorrect, string reviewedByUserId)
+        {
+            var concern = await _db.Concerns.FindAsync(concernId)
+                ?? throw new InvalidOperationException($"Concern {concernId} not found.");
+
+            var previousCategory = concern.Category;
+
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+
+            _db.ClassificationCorrections.Add(new ClassificationCorrection
+            {
+                ConcernId = concernId,
+                PreviousCategory = previousCategory,
+                CorrectedCategory = correctedCategory,
+                WasCorrect = wasCorrect,
+                ReviewedByUserId = reviewedByUserId,
+                ReviewedAt = DateTime.UtcNow
+            });
+
+            if (!wasCorrect)
+            {
+                concern.Category = correctedCategory;
+                concern.UpdatedAt = DateTime.UtcNow;
+            }
+
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                await transaction.RollbackAsync();
+                throw new ConcernAlreadyReviewedException(concernId, ex);
+            }
+
+            // Each upsert is a single atomic statement (INSERT ... ON CONFLICT), so two
+            // reviewers touching the same word/department at once can't race each other.
+            var words = ExtractKeywords(concern.Description);
+            foreach (var word in words)
+            {
+                await UpsertLearnedWeightAsync(word, correctedCategory, +1);
+                if (!wasCorrect && !string.IsNullOrEmpty(previousCategory) && previousCategory != correctedCategory)
+                    await UpsertLearnedWeightAsync(word, previousCategory, -1);
+            }
+
+            await transaction.CommitAsync();
+        }
+
+        private async Task UpsertLearnedWeightAsync(string word, string department, int delta)
+        {
+            var now = DateTime.UtcNow;
+            await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "LearnedKeywords" ("Word", "Department", "Weight", "LastUpdatedAt")
+                VALUES ({word}, {department}, {delta}, {now})
+                ON CONFLICT ("Word", "Department")
+                DO UPDATE SET "Weight" = "LearnedKeywords"."Weight" + {delta}, "LastUpdatedAt" = {now}
+                """);
+        }
+
+        private static bool IsUniqueViolation(DbUpdateException ex) =>
+            ex.InnerException is PostgresException { SqlState: "23505" };
+
+        private static List<string> ExtractKeywords(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description)) return [];
+
+            return description
+                .ToLowerInvariant()
+                .Split([' ', '\t', '\n', '\r', ',', '.', '!', '?', ';', ':', '"', '\'', '(', ')'],
+                    StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => w.Length >= 4 && !StopWords.Contains(w))
+                .Distinct()
+                .Take(15)
+                .ToList();
         }
 
         // ── Private helpers ───────────────────────────────────────────────────

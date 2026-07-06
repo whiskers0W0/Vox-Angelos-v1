@@ -24,7 +24,9 @@ else
 builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, VoxAngelos.Services.EmailSender>();
 
 builder.Services.AddScoped<OcrService>();
-builder.Services.AddSingleton<ConcernClassificationService>();
+builder.Services.AddScoped<ConcernClassificationService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<RecommendationRatingService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));

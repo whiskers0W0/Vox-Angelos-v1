@@ -13,6 +13,11 @@
     <h1 class="page-title">User (Citizen) Applications</h1>
 </div>
 
+@if (TempData["AdminError"] != null)
+{
+    <div class="alert-error">@TempData["AdminError"]</div>
+}
+
             <!-- Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-group">
