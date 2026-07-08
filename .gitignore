@@ -367,3 +367,7 @@ appsettings.Development.json
 
 # Google Cloud service account keys
 **/*-[0-9a-f]*.json
+
+# User-uploaded verification photos (ID/selfies) — not for source control
+VoxAngelos/wwwroot/uploads/ids/
+VoxAngelos/wwwroot/uploads/selfies/

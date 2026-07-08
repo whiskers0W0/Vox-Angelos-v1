@@ -26,6 +26,10 @@ namespace VoxAngelos.Pages.User
         public List<RecommendationCardViewModel> TopRated { get; set; } = new();
         public string CurrentUserId { get; set; } = string.Empty;
 
+        // The 7 LGU department codes concerns/recommendations are routed to
+        // (see ConcernClassificationService) — used to populate the office filter dropdown.
+        public static readonly string[] Offices = { "SWDO", "CEO", "CENRO", "ACDO", "PPTRO", "OSCA", "PWDAO" };
+
         public class RecommendationCardViewModel
         {
             public int Id { get; set; }
@@ -79,7 +83,7 @@ namespace VoxAngelos.Pages.User
                     ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
                     : r.Citizen.Email ?? "Citizen",
                 Category = r.Category,
-                AssignedOffice = string.Empty,
+                AssignedOffice = r.AssignedOffice ?? string.Empty,
                 Title = r.Title,
                 Description = r.Description,
                 ApprovedAt = r.ReviewedAt ?? r.SubmittedAt,

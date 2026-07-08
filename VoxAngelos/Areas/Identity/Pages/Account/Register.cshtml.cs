@@ -246,10 +246,16 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
         }
 
-        public async Task<IActionResult> OnPostAsync(string returnUrl = null)
+        // AJAX handler for the final step's "Create Account" submission — kept as a JSON
+        // endpoint (instead of a native Page() postback) so a validation failure (e.g. a
+        // rejected password) never triggers a full page reload. A full reload would reset
+        // the client-side wizard to Step 1 and silently drop the already-selected ID/selfie
+        // files, since browsers refuse to preserve <input type="file"> values across
+        // navigations. Staying on the same page means the user only has to fix the one
+        // field that failed.
+        public async Task<IActionResult> OnPostCreateAccountAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
             if (ModelState.IsValid)
             {
@@ -259,9 +265,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
                 if (existingUserWithPhone != null)
                 {
-                    ModelState.AddModelError("Input.PhoneNumber",
-                        "This phone number is already registered. Please use a different number.");
-                    return Page();
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        fieldErrors = new Dictionary<string, string>
+                        {
+                            ["Input_PhoneNumber"] = "This phone number is already registered. Please use a different number."
+                        }
+                    });
                 }
 
                 // ── Save ID photo ──────────────────────────────────────────────────
@@ -323,9 +334,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     ex.InnerException?.Message.Contains("IX_AspNetUsers_PhoneNumber") == true ||
                     ex.InnerException?.Message.Contains("UNIQUE") == true)
                 {
-                    ModelState.AddModelError("Input.PhoneNumber",
-                        "This phone number is already registered. Please use a different number.");
-                    return Page();
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        fieldErrors = new Dictionary<string, string>
+                        {
+                            ["Input_PhoneNumber"] = "This phone number is already registered. Please use a different number."
+                        }
+                    });
                 }
 
                 if (result.Succeeded)
@@ -415,22 +431,34 @@ if (savedFileName != null)
                         "Confirm your email",
                         $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
 
-                    return RedirectToPage("RegisterConfirmation", new
+                    var redirectUrl = Url.Page("RegisterConfirmation", new
                     {
                         email = Input.Email,
                         returnUrl = returnUrl,
                         verified = isMatch,
                         confidence = confidence
                     });
+
+                    return new JsonResult(new { success = true, redirectUrl });
                 }
 
-                foreach (var error in result.Errors)
+                return new JsonResult(new
                 {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
+                    success = false,
+                    generalErrors = result.Errors.Select(e => e.Description).ToList()
+                });
             }
 
-            return Page();
+            // ModelState was invalid from data annotations (e.g. password too short) —
+            // surface each failing field by its generated element id (Input.Password -> Input_Password)
+            // so the client can show the message without navigating away from the current step.
+            var fieldErrors = ModelState
+                .Where(kvp => kvp.Value.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key.Replace(".", "_"),
+                    kvp => string.Join(" ", kvp.Value.Errors.Select(e => e.ErrorMessage)));
+
+            return new JsonResult(new { success = false, fieldErrors });
         }
 
 

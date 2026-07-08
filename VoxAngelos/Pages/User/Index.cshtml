@@ -12,6 +12,17 @@
 <div class="content-header">
     <h1 class="page-title">Discover</h1>
     <div class="header-right">
+        <select class="filter-select" id="officeFilter" aria-label="Filter by LGU office">
+            <option value="">All Offices</option>
+            @foreach (var office in VoxAngelos.Pages.User.IndexModel.Offices)
+            {
+                <option value="@office">@office</option>
+            }
+        </select>
+        <select class="filter-select" id="dateSort" aria-label="Sort by date">
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+        </select>
         <div class="search-box">
             <input type="text" placeholder="Search" class="search-input" id="searchInput" />
             <button class="search-btn" aria-label="Search">
@@ -46,7 +57,7 @@
 
         @foreach (var rec in Model.Recommendations)
         {
-            <div class="proposal-card" data-title="@rec.Title.ToLower()" data-description="@rec.Description.ToLower()">
+            <div class="proposal-card" data-title="@rec.Title.ToLower()" data-description="@rec.Description.ToLower()" data-office="@rec.AssignedOffice" data-date="@rec.ApprovedAt.ToString("yyyy-MM-dd")">
                 <div class="card-header">
                     <div class="author-info">
                         <div class="avatar">
@@ -269,15 +280,60 @@
             });
         });
 
-        // Search filter
-        document.getElementById('searchInput').addEventListener('input', function () {
-            const query = this.value.toLowerCase();
-            document.querySelectorAll('#proposalsFeed .proposal-card').forEach(card => {
+        // Search + office filter + date sort
+        const searchInput = document.getElementById('searchInput');
+        const officeFilter = document.getElementById('officeFilter');
+        const dateSort = document.getElementById('dateSort');
+        const proposalsFeed = document.getElementById('proposalsFeed');
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        function highlightMatches(el, query) {
+            const original = el.textContent;
+            if (!query) {
+                el.textContent = original;
+                return;
+            }
+            const re = new RegExp(escapeRegex(query), 'gi');
+            el.innerHTML = escapeHtml(original).replace(re, m => `<mark class="search-highlight">${m}</mark>`);
+        }
+
+        function applyFilters() {
+            const query = (searchInput.value || '').toLowerCase().trim();
+            const office = officeFilter.value;
+
+            const cards = Array.from(proposalsFeed.querySelectorAll('.proposal-card'));
+
+            cards.forEach(card => {
                 const title = card.dataset.title || '';
                 const desc = card.dataset.description || '';
-                card.style.display = (title.includes(query) || desc.includes(query)) ? '' : 'none';
+                const cardOffice = card.dataset.office || '';
+
+                const matchesQuery = !query || title.includes(query) || desc.includes(query);
+                const matchesOffice = !office || cardOffice === office;
+                card.style.display = (matchesQuery && matchesOffice) ? '' : 'none';
+
+                const titleEl = card.querySelector('.proposal-title');
+                const descEl = card.querySelector('.proposal-excerpt');
+                if (titleEl) highlightMatches(titleEl, query);
+                if (descEl) highlightMatches(descEl, query);
             });
-        });
+
+            const sorted = cards.slice().sort((a, b) => {
+                const da = new Date(a.dataset.date);
+                const db = new Date(b.dataset.date);
+                return dateSort.value === 'asc' ? da - db : db - da;
+            });
+            sorted.forEach(card => proposalsFeed.appendChild(card));
+        }
+
+        searchInput.addEventListener('input', applyFilters);
+        officeFilter.addEventListener('change', applyFilters);
+        dateSort.addEventListener('change', applyFilters);
 
         // Multi-category star rating
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value

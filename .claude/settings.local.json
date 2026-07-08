@@ -13,7 +13,10 @@
       "PowerShell(icacls \"C:\\\\Users\\\\user\\\\.config\\\\git\\\\ignore\" /grant \"$env:USERNAME:\\(R\\)\" /inheritance:e)",
       "PowerShell(icacls \"C:\\\\Users\\\\user\\\\.config\\\\git\\\\ignore\" /grant \"${env:USERNAME}:\\(R\\)\")",
       "PowerShell(Test-Path *)",
-      "Bash(dotnet restore *)"
+      "Bash(dotnet restore *)",
+      "Skill(run)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet user-secrets list *)"
     ]
   }
 }

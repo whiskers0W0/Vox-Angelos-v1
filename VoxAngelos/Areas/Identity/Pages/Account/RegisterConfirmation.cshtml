@@ -52,9 +52,6 @@
 
                 <div class="redirect-section">
                     <p class="security-note">Authorized Personnel Tracking Active</p>
-                    <p class="countdown-text">
-                        Redirecting to login in <span id="countdown" class="count-num">5</span> seconds...
-                    </p>
 
                     <a href="/Identity/Account/Login" class="cta mx-auto text-decoration-none">
                         Go to Login Now
@@ -63,18 +60,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-            let seconds = 5;
-            const timer = setInterval(function () {
-                seconds--;
-                const el = document.getElementById('countdown');
-                if (el) el.textContent = seconds;
-                if (seconds <= 0) {
-                    clearInterval(timer);
-                    window.location.href = '/Identity/Account/Login';
-                }
-            }, 1000);
-    </script>
 </body>
 </html>

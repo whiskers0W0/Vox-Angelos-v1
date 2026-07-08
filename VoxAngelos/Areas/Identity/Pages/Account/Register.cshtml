@@ -274,9 +274,11 @@
                                 <div class="pw-rule mt-1" id="rule-match" style="display:none;"><span class="pw-rule-icon">✕</span> Passwords match</div>
                             </div>
 
+                            <span id="createAccountGeneralError" class="tech-validation d-block mb-2" style="display:none;"></span>
+
                             <div class="d-flex gap-3">
                                 <button type="button" class="cta-back w-50" onclick="goBackToStep2()">Back</button>
-                                <button id="registerSubmit" type="submit" class="cta w-50">Create Account</button>
+                                <button id="registerSubmit" type="button" class="cta w-50" onclick="submitRegistration()">Create Account</button>
                             </div>
                         </div>
                     </form>
@@ -416,6 +418,62 @@
 
         function goToStep1() { stopCamera(); showStep(2, 1); }
         function goBackToStep2() { showStep(3, 2); }
+
+        // ── Final submission (AJAX, no page reload) ────────────────────
+        // Kept in-place on Step 3 regardless of which field fails server-side
+        // validation (e.g. password policy), instead of doing a native form
+        // submit — a full page reload would reset the wizard to Step 1 and
+        // wipe the already-selected ID photo / captured selfie, since browsers
+        // never restore <input type="file"> values after a navigation.
+        async function submitRegistration() {
+        document.querySelectorAll('.custom-account-error').forEach(el => el.remove());
+        document.getElementById('createAccountGeneralError').style.display = 'none';
+
+        const btn = document.getElementById('registerSubmit');
+        const originalText = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Creating Account...';
+
+        const form = document.getElementById('registerForm');
+        const formData = new FormData(form);
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        try {
+        const res = await fetch('?handler=CreateAccount', {
+        method: 'POST',
+        body: formData,
+        headers: { 'RequestVerificationToken': token }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+        window.location.href = data.redirectUrl;
+        return;
+        }
+
+        if (data.fieldErrors) {
+        for (const [id, msg] of Object.entries(data.fieldErrors)) {
+        const field = document.getElementById(id);
+        if (field) {
+        field.insertAdjacentHTML('afterend', `<span class="text-danger custom-account-error tech-validation">${msg}</span>`);
+        } else {
+        const el = document.getElementById('createAccountGeneralError');
+        el.textContent = (el.textContent ? el.textContent + ' ' : '') + msg;
+        el.style.display = 'block';
+        }
+        }
+        }
+
+        if (data.generalErrors && data.generalErrors.length) {
+        const el = document.getElementById('createAccountGeneralError');
+        el.textContent = data.generalErrors.join(' ');
+        el.style.display = 'block';
+        }
+        } catch (e) {
+        showResultModal('error', 'Error', 'Connection error. Please try again.');
+        } finally {
+        btn.disabled = false; btn.textContent = originalText;
+        }
+        }
 
         // ── Result Feedback Modal ─────────────────────────────────────
         function showResultModal(type, title, message, callback) {

@@ -43,6 +43,27 @@
         border-color: #00000030;
     }
 
+.filter-select {
+    height: 34px;
+    border: none;
+    outline: none;
+    border-radius: 12px;
+    background: var(--card-bg);
+    box-shadow: inset -5px 4px 4px 0 #fff, inset -2px -4px 4px 0 #BFC5DF30, 2px 4px 4px 0 #BFC5DF90;
+    padding: 0 10px;
+    font-size: 13px;
+    font-family: var(--font);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.search-highlight {
+    background: #ffe08a;
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
 .search-input {
     border: none;
     outline: none;
@@ -635,11 +656,17 @@
 
     .header-right {
         width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 120px;
     }
 
     .search-box {
         width: 100%;
-        flex: 1;
+        flex: 1 1 100%;
     }
 
     .search-input {
