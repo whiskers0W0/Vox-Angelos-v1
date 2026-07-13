@@ -146,6 +146,17 @@ namespace VoxAngelos.Data
             builder.Entity<LearnedKeyword>()
                 .HasIndex(lk => new { lk.Word, lk.Department })
                 .IsUnique();
+
+            // Location Density Score (Urgency Algorithm): geography point + GIST index so
+            // ST_DWithin distance lookups in UrgencyScoreService stay index-backed instead
+            // of scanning every concern's coordinates on every submission.
+            builder.Entity<Concern>()
+                .Property(c => c.Location)
+                .HasColumnType("geography (Point, 4326)");
+
+            builder.Entity<Concern>()
+                .HasIndex(c => c.Location)
+                .HasMethod("GIST");
         }
     }
 }

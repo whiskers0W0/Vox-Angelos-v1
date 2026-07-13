@@ -2,13 +2,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.SignalR;
 using VoxAngelos.Data;
+using VoxAngelos.Hubs;
 using VoxAngelos.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace VoxAngelos.Pages.User
 {
     [Authorize(Roles = "User")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("concern-submission")]
     public class CreateModel : PageModel
     {
         private readonly ApplicationDbContext _db;
@@ -16,18 +19,24 @@ namespace VoxAngelos.Pages.User
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
         private readonly ConcernClassificationService _classifier;
+        private readonly UrgencyScoreService _urgencyScore;
+        private readonly IHubContext<FeedHub> _feedHub;
 
         public CreateModel(ApplicationDbContext db,
                            UserManager<ApplicationUser> userManager,
                            IWebHostEnvironment env,
                            IConfiguration configuration,
-                           ConcernClassificationService classifier)
+                           ConcernClassificationService classifier,
+                           UrgencyScoreService urgencyScore,
+                           IHubContext<FeedHub> feedHub)
         {
             _db = db;
             _userManager = userManager;
             _env = env;
             _configuration = configuration;
             _classifier = classifier;
+            _urgencyScore = urgencyScore;
+            _feedHub = feedHub;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
@@ -128,6 +137,17 @@ namespace VoxAngelos.Pages.User
                 }
                 await _db.SaveChangesAsync();
             }
+
+            await _urgencyScore.ApplyLocationAsync(concern);
+
+            // Push the LGU dashboard(s) that will show this concern (LGU/Index.cshtml.cs
+            // lists a department's own concerns plus any still-unclassified ones, so an
+            // unclassified submission needs to reach every department's group).
+            var notifyDepartments = concern.Category != null
+                ? new[] { concern.Category }
+                : ConcernClassificationService.Departments;
+            foreach (var dept in notifyDepartments)
+                await _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(dept)).SendAsync("ConcernFeedChanged");
 
             TempData["ConcernSuccess"] = "Your concern has been submitted successfully!";
             return RedirectToPage();

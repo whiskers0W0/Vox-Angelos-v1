@@ -27,6 +27,7 @@ using VoxAngelos.Services;
 
 namespace VoxAngelos.Areas.Identity.Pages.Account
 {
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("registration")]
     public class RegisterModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;

@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Hubs;
 using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.LGU
@@ -14,12 +16,27 @@ namespace VoxAngelos.Pages.LGU
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ConcernClassificationService _classifier;
+        private readonly IHubContext<FeedHub> _feedHub;
 
-        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ConcernClassificationService classifier)
+        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
+            ConcernClassificationService classifier, IHubContext<FeedHub> feedHub)
         {
             _db = db;
             _userManager = userManager;
             _classifier = classifier;
+            _feedHub = feedHub;
+        }
+
+        // Notifies every LGU dashboard that could be displaying this concern — its
+        // current department plus whatever it used to be, in case a reassign just moved
+        // it out of one department's view and into another's.
+        private Task NotifyDepartmentsAsync(params string?[] departments)
+        {
+            var tasks = departments
+                .Where(d => !string.IsNullOrEmpty(d))
+                .Distinct()
+                .Select(d => _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(d!)).SendAsync("ConcernFeedChanged"));
+            return Task.WhenAll(tasks);
         }
 
         public string[] Departments => ConcernClassificationService.Departments;
@@ -75,6 +92,7 @@ namespace VoxAngelos.Pages.LGU
                     LocationName = c.LocationName ?? "No location provided",
                     Latitude = c.Latitude,
                     Longitude = c.Longitude,
+                    LocationDensityScore = c.LocationDensityScore,
                     SubmittedAt = c.SubmittedAt,
                     FirstAttachmentPath = c.Attachments
                         .Where(a => a.FileType == "image")
@@ -105,15 +123,26 @@ namespace VoxAngelos.Pages.LGU
             return RedirectToPage(new { filter = CurrentFilter });
         }
 
+        // Manual Override Feature: lets an LGU admin correct a concern that the Google
+        // NLP classifier (or the local keyword fallback) routed to the wrong department,
+        // re-routing it to the correct one. See docs/manual-override-feature.md for the
+        // full write-up (why it exists, how the audit trail works, how it feeds the NLP
+        // feedback loop in ConcernClassificationService.RecordCorrectionAsync).
         public async Task<IActionResult> OnPostReassignCategoryAsync(int concernId, string newCategory)
         {
             if (!ConcernClassificationService.Departments.Contains(newCategory))
                 return BadRequest("Unknown department.");
 
+            var previousCategory = await _db.Concerns
+                .Where(c => c.Id == concernId)
+                .Select(c => c.Category)
+                .FirstOrDefaultAsync();
+
             var user = await _userManager.GetUserAsync(User);
             try
             {
                 await _classifier.RecordCorrectionAsync(concernId, newCategory, wasCorrect: false, user!.Id);
+                await NotifyDepartmentsAsync(previousCategory, newCategory);
             }
             catch (ConcernAlreadyReviewedException)
             {
@@ -136,7 +165,14 @@ namespace VoxAngelos.Pages.LGU
                     .SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
 
             if (updated == 0)
+            {
                 TempData["ConcernError"] = "This concern could not be updated — it may already be resolved or no longer exist.";
+            }
+            else
+            {
+                var category = await _db.Concerns.Where(c => c.Id == concernId).Select(c => c.Category).FirstOrDefaultAsync();
+                await NotifyDepartmentsAsync(category);
+            }
 
             return RedirectToPage(new { filter = CurrentFilter });
         }
@@ -150,7 +186,14 @@ namespace VoxAngelos.Pages.LGU
                     .SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
 
             if (updated == 0)
+            {
                 TempData["ConcernError"] = "This concern was already claimed by another staff member.";
+            }
+            else
+            {
+                var category = await _db.Concerns.Where(c => c.Id == concernId).Select(c => c.Category).FirstOrDefaultAsync();
+                await NotifyDepartmentsAsync(category);
+            }
 
             return RedirectToPage(new { filter = "Chosen" });
         }
@@ -169,6 +212,7 @@ namespace VoxAngelos.Pages.LGU
         public string LocationName { get; set; } = string.Empty;
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public int LocationDensityScore { get; set; }
         public DateTime SubmittedAt { get; set; }
         public string? FirstAttachmentPath { get; set; }
     }

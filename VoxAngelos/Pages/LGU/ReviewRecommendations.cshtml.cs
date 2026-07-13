@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Hubs;
 
 namespace VoxAngelos.Pages.LGU
 {
@@ -12,11 +14,13 @@ namespace VoxAngelos.Pages.LGU
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<FeedHub> _feedHub;
 
-        public ReviewRecommendationsModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public ReviewRecommendationsModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IHubContext<FeedHub> feedHub)
         {
             _db = db;
             _userManager = userManager;
+            _feedHub = feedHub;
         }
 
         public List<RecommendationViewModel> Recommendations { get; set; } = new();
@@ -106,6 +110,8 @@ namespace VoxAngelos.Pages.LGU
 
             if (updated == 0)
                 TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
+            else
+                await _feedHub.Clients.Group(FeedHub.DiscoverGroup).SendAsync("PostPublished");
 
             return RedirectToPage(new { filter = "Pending" });
         }

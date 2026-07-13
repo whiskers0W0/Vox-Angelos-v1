@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
 using VoxAngelos.Data;
+using VoxAngelos.Hubs;
 using VoxAngelos.Services; // ← ADDED
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,7 +32,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<RecommendationRatingService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, o => o.UseNetTopologySuite()));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -76,6 +79,57 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<FaceVerificationService>();
 builder.Services.AddScoped<IdValidationService>();
 
+// 5a. Realtime feed (SignalR) — pushes new concerns/posts/ratings to connected
+// clients so the Discover feed and LGU dashboard update without a page refresh.
+builder.Services.AddSignalR();
+
+// 5b. Background purge of sensitive ID/selfie images (Data Privacy Act retention).
+builder.Services.AddHostedService<SensitiveMediaRetentionService>();
+
+// 5c. Location Density Score for the Urgency Algorithm (PostGIS-backed).
+builder.Services.AddScoped<UrgencyScoreService>();
+
+// 5d. Rate limiting on the endpoints that call paid/quota-limited external APIs
+// (Google Cloud NLP/Vision and the Hugging-Face-hosted face/ID verification API) —
+// mitigates "Denial of Wallet" bot abuse of registration and concern submission.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Registration's identity-verification step (OCR + face match) is the most
+    // expensive call chain in the app — it hits both Google Cloud Vision and the
+    // Hugging Face face-verification API for a single request.
+    options.AddPolicy("registration", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(5),
+            QueueLimit = 0
+        }));
+
+    // Concern/recommendation submission triggers a Google Cloud Natural Language
+    // classification call per submission.
+    options.AddPolicy("concern-submission", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.User.Identity?.IsAuthenticated == true
+            ? httpContext.User.Identity!.Name!
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(10),
+            QueueLimit = 0
+        }));
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsync(
+            "{\"success\":false,\"error\":\"Too many requests. Please wait a few minutes before trying again.\"}",
+            token);
+    };
+});
+
 var app = builder.Build();
 
 // 6. HTTP Pipeline Configuration
@@ -101,8 +155,10 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapRazorPages();
+app.MapHub<FeedHub>("/hubs/feed");
 
 // 7. Role Seeding Logic
 using (var scope = app.Services.CreateScope())

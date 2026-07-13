@@ -404,5 +404,38 @@
                 }
             });
         });
+
+        // ── Realtime feed ──
+        // Pushed instantly over SignalR (see FeedHub / VoxAngelos.Hubs) whenever anyone
+        // else rates a post or an LGU publishes a new recommendation — no refresh needed.
+        function applyRatingUpdate(data) {
+            const widget = document.querySelector(`.rating-widget[data-rec-id="${data.recommendationId}"]`);
+            if (!widget) return;
+            widget.querySelector('.composite-score').textContent = data.compositeScore.toFixed(1) + '★';
+            widget.querySelector('.rating-count-label').textContent =
+                `(${data.ratingCount} rating${data.ratingCount === 1 ? '' : 's'})`;
+            widget.querySelector('[data-avg-for="urgency"]').textContent = `avg ${data.avgUrgency.toFixed(1)}`;
+            widget.querySelector('[data-avg-for="relevance"]').textContent = `avg ${data.avgRelevance.toFixed(1)}`;
+            widget.querySelector('[data-avg-for="feasibility"]').textContent = `avg ${data.avgFeasibility.toFixed(1)}`;
+        }
+
+        function refreshProposalsFeed() {
+            fetch(window.location.href)
+                .then(res => res.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const newFeed = doc.getElementById('proposalsFeed');
+                    if (newFeed) {
+                        proposalsFeed.innerHTML = newFeed.innerHTML;
+                        applyFilters();
+                    }
+                })
+                .catch(() => { });
+        }
+
+        window.VoxAngelosRealtime = {
+            onRatingUpdated: applyRatingUpdate,
+            onPostPublished: refreshProposalsFeed
+        };
     </script>
 }

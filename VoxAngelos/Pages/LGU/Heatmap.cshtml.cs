@@ -38,6 +38,7 @@ namespace VoxAngelos.Pages.LGU
                     status = c.Status,
                     category = c.Category ?? "Uncategorized",
                     location = c.LocationName ?? "No location provided",
+                    locationDensityScore = c.LocationDensityScore,
                     submittedAt = c.SubmittedAt.ToString("MMM dd, yyyy"),
                     citizenName = c.Citizen.UserProfile != null
                         ? $"{c.Citizen.UserProfile.FirstName} {c.Citizen.UserProfile.LastName}"

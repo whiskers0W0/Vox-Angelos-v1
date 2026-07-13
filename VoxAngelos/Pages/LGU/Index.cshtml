@@ -118,6 +118,12 @@
                     </svg>
                     @concern.Latitude, @concern.Longitude
                 </div>
+                @if (concern.LocationDensityScore > 0)
+                {
+                    <div class="concern-density-badge" title="Other unresolved concerns reported within 300m in the last 30 days">
+                        🔥 @concern.LocationDensityScore nearby report@(concern.LocationDensityScore == 1 ? "" : "s")
+                    </div>
+                }
 
                 @if (concern.Status == "Unresolved")
                 {
@@ -278,8 +284,12 @@
             }
         });
 
-        // ── Auto-refresh feed every 15 seconds ──
-        setInterval(() => {
+        // ── Realtime feed refresh ──
+        // Pushed instantly over SignalR (see FeedHub / VoxAngelos.Hubs) whenever a
+        // concern is submitted, reassigned, or has its status changed by any LGU staff
+        // member — no manual refresh needed. A slow poll is kept as a fallback in case
+        // the socket connection drops (e.g. a laptop wakes from sleep).
+        function refreshConcernFeed() {
             fetch(window.location.href)
                 .then(res => res.text())
                 .then(html => {
@@ -287,17 +297,18 @@
                     const doc = parser.parseFromString(html, 'text/html');
                     const newFeed = doc.getElementById('concern-feed');
                     const currentFeed = document.getElementById('concern-feed');
-
                     if (newFeed && currentFeed) {
-                        const newCount = newFeed.querySelectorAll('.concern-card').length;
-                        const currentCount = currentFeed.querySelectorAll('.concern-card').length;
-                        if (newCount !== currentCount) {
-                            currentFeed.innerHTML = newFeed.innerHTML;
-                        }
+                        currentFeed.innerHTML = newFeed.innerHTML;
                     }
                 })
                 .catch(() => { });
-        }, 15000);
+        }
+
+        window.VoxAngelosRealtime = {
+            onConcernFeedChanged: refreshConcernFeed
+        };
+
+        setInterval(refreshConcernFeed, 45000);
 
 
         function openLightbox(src, type) {

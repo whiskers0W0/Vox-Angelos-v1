@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Hubs;
 using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.User
@@ -14,12 +16,15 @@ namespace VoxAngelos.Pages.User
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RecommendationRatingService _ratingService;
+        private readonly IHubContext<FeedHub> _feedHub;
 
-        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RecommendationRatingService ratingService)
+        public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
+            RecommendationRatingService ratingService, IHubContext<FeedHub> feedHub)
         {
             _db = db;
             _userManager = userManager;
             _ratingService = ratingService;
+            _feedHub = feedHub;
         }
 
         public List<RecommendationCardViewModel> Recommendations { get; set; } = new();
@@ -119,6 +124,20 @@ namespace VoxAngelos.Pages.User
             var rec = await _db.Recommendations.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == recommendationId);
             if (rec == null) return NotFound();
+
+            var payload = new
+            {
+                recommendationId,
+                ratingCount = rec.RatingCount,
+                avgUrgency = Math.Round(rec.AvgUrgency, 1),
+                avgRelevance = Math.Round(rec.AvgRelevance, 1),
+                avgFeasibility = Math.Round(rec.AvgFeasibility, 1),
+                compositeScore = Math.Round(rec.CompositeScore, 1)
+            };
+
+            // Push the new aggregate to every other citizen currently viewing the
+            // Discover feed, so their star averages update with no page refresh.
+            await _feedHub.Clients.Group(FeedHub.DiscoverGroup).SendAsync("RatingUpdated", payload);
 
             return new JsonResult(new
             {
