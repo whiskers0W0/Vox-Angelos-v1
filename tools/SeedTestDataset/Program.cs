@@ -23,7 +23,7 @@ if (args.Length < 1)
     return 1;
 }
 
-if (args[0] == "--count" || args[0] == "--report")
+if (args[0] == "--count" || args[0] == "--report" || args[0] == "--misclassified")
 {
     var countConn = ResolveConnectionString(args[1]);
     var countServices = new ServiceCollection();
@@ -33,29 +33,55 @@ if (args[0] == "--count" || args[0] == "--report")
     var countDb = countScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var seeded = await countDb.Concerns
         .Where(c => c.LguNotes != null && c.LguNotes.StartsWith("[NLP TEST DATASET]"))
-        .Select(c => new { c.Category, c.LguNotes })
+        .Select(c => new { c.Id, c.Description, c.Category, c.LguNotes })
         .ToListAsync();
     Console.WriteLine($"Seeded test-dataset concerns currently in DB: {seeded.Count}");
 
-    if (args[0] == "--report")
+    if (args[0] == "--report" || args[0] == "--misclassified")
     {
         int m = 0;
         var total = new Dictionary<string, int>();
         var match = new Dictionary<string, int>();
+        var misclassified = new List<(int Id, string Text, string Language, string Expected, string? Actual)>();
+
         foreach (var c in seeded)
         {
-            var idx = c.LguNotes!.IndexOf("expected_category=", StringComparison.Ordinal);
-            if (idx < 0) continue;
-            var expected = c.LguNotes.Substring(idx + "expected_category=".Length).Split(';')[0].Trim();
+            var catIdx = c.LguNotes!.IndexOf("expected_category=", StringComparison.Ordinal);
+            var langIdx = c.LguNotes.IndexOf("lang=", StringComparison.Ordinal);
+            if (catIdx < 0) continue;
+            var expected = c.LguNotes.Substring(catIdx + "expected_category=".Length).Split(';')[0].Trim();
+            var language = langIdx >= 0 ? c.LguNotes.Substring(langIdx + "lang=".Length).Split(';')[0].Trim() : "?";
+
             total[expected] = total.GetValueOrDefault(expected) + 1;
-            if (c.Category == expected) { m++; match[expected] = match.GetValueOrDefault(expected) + 1; }
+            if (c.Category == expected)
+            {
+                m++;
+                match[expected] = match.GetValueOrDefault(expected) + 1;
+            }
+            else
+            {
+                misclassified.Add((c.Id, c.Description, language, expected, c.Category));
+            }
         }
-        Console.WriteLine($"Overall live-classifier match rate vs expected_category: {m}/{seeded.Count} ({m * 100.0 / seeded.Count:0.0}%)");
-        foreach (var dept in total.Keys.OrderBy(k => k))
+
+        if (args[0] == "--report")
         {
-            var t = total[dept];
-            var mm = match.GetValueOrDefault(dept);
-            Console.WriteLine($"  {dept}: {mm}/{t} ({mm * 100.0 / t:0.0}%)");
+            Console.WriteLine($"Overall live-classifier match rate vs expected_category: {m}/{seeded.Count} ({m * 100.0 / seeded.Count:0.0}%)");
+            foreach (var dept in total.Keys.OrderBy(k => k))
+            {
+                var t = total[dept];
+                var mm = match.GetValueOrDefault(dept);
+                Console.WriteLine($"  {dept}: {mm}/{t} ({mm * 100.0 / t:0.0}%)");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"Misclassified: {misclassified.Count}/{seeded.Count}");
+            Console.WriteLine("id\tlanguage\texpected\tactual\ttext");
+            foreach (var row in misclassified.OrderBy(r => r.Expected).ThenBy(r => r.Id))
+            {
+                Console.WriteLine($"{row.Id}\t{row.Language}\t{row.Expected}\t{row.Actual ?? "(null)"}\t{row.Text}");
+            }
         }
     }
     return 0;
