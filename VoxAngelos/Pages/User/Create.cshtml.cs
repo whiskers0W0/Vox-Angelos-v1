@@ -153,6 +153,44 @@ namespace VoxAngelos.Pages.User
             return RedirectToPage();
         }
 
+        public class ClassifyRequest
+        {
+            public string Description { get; set; } = string.Empty;
+        }
+
+        public async Task<IActionResult> OnPostClassifyAsync([FromBody] ClassifyRequest request)
+        {
+            var category = await _classifier.ClassifyAsync(
+                request.Description,
+                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+
+            if (category == null)
+                return new JsonResult(new { success = false });
+
+            var officeNames = new Dictionary<string, string>
+            {
+                ["SWDO"] = "Social Welfare and Development Office",
+                ["CEO"] = "City Engineer's Office",
+                ["CENRO"] = "City Environment and Natural Resources Office",
+                ["ACDO"] = "City Development / Urban Planning Office",
+                ["PPTRO"] = "Public Safety, Traffic and Transport Regulation Office",
+                ["OSCA"] = "Office of Senior Citizens Affairs",
+                ["PWDAO"] = "Persons With Disability Affairs Office"
+            };
+
+            var officeEmail = await _userManager.Users
+                .Where(u => u.Department == category)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync();
+
+            return new JsonResult(new
+            {
+                success = true,
+                category,
+                office = officeNames.GetValueOrDefault(category, category),
+                email = officeEmail ?? ""
+            });
+        }
 
         public async Task<IActionResult> OnPostRecommendationAsync()
         {

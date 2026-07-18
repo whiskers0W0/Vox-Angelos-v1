@@ -30,16 +30,20 @@ namespace VoxAngelos.Pages.Admin
         public string OtpCode { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
+        public string? DevOtp { get; set; }
 
         public IActionResult OnGet()
         {
             if (TempData.Peek("Admin_2FA_UserId") == null)
                 return RedirectToPage("/Admin/Login");
+            DevOtp = TempData.Peek("Admin_2FA_DevOtp")?.ToString();
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            DevOtp = TempData.Peek("Admin_2FA_DevOtp")?.ToString();
+
             var userId = TempData.Peek("Admin_2FA_UserId")?.ToString();
             if (userId == null)
             {

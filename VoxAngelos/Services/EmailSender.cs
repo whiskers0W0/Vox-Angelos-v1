@@ -1,44 +1,64 @@
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SendGrid;
-using SendGrid.Helpers.Mail;
+using System.Net;
+using System.Net.Mail;
 
 namespace VoxAngelos.Services
 {
     public class EmailSender : IEmailSender
     {
-        private readonly string? _apiKey;
+        private readonly string _smtpUser;
+        private readonly string? _smtpPassword;
         private readonly IHostEnvironment _env;
         private readonly ILogger<EmailSender> _logger;
 
         public EmailSender(IConfiguration configuration, IHostEnvironment env, ILogger<EmailSender> logger)
         {
-            _apiKey = configuration["SendGrid:ApiKey"];
+            _smtpUser = configuration["Smtp:Username"] ?? "adrndgaming@gmail.com";
+            _smtpPassword = configuration["Smtp:Password"];
             _env = env;
             _logger = logger;
 
-            if (string.IsNullOrEmpty(_apiKey) && !_env.IsDevelopment())
-                throw new InvalidOperationException("SendGrid:ApiKey is not configured.");
+            if (string.IsNullOrEmpty(_smtpPassword) && !_env.IsDevelopment())
+                throw new InvalidOperationException("Smtp:Password is not configured.");
         }
 
         public async Task SendEmailAsync(string email, string subject, string htmlMessage)
         {
-            if (string.IsNullOrEmpty(_apiKey))
+            if (string.IsNullOrEmpty(_smtpPassword))
             {
-                // Development-only fallback when no SendGrid key is configured locally —
+                // Development-only fallback when no SMTP app password is configured locally —
                 // logs the email instead of sending it, so OTP codes are still readable.
                 _logger.LogWarning(
-                    "DEV EMAIL (SendGrid:ApiKey not configured, not sent) To: {Email} Subject: {Subject}\n{Body}",
+                    "DEV EMAIL (Smtp:Password not configured, not sent) To: {Email} Subject: {Subject}\n{Body}",
                     email, subject, htmlMessage);
                 return;
             }
 
-            var client = new SendGridClient(_apiKey);
-            var from = new EmailAddress("adrndgaming@gmail.com", "Vox Angelos");
-            var to = new EmailAddress(email);
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent: null, htmlContent: htmlMessage);
-            await client.SendEmailAsync(msg);
+            using var client = new SmtpClient("smtp.gmail.com", 587)
+            {
+                Credentials = new NetworkCredential(_smtpUser, _smtpPassword),
+                EnableSsl = true
+            };
+
+            using var message = new MailMessage
+            {
+                From = new MailAddress(_smtpUser, "Vox Angelos"),
+                Subject = subject,
+                Body = htmlMessage,
+                IsBodyHtml = true
+            };
+            message.To.Add(email);
+
+            try
+            {
+                await client.SendMailAsync(message);
+            }
+            catch (SmtpException ex)
+            {
+                _logger.LogError(ex, "SMTP email to {Email} failed: {Message}", email, ex.Message);
+            }
         }
     }
 }
