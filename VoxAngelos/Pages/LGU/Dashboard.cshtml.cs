@@ -24,8 +24,21 @@ namespace VoxAngelos.Pages.LGU
         public int TotalChosen { get; set; }
         public int TotalInProgress { get; set; }
         public int TotalResolved { get; set; }
+        public int PendingRecommendations { get; set; }
+        public string CategoryLabels { get; set; } = "[]";
+        public string CategoryData { get; set; } = "[]";
         public string TrendLabels { get; set; } = "[]";
         public string TrendData { get; set; } = "[]";
+        public double ResolutionRate { get; set; }
+        public double AvgResponseDays { get; set; }
+        public int TodayConcerns { get; set; }
+        public List<BarangayCount> TopBarangays { get; set; } = new();
+
+        public class BarangayCount
+        {
+            public string Barangay { get; set; } = string.Empty;
+            public int Count { get; set; }
+        }
         public List<RecentActivityItem> RecentActivities { get; set; } = new();
         public class RecentActivityItem
         {
@@ -45,11 +58,58 @@ namespace VoxAngelos.Pages.LGU
             TotalChosen = await concerns.CountAsync(c => c.Status == "Chosen");
             TotalInProgress = await concerns.CountAsync(c => c.Status == "In Progress");
             TotalResolved = await concerns.CountAsync(c => c.Status == "Resolved");
+            PendingRecommendations = await _db.Recommendations.CountAsync(r => r.Status == "Pending");
+
+            // Category Breakdown
+            var categoryGroups = await _db.Concerns
+                .GroupBy(c => c.Category)
+                .Select(g => new { Category = g.Key, Count = g.Count() })
+                .OrderByDescending(g => g.Count)
+                .ToListAsync();
+
+            CategoryLabels = System.Text.Json.JsonSerializer.Serialize(
+                categoryGroups.Select(g => g.Category ?? "Uncategorized").ToList());
+            CategoryData = System.Text.Json.JsonSerializer.Serialize(
+                categoryGroups.Select(g => g.Count).ToList());
+
+            // Resolution Rate
+            ResolutionRate = TotalConcerns > 0
+                ? Math.Round((double)TotalResolved / TotalConcerns * 100, 1)
+                : 0;
+
+            // Average Response Time (days from submission to resolution)
+            var resolvedConcerns = await _db.Concerns
+                .Where(c => c.Status == "Resolved" && c.UpdatedAt != null)
+                .ToListAsync();
+
+            AvgResponseDays = resolvedConcerns.Any()
+                ? Math.Round(resolvedConcerns.Average(c => (c.UpdatedAt!.Value - c.SubmittedAt).TotalDays), 1)
+                : 0;
+
+            
+
+            // Top Barangays
+            var barangayGroups = await _db.Concerns
+                .Where(c => c.LocationName != null)
+                .GroupBy(c => c.LocationName)
+                .Select(g => new { Barangay = g.Key, Count = g.Count() })
+                .OrderByDescending(g => g.Count)
+                .Take(5)
+                .ToListAsync();
+
+            TopBarangays = barangayGroups.Select(g => new BarangayCount
+            {
+                Barangay = g.Barangay ?? "Unknown",
+                Count = g.Count
+            }).ToList();
 
             // Concern Trends — last 7 days
             var today = DateTime.UtcNow.Date;
             var labels = new List<string>();
             var data = new List<int>();
+
+            // Today's Concerns — add this right here
+            TodayConcerns = await concerns.CountAsync(c => c.SubmittedAt.Date == today);
 
             for (int i = 6; i >= 0; i--)
             {

@@ -55,6 +55,60 @@
         <div class="stat-number">@Model.TotalInProgress.ToString("D2")</div>
         <div class="stat-label">In Progress</div>
     </div>
+    <!-- Total Resolved -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+        <div class="stat-number">@Model.TotalResolved.ToString("D2")</div>
+        <div class="stat-label">Resolved</div>
+    </div>
+
+    <!-- Pending Recommendations -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14,2 14,8 20,8" />
+            <line x1="12" y1="18" x2="12" y2="12" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+        </svg>
+        <div class="stat-number">@Model.PendingRecommendations.ToString("D2")</div>
+        <div class="stat-label">Pending Recommendations</div>
+    </div>
+
+    <!-- Resolution Rate -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        <div class="stat-number">@Model.ResolutionRate%</div>
+        <div class="stat-label">Resolution Rate</div>
+    </div>
+
+    <!-- Average Response Time -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+        </svg>
+        <div class="stat-number">@Model.AvgResponseDays <span style="font-size:14px;font-weight:400;">days</span></div>
+        <div class="stat-label">Avg. Response Time</div>
+    </div>
+
+    <!-- Today's Concerns -->
+    <div class="stat-card">
+        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        <div class="stat-number">@Model.TodayConcerns.ToString("D2")</div>
+        <div class="stat-label">Today's Concerns</div>
+    </div>
 
 </div>
 
@@ -93,6 +147,39 @@
         </div>
 
     </div>
+    @* category chart *@
+    <div class="main-visual-row" style="margin-top:24px;">
+        <div class="viz-card" style="flex:1;">
+            <h3 class="viz-title">Concerns by Category</h3>
+            <div class="chart-wrapper">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+        <div class="viz-card" style="flex:1;">
+            <h3 class="viz-title">Top Barangays by Concern Volume</h3>
+            <div style="margin-top:16px;">
+                @if (!Model.TopBarangays.Any())
+                {
+                    <p style="color:#999;font-size:13px;">No data yet.</p>
+                }
+                @foreach (var b in Model.TopBarangays)
+                {
+                    var pct = Model.TotalConcerns > 0
+                        ? (int)((double)b.Count / Model.TotalConcerns * 100)
+                        : 0;
+                    <div style="margin-bottom:16px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                            <span style="font-size:13px;font-weight:500;color:#1a1a2e;">@b.Barangay</span>
+                            <span style="font-size:13px;color:#2D46B9;font-weight:600;">@b.Count concerns</span>
+                        </div>
+                        <div style="background:#eef1fb;border-radius:999px;height:8px;">
+                            <div style="background:#2D46B9;width:@pct%;height:8px;border-radius:999px;"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -129,6 +216,48 @@
                 }
             }
         }
+        });
+
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(categoryCtx, {
+            type: 'bar',
+            data: {
+                labels: @Html.Raw(Model.CategoryLabels),
+                datasets: [{
+                    label: 'Concerns',
+                    data: @Html.Raw(Model.CategoryData),
+                    backgroundColor: [
+                        'rgba(45, 70, 185, 0.7)',
+                        'rgba(45, 70, 185, 0.6)',
+                        'rgba(45, 70, 185, 0.5)',
+                        'rgba(45, 70, 185, 0.4)',
+                        'rgba(45, 70, 185, 0.3)',
+                    ],
+                    borderColor: '#2D46B9',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        min: 0,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                if (value <= 10) return value;
+                                if (value % 5 === 0) return value;
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
         });
     </script>
 }
