@@ -37,8 +37,9 @@
 
         #choropleth-map {
             width: 100%;
-            height: 600px;
+            height: 100%;
         }
+
     </style>
 }
 
@@ -84,9 +85,13 @@
                     document.querySelector('.locations-wrapper').style.display = 'block';
                     document.querySelector('.heatmap-wrapper').style.display = 'none';
                 } else {
-                    document.querySelector('.locations-wrapper').style.display = 'none';
-                    document.querySelector('.heatmap-wrapper').style.display = 'block';
-                    initHeatmap();
+                document.querySelector('.locations-wrapper').style.display = 'none';
+                document.querySelector('.heatmap-wrapper').style.display = 'block';
+                initHeatmap();
+                // Trigger resize so map fills container correctly
+                setTimeout(() => {
+                    google.maps.event.trigger(document.getElementById('choropleth-map').__gm?.map ?? {}, 'resize');
+                }, 100);
                 }
             });
         });
