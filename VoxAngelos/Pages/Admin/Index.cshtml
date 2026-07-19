@@ -7,13 +7,14 @@
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/admin-dashboard.css" />
+    <link rel="stylesheet" href="~/css/admin-dashboard-widgets.css" />
 }
 
-        <div class="content-header">
-            <h1 class="page-title">Welcome, Admin</h1>
-        </div>
+<div class="content-header">
+    <h1 class="page-title">Welcome, Admin</h1>
+</div>
 
-            <!-- Stats Cards -->
+<!-- Stats Cards -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon">
@@ -52,3 +53,203 @@
         <div class="stat-label">Verified Accounts</div>
     </div>
 </div>
+
+<!-- ===================== NEW: everything below this line is additive ===================== -->
+<!-- Applications widgets -->
+<h2 class="dash-section-title">Applications</h2>
+<div class="dash-grid dash-grid-2">
+
+    <div class="dash-panel">
+        <div class="dash-panel-title">Oldest Pending Applications</div>
+        @if (Model.OldestPending.Count == 0)
+        {
+            <p class="dash-empty">No pending applications right now.</p>
+        }
+        else
+        {
+            <table class="dash-table">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Waiting</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.OldestPending)
+                    {
+                        <tr>
+                            <td>@item.Label</td>
+                            <td>@item.SubLabel</td>
+                            <td>@item.DaysAgo day(s)</td>
+                            <td>
+                                <a class="dash-btn-sm" asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending">Review</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="dash-panel">
+        <div class="dash-panel-title">Face-Match Health</div>
+        <div class="dash-metric-row">
+            <div>
+                <div class="dash-metric-value @(Model.FaceMatchFailureRate > 20 ? "text-danger" : "text-success")">
+                    @Model.FaceMatchFailureRate.ToString("0.0")%
+                </div>
+                <div class="dash-metric-label">Failure Rate (below 50% match)</div>
+            </div>
+            <div class="dash-metric-sub">
+                @Model.LowFaceMatchCount of @Model.TotalFaceChecks checks below threshold
+            </div>
+        </div>
+        @if (Model.FaceMatchFailureRate > 20 && Model.TotalFaceChecks > 0)
+        {
+            <p class="dash-warning">Failure rate is elevated — worth checking whether the face-match system is behaving correctly.</p>
+        }
+    </div>
+</div>
+
+<div class="dash-panel dash-panel-wide">
+    <div class="dash-panel-title">Applications — Last 14 Days</div>
+    <canvas id="applicationsTrendChart" height="80"></canvas>
+</div>
+
+<!-- Office Management widgets -->
+<h2 class="dash-section-title">Office Management</h2>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">@Model.TotalLguAccounts</div>
+        <div class="stat-label">Total LGU Accounts</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number text-success">@Model.ActiveLguAccounts</div>
+        <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number text-danger">@Model.DisabledLguAccounts</div>
+        <div class="stat-label">Disabled</div>
+    </div>
+</div>
+
+<div class="dash-grid dash-grid-2">
+    <div class="dash-panel">
+        <div class="dash-panel-title">Accounts by Department</div>
+        @if (Model.AccountsByDepartment.Count == 0)
+        {
+            <p class="dash-empty">No LGU accounts yet.</p>
+        }
+        else
+        {
+            <table class="dash-table">
+                <thead>
+                    <tr><th>Department</th><th>Total</th><th>Active</th><th>Disabled</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var dept in Model.AccountsByDepartment)
+                    {
+                        <tr>
+                            <td>@dept.Department</td>
+                            <td>@dept.Total</td>
+                            <td class="text-success">@dept.Active</td>
+                            <td class="text-danger">@dept.Disabled</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="dash-panel">
+        <div class="dash-panel-title">Recently Created Accounts</div>
+        @if (Model.RecentLguAccounts.Count == 0)
+        {
+            <p class="dash-empty">No accounts created yet.</p>
+        }
+        else
+        {
+            <table class="dash-table">
+                <thead>
+                    <tr><th>Department</th><th>Employee ID</th><th>Created</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var acct in Model.RecentLguAccounts)
+                    {
+                        <tr>
+                            <td>@acct.Label</td>
+                            <td>@acct.SubLabel</td>
+                            <td>@acct.Timestamp.ToString("MM/dd/yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- NLP Performance widgets -->
+<h2 class="dash-section-title">NLP Performance</h2>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number @(Model.NlpThresholdMet ? "text-success" : "text-danger")">
+            @Model.NlpAccuracyPercent.ToString("0.0")%
+        </div>
+        <div class="stat-label">
+            Overall Accuracy
+            @if (Model.NlpTotalReviewed > 0)
+            {
+                <span>(target 75%)</span>
+            }
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">@(Model.WorstDepartment ?? "—")</div>
+        <div class="stat-label">
+            Weakest Department
+            @if (Model.WorstDepartment != null)
+            {
+                <span>(@Model.WorstDepartmentAccuracy.ToString("0.0")% accurate)</span>
+            }
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number @(Model.RecentMisclassificationCount > 0 ? "text-danger" : "")">
+            @Model.RecentMisclassificationCount
+        </div>
+        <div class="stat-label">Misclassified (Last 7 Days)</div>
+    </div>
+</div>
+@if (Model.NlpTotalReviewed == 0)
+{
+    <p class="dash-empty">No classification feedback logged yet — these numbers will populate once LGU staff start confirming or reassigning concern categories.</p>
+}
+
+<!-- Trend chart script -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const ctx = document.getElementById("applicationsTrendChart");
+        if (!ctx) return;
+
+        const labels = @Html.Raw(Json.Serialize(Model.ApplicationsLast14Days.Select(d => d.Date.ToString("MMM d"))));
+        const data = @Html.Raw(Json.Serialize(Model.ApplicationsLast14Days.Select(d => d.Count)));
+
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Applications submitted",
+                    data: data,
+                    borderColor: "#2D54C4",
+                    backgroundColor: "rgba(45, 84, 196, 0.08)",
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    });
+</script>
