@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Hosting;
 using VoxAngelos.Data;
 
 namespace VoxAngelos.Pages.Admin
@@ -15,20 +14,17 @@ namespace VoxAngelos.Pages.Admin
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<LoginModel> _logger;
-        private readonly IHostEnvironment _env;
 
         public LoginModel(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailSender emailSender,
-            ILogger<LoginModel> logger,
-            IHostEnvironment env)
+            ILogger<LoginModel> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
             _logger = logger;
-            _env = env;
         }
 
         [BindProperty]
@@ -81,11 +77,6 @@ namespace VoxAngelos.Pages.Admin
                 $"Admin login OTP for <strong>{user.Email}</strong>: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
 
             TempData["Admin_2FA_UserId"] = user.Id;
-
-            // Testing convenience: surface the OTP in the browser console since
-            // SMTP delivery isn't reliable locally. Development-only.
-            if (_env.IsDevelopment())
-                TempData["Admin_2FA_DevOtp"] = otp;
 
             return RedirectToPage("/Admin/LoginOtp");
         }

@@ -30,20 +30,16 @@ namespace VoxAngelos.Pages.LGU
         public string OtpCode { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
-        public string? DevOtp { get; set; }
 
         public IActionResult OnGet()
         {
             if (TempData.Peek("LGU_2FA_UserId") == null)
                 return RedirectToPage("/LGU/Login");
-            DevOtp = TempData.Peek("LGU_2FA_DevOtp")?.ToString();
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            DevOtp = TempData.Peek("LGU_2FA_DevOtp")?.ToString();
-
             var userId = TempData.Peek("LGU_2FA_UserId")?.ToString();
             if (userId == null)
             {
