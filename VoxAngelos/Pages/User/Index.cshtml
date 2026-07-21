@@ -11,18 +11,23 @@
 
 <div class="content-header">
     <h1 class="page-title">Discover</h1>
+
     <div class="header-right">
+
         <select class="filter-select" id="officeFilter" aria-label="Filter by LGU office">
             <option value="">All Offices</option>
+
             @foreach (var office in VoxAngelos.Pages.User.IndexModel.Offices)
             {
-                <option value="@office">@office</option>
+                <option value="@office.Code">@office.Name</option>
             }
         </select>
+
         <select class="filter-select" id="dateSort" aria-label="Sort by date">
             <option value="desc">Newest First</option>
             <option value="asc">Oldest First</option>
         </select>
+
         <div class="search-box">
             <input type="text" placeholder="Search" class="search-input" id="searchInput" />
             <button class="search-btn" aria-label="Search">
@@ -32,6 +37,7 @@
                 </svg>
             </button>
         </div>
+
     </div>
 </div>
 @* to prove the request is coming from your own page and not from a malicious site *@

@@ -16,6 +16,9 @@ namespace VoxAngelos.Data
         public string Description { get; set; } = string.Empty;
         public string Beneficiaries { get; set; } = string.Empty;
         public int EstimatedPeopleAffected { get; set; }
+        // Hides the citizen's identity from the public Discover feed only.
+        // Authorized LGU staff can still identify the submitter for follow-up.
+        public bool IsAnonymous { get; set; }
         public ICollection<RecommendationAttachment> Attachments { get; set; } = new List<RecommendationAttachment>();
         public string Status { get; set; } = "Pending";
         public string? LguNotes { get; set; }

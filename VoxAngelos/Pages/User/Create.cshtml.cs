@@ -54,6 +54,7 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public string RecDescription { get; set; } = string.Empty;
         [BindProperty] public string RecBeneficiaries { get; set; } = string.Empty;
         [BindProperty] public int RecPeopleAffected { get; set; }
+        [BindProperty] public bool RecIsAnonymous { get; set; }
         [BindProperty] public List<IFormFile> RecAttachments { get; set; } = new();
 
         private string? ResolveCredentialsPath(string? path)
@@ -209,6 +210,7 @@ namespace VoxAngelos.Pages.User
                 Description = RecDescription,
                 Beneficiaries = RecBeneficiaries,
                 EstimatedPeopleAffected = RecPeopleAffected,
+                IsAnonymous = RecIsAnonymous,
                 Status = "Pending",
                 AssignedOffice = await _classifier.ClassifyAsync(
                     classificationText,
