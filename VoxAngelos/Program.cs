@@ -206,11 +206,6 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Delete ALL existing LGU accounts for a clean slate
-    var allLguUsers = await userManager.GetUsersInRoleAsync("LGU");
-    foreach (var lguUser in allLguUsers)
-        await userManager.DeleteAsync(lguUser);
-
     // Clear leftover LGU fields from plain User accounts
     var usersWithFields = userManager.Users
         .Where(u => u.Department != null || u.EmployeeId != null)
@@ -241,6 +236,10 @@ using (var scope = app.Services.CreateScope())
 
     foreach (var lgu in lguAccounts)
     {
+        var existingLgu = await userManager.FindByEmailAsync(lgu.Email);
+        if (existingLgu != null)
+            continue;
+
         var lguUser = new ApplicationUser
         {
             UserName = lgu.Email,
