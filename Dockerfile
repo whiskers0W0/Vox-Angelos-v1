@@ -15,6 +15,11 @@ RUN dotnet publish "VoxAngelos.csproj" -c Release -o /app/publish /p:UseAppHost=
 
 # Stage 3: Final Stage - MUST match the SDK version (10.0)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
+# Npgsql needs this to negotiate connections with PostgreSQL; not guaranteed present in the base image
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=publish /app/publish .
 
