@@ -63,16 +63,27 @@
                 <!-- Description -->
                 <div class="concern-form-group">
                     <label class="concern-form-label">Description:</label>
+                    <div class="concern-description-guide" id="concernDescriptionGuide">
+                        <p><strong>For faster routing:</strong> Include <strong>what happened</strong>, the <strong>exact location or nearby landmark</strong>, <strong>when</strong> you noticed it, and important details such as the affected area or severity. Use specific words like “pothole,” “uncollected garbage,” or “broken streetlight.”</p>
+                        <p><strong>Para mas mabilis na maipadala sa tamang tanggapan:</strong> Isama ang <strong>nangyari</strong>, ang <strong>eksaktong lugar o malapit na palatandaan</strong>, <strong>kailan</strong> ito napansin, at mahahalagang detalye tulad ng apektadong bahagi o tindi ng problema. Gumamit ng tiyak na salita gaya ng “lubak,” “hindi nakolektang basura,” o “sirang poste ng ilaw.”</p>
+                    </div>
                     <textarea class="concern-textarea" id="concernDescription"
-                              name="Description" placeholder="Describe your concern..."></textarea>
+                              name="Description" aria-describedby="concernDescriptionGuide"
+                              placeholder="Describe your concern..."></textarea>
                 </div>
                 
                 <span class="text-danger small" id="err-description"></span>
                 <!-- Location -->
                 <div class="concern-location-row">
                     <label class="concern-form-label">Location:</label>
-                    <span class="concern-location-value" id="concernLocationText"></span>
-                    <button class="use-map-link" id="useMapBtn" type="button">Use map</button>
+                    <span class="concern-location-value" id="concernLocationText" aria-live="polite">No location selected</span>
+                    <button class="use-map-link" id="useMapBtn" type="button" aria-label="Select the concern location on a map">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                            <circle cx="12" cy="10" r="2.5" />
+                        </svg>
+                        <span>Select on map</span>
+                    </button>
                 </div>
                 
                 <span class="text-danger small" id="err-location"></span>
@@ -113,11 +124,17 @@
             <!-- STEP 1: Project Type -->
             <div class="step-content active" id="step1">
                 <div class="form-group">
-                    <label class="form-label">Why are you recommending this? Justify your recommendation below.</label>
-                    <textarea class="form-textarea" id="projectJustification" placeholder="Briefly explain how this project solves a specific community or technical problem..."></textarea>
+                    <label class="form-label bilingual-question" for="projectJustification">
+                        <span><strong>What community problem are you trying to solve?</strong> Tell us what is happening, where it occurs, who is affected, and how it affects daily life, safety, health, or the environment.</span>
+                        <span>Anong problema sa komunidad ang nais ninyong maresolba? Ilarawan ang nangyayari, saan ito nagaganap, sino ang naaapektuhan, at paano nito naaapektuhan ang araw-araw na buhay, kaligtasan, kalusugan, o kapaligiran.</span>
+                    </label>
+                    <textarea class="form-textarea" id="projectJustification" placeholder="Example: Flooding near the public market affects commuters and vendors during heavy rain..."></textarea>
                 </div>
 
-                <p class="step-question">What type of recommendation would you like to propose?</p>
+                <p class="step-question bilingual-question">
+                    <span>What type of recommendation would you like to propose?</span>
+                    <span>Anong uri ng rekomendasyon ang nais ninyong ihain?</span>
+                </p>
                 <div class="category-grid">
                     <button class="category-btn" data-value="Infrastructure">Infrastructure</button>
                     <button class="category-btn" data-value="Environment">Environment</button>
@@ -134,25 +151,37 @@
             <!-- STEP 2: Project Details -->
             <div class="step-content" id="step2">
                 <div class="form-group">
-                    <label class="form-label">Give your recommendation a title.</label>
-                    <input type="text" class="form-input" id="projectTitle" placeholder="Title" />
+                    <label class="form-label bilingual-question" for="projectTitle">
+                        <span><strong>What is a clear title for your recommendation?</strong> Keep it short and specific.</span>
+                        <span><strong>Ano ang malinaw na pamagat ng inyong rekomendasyon?</strong> Panatilihin itong maikli at tiyak.</span>
+                    </label>
+                    <input type="text" class="form-input" id="projectTitle" placeholder="Example: Improve drainage near the public market" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Where would you like the recommendation to be located?</label>
-                    <input type="text" class="form-input" id="projectLocation" placeholder="Sto. Rosario, Angeles City" />
+                    <label class="form-label bilingual-question" for="projectLocation">
+                        <span><strong>Where should this recommendation be implemented?</strong> Include the barangay, street, facility, or nearby landmark.</span>
+                        <span><strong>Saan dapat ipatupad ang rekomendasyong ito?</strong> Isama ang barangay, kalye, pasilidad, o malapit na palatandaan.</span>
+                    </label>
+                    <input type="text" class="form-input" id="projectLocation" placeholder="Example: Sto. Rosario, near the public market" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Describe the recommendation you are proposing.</label>
-                    <textarea class="form-textarea" id="projectDescription" placeholder="Describe your recommendation here..."></textarea>
+                    <label class="form-label bilingual-question" for="projectDescription">
+                        <span><strong>What should the city do, and what improvement do you expect?</strong> Mention the key activities, facilities, or services that should be included.</span>
+                        <span><strong>Ano ang iminumungkahi ninyong gawin ng lungsod, at anong pagbabago ang inaasahan ninyo?</strong> Banggitin ang mahahalagang gawain, pasilidad, o serbisyong dapat isama.</span>
+                    </label>
+                    <textarea class="form-textarea" id="projectDescription" placeholder="Example: Build covered drainage and add waste bins to reduce flooding and improve sanitation..."></textarea>
                 </div>
             </div>
 
             <!-- STEP 3: More Details -->
             <div class="step-content" id="step3">
-                <p class="step-question">Please provide more details about your recommendation.</p>
+                <p class="step-question bilingual-question">
+                    <span><strong>Who will benefit most from this recommendation?</strong> Select all groups that may benefit.</span>
+                    <span><strong>Sino ang pangunahing makikinabang sa rekomendasyong ito?</strong> Piliin ang lahat ng grupong maaaring makinabang.</span>
+                </p>
 
                 <div class="form-group">
-                    <label class="form-label left">Who will benefit from this recommendation?</label>
+                    <label class="form-label left">Beneficiary groups / Mga grupong makikinabang</label>
                     <div class="checkbox-group">
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Local residents" /> Local residents</label>
                         <label class="checkbox-label"><input type="checkbox" name="beneficiary" value="Students" /> Students</label>
@@ -163,12 +192,27 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label left">Estimated no. of people affected</label>
+                    <label class="form-label left bilingual-question" for="peopleAffected">
+                        <span><strong>Approximately how many people may benefit?</strong> Give your best estimate.</span>
+                        <span><strong>Humigit-kumulang ilang tao ang maaaring makinabang?</strong> Ibigay ang pinakamalapit ninyong tantiya.</span>
+                    </label>
                     <input type="number" class="form-input" id="peopleAffected" placeholder="e.g. 500" />
                 </div>
 
+                <div class="anonymous-choice">
+                    <input type="checkbox" id="recIsAnonymous" />
+                    <label for="recIsAnonymous">
+                        <span><strong>Post anonymously on Discover</strong> — other citizens will see “Anonymous Citizen” instead of your name.</span>
+                        <span>Manatiling anonymous sa Discover — makikita ng ibang mamamayan ang “Anonymous Citizen” sa halip na ang inyong pangalan.</span>
+                    </label>
+                </div>
+                <p class="anonymous-note">Authorized LGU staff can still view your identity when reviewing or following up on the recommendation.</p>
+
                 <div class="form-group">
-                    <label class="form-label left">Upload Files (Optional):</label>
+                    <label class="form-label left bilingual-question">
+                        <span><strong>Do you have photos, examples, or documents that support your recommendation?</strong> This is optional.</span>
+                        <span><strong>Mayroon ba kayong larawan, halimbawa, o dokumentong sumusuporta sa inyong rekomendasyon?</strong> Opsyonal ito.</span>
+                    </label>
                     <button class="upload-btn" type="button" id="uploadBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -194,6 +238,7 @@
                     <br>
                     <div><strong>Beneficiaries:</strong> <span id="r-beneficiaries"></span></div>
                     <div><strong>Est. people affected:</strong> <span id="r-people"></span></div>
+                    <div><strong>Privacy:</strong> <span id="r-privacy"></span></div>
                     <div><strong>Attachments:</strong> <div id="r-attachments" style="display:flex;flex-wrap:wrap;margin-top:6px;"></div></div>
                 </div>
             </div>
@@ -385,6 +430,9 @@
     
             const people = document.getElementById('peopleAffected').value;
             document.getElementById('r-people').textContent = people || '—';
+            document.getElementById('r-privacy').textContent = document.getElementById('recIsAnonymous').checked
+                ? 'Anonymous on Discover'
+                : 'Show my name on Discover';
     
             const files = Array.from(fileInput.files);
             const attachmentContainer = document.getElementById('r-attachments');
@@ -446,6 +494,7 @@
                     .map(c => c.value).join(', ');
                 formData.append('RecBeneficiaries', checked);
                 formData.append('RecPeopleAffected', document.getElementById('peopleAffected').value);
+                formData.append('RecIsAnonymous', document.getElementById('recIsAnonymous').checked);
 
                 const files = document.getElementById('fileInput').files;
                 for (let i = 0; i < files.length; i++) {
@@ -555,6 +604,7 @@
             document.getElementById('projectDescription').value = '';
             document.querySelectorAll('input[name="beneficiary"]').forEach(c => c.checked = false);
             document.getElementById('peopleAffected').value = '';
+            document.getElementById('recIsAnonymous').checked = false;
             fileLabel.textContent = '';
             successState.classList.remove('active');
             stepFooter.style.display = 'flex';

@@ -33,7 +33,44 @@ namespace VoxAngelos.Pages.User
 
         // The 7 LGU department codes concerns/recommendations are routed to
         // (see ConcernClassificationService) — used to populate the office filter dropdown.
-        public static readonly string[] Offices = { "SWDO", "CEO", "CENRO", "ACDO", "PPTRO", "OSCA", "PWDAO" };
+        public static readonly List<Office> Offices = new()
+            {
+                new Office
+                {
+                    Code = "SWDO",
+                    Name = "Social Welfare and Development Office"
+                },
+                new Office
+                {
+                    Code = "CEO",
+                    Name = "City Engineer's Office"
+                },
+                new Office
+                {
+                    Code = "CENRO",
+                    Name = "City Environment and Natural Resources Office"
+                },
+                new Office
+                {
+                    Code = "ACDO",
+                    Name = "Agricultural and Cooperative Development Office"
+                },
+                new Office
+                {
+                    Code = "PTRO",
+                    Name = "Public Transport and Traffic Regulation Office"
+                },
+                new Office
+                {
+                    Code = "OSCA",
+                    Name = "Office of the Senior Citizens Affairs"
+                },
+                new Office
+                {
+                    Code = "PWDAO",
+                    Name = "Persons with Disability Affairs Office"
+                }
+            };
 
         public class RecommendationCardViewModel
         {
@@ -84,9 +121,11 @@ namespace VoxAngelos.Pages.User
             return new RecommendationCardViewModel
             {
                 Id = r.Id,
-                CitizenName = r.Citizen.UserProfile != null
-                    ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
-                    : r.Citizen.Email ?? "Citizen",
+                CitizenName = r.IsAnonymous
+                    ? "Anonymous Citizen"
+                    : r.Citizen.UserProfile != null
+                        ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
+                        : r.Citizen.Email ?? "Citizen",
                 Category = r.Category,
                 AssignedOffice = r.AssignedOffice ?? string.Empty,
                 Title = r.Title,
