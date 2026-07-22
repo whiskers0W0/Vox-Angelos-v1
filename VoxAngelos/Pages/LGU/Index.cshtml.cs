@@ -55,6 +55,7 @@ namespace VoxAngelos.Pages.LGU
                 .Include(c => c.Attachments)
                 .Include(c => c.Citizen)
                 .ThenInclude(u => u.UserProfile)
+                .Where(c => c.Status != "Draft")
                 .AsQueryable();
 
             // Show concerns whose classified category matches this LGU's department

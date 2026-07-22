@@ -56,6 +56,7 @@ namespace VoxAngelos.Pages.LGU
             var query = _db.Recommendations
                 .Include(r => r.Citizen).ThenInclude(u => u.UserProfile)
                 .Include(r => r.Attachments)
+                .Where(r => r.Status != "Draft")
                 .AsQueryable();
 
             // Show recommendations whose classified office matches this LGU's department

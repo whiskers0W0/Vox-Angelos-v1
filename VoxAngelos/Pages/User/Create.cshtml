@@ -103,8 +103,10 @@
 
                 <!-- Submit -->
                 <div class="concern-submit-row">
+                    <button class="btn-submit" id="concernSaveDraftBtn" type="button" style="margin-right:8px;">Save Draft</button>
                     <button class="btn-submit" id="concernSubmitBtn" type="button">Submit</button>
                 </div>
+                <p id="concernDraftStatus" aria-live="polite" style="margin:8px 0 0; font-size:13px;"></p>
 
             </form>
         </div>
@@ -221,7 +223,10 @@
                         </svg>
                         Upload Photo or Document
                     </button>
-                    <input type="file" id="fileInput" style="display:none;" multiple accept="image/*,.pdf,.doc,.docx" />
+                    <input type="file" id="fileInput"
+                           style="display:none;"
+                           multiple
+                           accept="image/*,video/*,.pdf,.doc,.docx" />
                     <p class="file-name-label" id="fileLabel"></p>
                 </div>
             </div>
@@ -259,6 +264,7 @@
             <div class="step-footer" id="stepFooter">
                 <span class="step-counter" id="stepCounter">Step 1 of 4</span>
                 <div class="footer-actions">
+                    <button class="btn-back" id="btnSaveDraft" type="button">Save Draft</button>
                     <button class="btn-back" id="btnBack" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="15 18 9 12 15 6" />
@@ -272,6 +278,7 @@
                         </svg>
                     </button>
                 </div>
+                <p id="recommendationStatus" aria-live="polite" style="margin:8px 0 0; font-size:13px;"></p>
             </div>
 
         </div>
@@ -341,6 +348,28 @@
 
 @section Scripts {
     <script>
+        const savedConcernDraft = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            HasDraft = Model.SavedConcernDraft != null,
+            Description = Model.SavedConcernDraft?.Description,
+            LocationName = Model.SavedConcernDraft?.LocationName,
+            Latitude = Model.SavedConcernDraft?.Latitude,
+            Longitude = Model.SavedConcernDraft?.Longitude
+        }));
+
+        const savedRecommendationDraft = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            HasDraft = Model.SavedRecommendationDraft != null,
+            Justification = Model.SavedRecommendationDraft?.Justification,
+            Category = Model.SavedRecommendationDraft?.Category,
+            Title = Model.SavedRecommendationDraft?.Title,
+            Location = Model.SavedRecommendationDraft?.Location,
+            Description = Model.SavedRecommendationDraft?.Description,
+            Beneficiaries = Model.SavedRecommendationDraft?.Beneficiaries,
+            EstimatedPeopleAffected = Model.SavedRecommendationDraft?.EstimatedPeopleAffected,
+            IsAnonymous = Model.SavedRecommendationDraft?.IsAnonymous
+        }));
+
         /* ── Tab switching ──────────────────────────── */
         const tabButtons = document.querySelectorAll('.tab-btn');
         const concernView = document.getElementById('concernView');
@@ -374,9 +403,11 @@
         const steps = document.querySelectorAll('.step-content');
         const btnBack = document.getElementById('btnBack');
         const btnNext = document.getElementById('btnNext');
+        const btnSaveDraft = document.getElementById('btnSaveDraft');
         const stepCounter = document.getElementById('stepCounter');
         const stepFooter = document.getElementById('stepFooter');
         const successState = document.getElementById('successState');
+        const recommendationStatus = document.getElementById('recommendationStatus');
 
         // UPDATED: Category selection with "Others" logic
         const otherContainer = document.getElementById('otherSpecContainer');
@@ -473,6 +504,64 @@
             }
         }
 
+        function buildRecommendationFormData(includeAttachments) {
+            const formData = new FormData();
+            formData.append('RecJustification', document.getElementById('projectJustification').value);
+            formData.append('RecCategory', selectedCategory === 'Others'
+                ? document.getElementById('otherSpecification').value
+                : selectedCategory);
+            formData.append('RecTitle', document.getElementById('projectTitle').value);
+            formData.append('RecLocation', document.getElementById('projectLocation').value);
+            formData.append('RecDescription', document.getElementById('projectDescription').value);
+
+            const checked = Array.from(document.querySelectorAll('input[name="beneficiary"]:checked'))
+                .map(c => c.value).join(', ');
+            formData.append('RecBeneficiaries', checked);
+            formData.append('RecPeopleAffected', document.getElementById('peopleAffected').value);
+            formData.append('RecIsAnonymous', document.getElementById('recIsAnonymous').checked);
+
+            if (includeAttachments) {
+                const files = fileInput.files;
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('RecAttachments', files[i]);
+                }
+            }
+
+            formData.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+            return formData;
+        }
+
+        async function readRecommendationResponse(response) {
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.success) {
+                throw new Error(data?.message || data?.error || `Server returned ${response.status}. Please try again.`);
+            }
+
+            return data;
+        }
+
+        btnSaveDraft.addEventListener('click', async () => {
+            recommendationStatus.textContent = '';
+            btnSaveDraft.disabled = true;
+            btnSaveDraft.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('?handler=SaveRecommendationDraft', {
+                    method: 'POST',
+                    body: buildRecommendationFormData(false)
+                });
+                const data = await readRecommendationResponse(response);
+                recommendationStatus.textContent = `${data.message} Attachments will be uploaded when you submit.`;
+            } catch (error) {
+                recommendationStatus.textContent = error.message;
+                console.error('Draft save error:', error);
+            } finally {
+                btnSaveDraft.disabled = false;
+                btnSaveDraft.textContent = 'Save Draft';
+            }
+        });
+
                 btnNext.addEventListener('click', () => {
             if (currentStep < totalSteps) {
                 // Run validation for the current step
@@ -481,42 +570,24 @@
                     goToStep(currentStep);
                 }
                 } else {
-                const formData = new FormData();
-                formData.append('RecJustification', document.getElementById('projectJustification').value);
-                formData.append('RecCategory', selectedCategory === 'Others'
-                    ? document.getElementById('otherSpecification').value
-                    : selectedCategory);
-                formData.append('RecTitle', document.getElementById('projectTitle').value);
-                formData.append('RecLocation', document.getElementById('projectLocation').value);
-                formData.append('RecDescription', document.getElementById('projectDescription').value);
-
-                const checked = Array.from(document.querySelectorAll('input[name="beneficiary"]:checked'))
-                    .map(c => c.value).join(', ');
-                formData.append('RecBeneficiaries', checked);
-                formData.append('RecPeopleAffected', document.getElementById('peopleAffected').value);
-                formData.append('RecIsAnonymous', document.getElementById('recIsAnonymous').checked);
-
-                const files = document.getElementById('fileInput').files;
-                for (let i = 0; i < files.length; i++) {
-                    formData.append('RecAttachments', files[i]);
-                }
-
-                formData.append('__RequestVerificationToken',
-                    document.querySelector('input[name="__RequestVerificationToken"]').value);
+                const formData = buildRecommendationFormData(true);
 
                 fetch('?handler=Recommendation', {
                     method: 'POST',
                     body: formData
                 })
-                .then(res => res.json())
-                .then(data => {
+                    .then(readRecommendationResponse)
+                    .then(data => {
                     if (data.success) {
                         stepFooter.style.display = 'none';
                         steps.forEach(s => s.classList.remove('active'));
                         successState.classList.add('active');
                     }
                 })
-                .catch(err => console.error('Submission error:', err));
+                .catch(err => {
+                    recommendationStatus.textContent = err.message;
+                    console.error('Submission error:', err);
+                });
             }
             });
 
@@ -611,6 +682,48 @@
             goToStep(1);
         });
 
+        function restoreSavedRecommendationDraft() {
+            if (!savedRecommendationDraft.HasDraft) return;
+
+            document.getElementById('projectJustification').value = savedRecommendationDraft.Justification || '';
+            document.getElementById('projectTitle').value = savedRecommendationDraft.Title || '';
+            document.getElementById('projectLocation').value = savedRecommendationDraft.Location || '';
+            document.getElementById('projectDescription').value = savedRecommendationDraft.Description || '';
+            document.getElementById('peopleAffected').value = savedRecommendationDraft.EstimatedPeopleAffected || '';
+            document.getElementById('recIsAnonymous').checked = savedRecommendationDraft.IsAnonymous === true;
+
+            const savedBeneficiaries = (savedRecommendationDraft.Beneficiaries || '')
+                .split(',')
+                .map(value => value.trim());
+            document.querySelectorAll('input[name="beneficiary"]').forEach(checkbox => {
+                checkbox.checked = savedBeneficiaries.includes(checkbox.value);
+            });
+
+            const categoryButton = Array.from(document.querySelectorAll('.category-btn'))
+                .find(button => button.dataset.value === savedRecommendationDraft.Category);
+            if (categoryButton) {
+                selectedCategory = savedRecommendationDraft.Category;
+                categoryButton.classList.add('selected');
+            } else if (savedRecommendationDraft.Category) {
+                selectedCategory = 'Others';
+                document.getElementById('btnOthers').classList.add('selected');
+                otherContainer.style.display = 'block';
+                otherInput.value = savedRecommendationDraft.Category;
+            }
+
+            if (!savedConcernDraft.HasDraft) {
+                tabButtons.forEach(button => {
+                    button.classList.toggle('active', button.dataset.view === 'project');
+                });
+                concernView.classList.remove('active-view');
+                projectView.classList.add('active-view');
+                tabIndicator.style.transform = 'translateX(100%)';
+                pageTitle.textContent = 'Continue Your Recommendation Draft';
+            }
+            recommendationStatus.textContent = 'Your saved draft has been restored. Attachments upload when you submit.';
+        }
+
+        restoreSavedRecommendationDraft();
         goToStep(1);
 
                /* ── Concern form ───────────────────────────── */
@@ -633,8 +746,11 @@
             }
         });
 
-                function initMap() {
+        function initMap() {
             const defaultCenter = { lat: 15.1450, lng: 120.5887 };
+            const initialCenter = selectedLat !== null && selectedLng !== null
+                ? { lat: selectedLat, lng: selectedLng }
+                : defaultCenter;
 
             // Angeles City bounds
             const angelsesBounds = new google.maps.LatLngBounds(
@@ -643,7 +759,7 @@
             );
 
             map = new google.maps.Map(document.getElementById('googleMap'), {
-                center: defaultCenter,
+                center: initialCenter,
                 zoom: 14,
                 restriction: {
                     latLngBounds: angelsesBounds,
@@ -652,7 +768,7 @@
             });
 
             marker = new google.maps.Marker({
-                position: defaultCenter,
+                position: initialCenter,
                 map: map,
                 draggable: true
             });
@@ -672,10 +788,14 @@
                 reverseGeocode(selectedLat, selectedLng);
             });
 
-            // Set initial values
-            selectedLat = defaultCenter.lat;
-            selectedLng = defaultCenter.lng;
-            reverseGeocode(selectedLat, selectedLng);
+            // Set initial values when there is no saved concern location.
+            if (selectedLat === null || selectedLng === null) {
+                selectedLat = defaultCenter.lat;
+                selectedLng = defaultCenter.lng;
+                reverseGeocode(selectedLat, selectedLng);
+            } else {
+                mapCoordDisplay.textContent = selectedAddress;
+            }
 
             // Search restricted to Angeles City
             const searchInput = document.getElementById('mapSearchBox');
@@ -753,12 +873,73 @@
         const concernUploadBtn = document.getElementById('concernUploadBtn');
         const concernFileInput = document.getElementById('concernFileInput');
         const concernFileNames = document.getElementById('concernFileNames');
+        const concernSaveDraftBtn = document.getElementById('concernSaveDraftBtn');
+        const concernDraftStatus = document.getElementById('concernDraftStatus');
 
         concernUploadBtn.addEventListener('click', () => concernFileInput.click());
         concernFileInput.addEventListener('change', () => {
             const files = Array.from(concernFileInput.files);
             concernFileNames.textContent = files.length ? files.map(f => f.name).join(', ') : '';
         });
+
+        function buildConcernDraftFormData() {
+            const formData = new FormData();
+            formData.append('Description', document.getElementById('concernDescription').value);
+            formData.append('LocationName', document.getElementById('hdnLocationName').value);
+            formData.append('Latitude', document.getElementById('hdnLatitude').value);
+            formData.append('Longitude', document.getElementById('hdnLongitude').value);
+            formData.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+            return formData;
+        }
+
+        concernSaveDraftBtn.addEventListener('click', async () => {
+            concernDraftStatus.textContent = '';
+            concernSaveDraftBtn.disabled = true;
+            concernSaveDraftBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('?handler=SaveConcernDraft', {
+                    method: 'POST',
+                    body: buildConcernDraftFormData()
+                });
+                const data = await response.json().catch(() => null);
+                if (!response.ok || !data?.success) {
+                    throw new Error(data?.message || data?.error || `Server returned ${response.status}. Please try again.`);
+                }
+
+                concernDraftStatus.textContent = `${data.message} Attachments will be uploaded when you submit.`;
+            } catch (error) {
+                concernDraftStatus.textContent = error.message;
+                console.error('Concern draft save error:', error);
+            } finally {
+                concernSaveDraftBtn.disabled = false;
+                concernSaveDraftBtn.textContent = 'Save Draft';
+            }
+        });
+
+        function restoreSavedConcernDraft() {
+            if (!savedConcernDraft.HasDraft) return;
+
+            document.getElementById('concernDescription').value = savedConcernDraft.Description || '';
+            document.getElementById('hdnLocationName').value = savedConcernDraft.LocationName || '';
+            document.getElementById('hdnLatitude').value = savedConcernDraft.Latitude ?? '';
+            document.getElementById('hdnLongitude').value = savedConcernDraft.Longitude ?? '';
+
+            if (savedConcernDraft.LocationName) {
+                selectedAddress = savedConcernDraft.LocationName;
+                concernLocationText.textContent = savedConcernDraft.LocationName;
+            }
+            if (savedConcernDraft.Latitude != null && savedConcernDraft.Longitude != null) {
+                selectedLat = savedConcernDraft.Latitude;
+                selectedLng = savedConcernDraft.Longitude;
+            }
+
+            pageTitle.textContent = 'Continue Your Concern Draft';
+            concernDraftStatus.textContent = 'Your saved draft has been restored. Attachments upload when you submit.';
+        }
+
+        restoreSavedConcernDraft();
 
         // Concern submit
                 // Hidden fields for confirmed category

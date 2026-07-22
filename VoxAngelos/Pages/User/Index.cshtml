@@ -102,9 +102,16 @@
                             var path = rec.AttachmentPaths[i];
                             var type = rec.AttachmentTypes[i];
                             <div class="attachment-thumb">
-                                @if (type.StartsWith("image/"))
+                                @if (type == "image" || type.StartsWith("image/"))
                                 {
                                     <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                }
+                                else if (type == "video" || type.StartsWith("video/"))
+                                {
+                                    <video controls preload="metadata" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+                                        <source src="@path" />
+                                        Your browser does not support video playback.
+                                    </video>
                                 }
                                 else
                                 {
@@ -190,9 +197,16 @@
                                     var path = rec.AttachmentPaths[i];
                                     var type = rec.AttachmentTypes[i];
                                     <div class="attachment-thumb">
-                                        @if (type.StartsWith("image/"))
+                                        @if (type == "image" || type.StartsWith("image/"))
                                         {
                                             <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                        }
+                                        else if (type == "video" || type.StartsWith("video/"))
+                                        {
+                                            <video controls preload="metadata" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+                                                <source src="@path" />
+                                                Your browser does not support video playback.
+                                            </video>
                                         }
                                         else
                                         {

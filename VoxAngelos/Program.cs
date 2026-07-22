@@ -4,9 +4,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 using VoxAngelos.Data;
 using VoxAngelos.Hubs;
-using VoxAngelos.Services; // ← ADDED
+using VoxAngelos.Services; 
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Allow the request to reach the recommendation handler. The handler itself
+// enforces the 100 MB per-video limit and returns a user-friendly message.
+const long maximumUploadRequestSize = 105L * 1024 * 1024;
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = maximumUploadRequestSize;
+});
 
 // 1. Database Configuration
 var rawUrl = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -121,7 +130,7 @@ builder.Services.AddRateLimiter(options =>
             : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         factory: _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 10,
+            PermitLimit = 20,
             Window = TimeSpan.FromMinutes(10),
             QueueLimit = 0
         }));
@@ -133,6 +142,11 @@ builder.Services.AddRateLimiter(options =>
             "{\"success\":false,\"error\":\"Too many requests. Please wait a few minutes before trying again.\"}",
             token);
     };
+});
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = maximumUploadRequestSize;
 });
 
 var app = builder.Build();

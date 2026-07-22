@@ -41,6 +41,8 @@ namespace VoxAngelos.Pages.User
 
         public string CitizenFullName { get; set; } = string.Empty;
         public string GoogleMapsApiKey => _configuration["GoogleMaps:ApiKey"] ?? "";
+        public Concern? SavedConcernDraft { get; private set; }
+        public Recommendation? SavedRecommendationDraft { get; private set; }
 
         [BindProperty] public string Description { get; set; } = string.Empty;
         [BindProperty] public string? LocationName { get; set; }
@@ -76,6 +78,18 @@ namespace VoxAngelos.Pages.User
                 ? $"{profile.FirstName} {profile.LastName}"
                 : user.Email ?? "Citizen";
 
+            SavedRecommendationDraft = await _db.Recommendations
+                .AsNoTracking()
+                .Where(r => r.CitizenId == user.Id && r.Status == "Draft")
+                .OrderByDescending(r => r.SubmittedAt)
+                .FirstOrDefaultAsync();
+
+            SavedConcernDraft = await _db.Concerns
+                .AsNoTracking()
+                .Where(c => c.CitizenId == user.Id && c.Status == "Draft")
+                .OrderByDescending(c => c.SubmittedAt)
+                .FirstOrDefaultAsync();
+
             return Page();
         }
 
@@ -91,27 +105,42 @@ namespace VoxAngelos.Pages.User
             if (Attachments == null || Attachments.Count == 0)
                 ModelState.AddModelError("Attachments", "Please upload at least one image or video.");
 
+            const long maximumVideoSizeInBytes = 100 * 1024 * 1024;
+            var oversizedVideo = Attachments?.FirstOrDefault(file =>
+                file.Length > maximumVideoSizeInBytes &&
+                file.ContentType.StartsWith("video", StringComparison.OrdinalIgnoreCase));
+
+            if (oversizedVideo != null)
+                ModelState.AddModelError("Attachments", "The uploaded video exceeds the maximum allowed size (100 MB). Please upload a smaller video.");
+
             if (!ModelState.IsValid)
             {
                 await OnGetAsync();
                 return Page();
             }
 
-            var concern = new Concern
-            {
-                CitizenId = user.Id,
-                Description = Description,
-                LocationName = LocationName,
-                Latitude = Latitude,
-                Longitude = Longitude,
-                Status = "Unresolved",
-                Category = await _classifier.ClassifyAsync(
-                    Description,
-                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"])),
-                SubmittedAt = DateTime.UtcNow
-            };
+            var concern = await _db.Concerns
+                .FirstOrDefaultAsync(c => c.CitizenId == user.Id && c.Status == "Draft");
 
-            _db.Concerns.Add(concern);
+            if (concern == null)
+            {
+                concern = new Concern
+                {
+                    CitizenId = user.Id
+                };
+                _db.Concerns.Add(concern);
+            }
+
+            concern.Description = Description;
+            concern.LocationName = LocationName;
+            concern.Latitude = Latitude;
+            concern.Longitude = Longitude;
+            concern.Status = "Unresolved";
+            concern.Category = await _classifier.ClassifyAsync(
+                Description,
+                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            concern.SubmittedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
 
             if (Attachments != null && Attachments.Count > 0)
@@ -152,6 +181,39 @@ namespace VoxAngelos.Pages.User
 
             TempData["ConcernSuccess"] = "Your concern has been submitted successfully!";
             return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostSaveConcernDraftAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToPage("/Login");
+
+            var draft = await _db.Concerns
+                .FirstOrDefaultAsync(c => c.CitizenId == user.Id && c.Status == "Draft");
+
+            if (draft == null)
+            {
+                draft = new Concern
+                {
+                    CitizenId = user.Id,
+                    Status = "Draft",
+                    SubmittedAt = DateTime.UtcNow
+                };
+                _db.Concerns.Add(draft);
+            }
+
+            draft.Description = Description ?? string.Empty;
+            draft.LocationName = LocationName;
+            draft.Latitude = Latitude;
+            draft.Longitude = Longitude;
+
+            await _db.SaveChangesAsync();
+
+            return new JsonResult(new
+            {
+                success = true,
+                message = "Your concern draft has been saved."
+            });
         }
 
         public class ClassifyRequest
@@ -195,30 +257,53 @@ namespace VoxAngelos.Pages.User
 
         public async Task<IActionResult> OnPostRecommendationAsync()
         {
+            Console.WriteLine("Reached OnPostRecommendationAsync");
+
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage("/Login");
 
+            const long maximumVideoSizeInBytes = 100 * 1024 * 1024;
+            var oversizedVideo = RecAttachments?.FirstOrDefault(file =>
+                file.Length > maximumVideoSizeInBytes &&
+                file.ContentType.StartsWith("video", StringComparison.OrdinalIgnoreCase));
+
+            if (oversizedVideo != null)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "The uploaded video exceeds the maximum allowed size (100 MB). Please upload a smaller video."
+                });
+            }
+
             var classificationText = $"{RecTitle} {RecDescription} {RecJustification}";
 
-            var recommendation = new Recommendation
-            {
-                CitizenId = user.Id,
-                Justification = RecJustification,
-                Category = RecCategory,
-                Title = RecTitle,
-                Location = RecLocation,
-                Description = RecDescription,
-                Beneficiaries = RecBeneficiaries,
-                EstimatedPeopleAffected = RecPeopleAffected,
-                IsAnonymous = RecIsAnonymous,
-                Status = "Pending",
-                AssignedOffice = await _classifier.ClassifyAsync(
-                    classificationText,
-                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"])),
-                SubmittedAt = DateTime.UtcNow
-            };
+            var recommendation = await _db.Recommendations
+                .FirstOrDefaultAsync(r => r.CitizenId == user.Id && r.Status == "Draft");
 
-            _db.Recommendations.Add(recommendation);
+            if (recommendation == null)
+            {
+                recommendation = new Recommendation
+                {
+                    CitizenId = user.Id
+                };
+                _db.Recommendations.Add(recommendation);
+            }
+
+            recommendation.Justification = RecJustification;
+            recommendation.Category = RecCategory;
+            recommendation.Title = RecTitle;
+            recommendation.Location = RecLocation;
+            recommendation.Description = RecDescription;
+            recommendation.Beneficiaries = RecBeneficiaries;
+            recommendation.EstimatedPeopleAffected = RecPeopleAffected;
+            recommendation.IsAnonymous = RecIsAnonymous;
+            recommendation.Status = "Pending";
+            recommendation.AssignedOffice = await _classifier.ClassifyAsync(
+                classificationText,
+                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            recommendation.SubmittedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
 
             if (RecAttachments != null && RecAttachments.Count > 0)
@@ -251,6 +336,43 @@ namespace VoxAngelos.Pages.User
             }
 
             return new JsonResult(new { success = true });
+        }
+
+        public async Task<IActionResult> OnPostSaveRecommendationDraftAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToPage("/Login");
+
+            var draft = await _db.Recommendations
+                .FirstOrDefaultAsync(r => r.CitizenId == user.Id && r.Status == "Draft");
+
+            if (draft == null)
+            {
+                draft = new Recommendation
+                {
+                    CitizenId = user.Id,
+                    Status = "Draft",
+                    SubmittedAt = DateTime.UtcNow
+                };
+                _db.Recommendations.Add(draft);
+            }
+
+            draft.Justification = RecJustification ?? string.Empty;
+            draft.Category = RecCategory ?? string.Empty;
+            draft.Title = RecTitle ?? string.Empty;
+            draft.Location = RecLocation ?? string.Empty;
+            draft.Description = RecDescription ?? string.Empty;
+            draft.Beneficiaries = RecBeneficiaries ?? string.Empty;
+            draft.EstimatedPeopleAffected = RecPeopleAffected;
+            draft.IsAnonymous = RecIsAnonymous;
+
+            await _db.SaveChangesAsync();
+
+            return new JsonResult(new
+            {
+                success = true,
+                message = "Your recommendation draft has been saved."
+            });
         }
     }
 }

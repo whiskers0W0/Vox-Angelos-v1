@@ -51,7 +51,8 @@ namespace VoxAngelos.Pages.LGU
             var user = await _userManager.GetUserAsync(User);
             DepartmentName = user?.Department ?? "LGU";
 
-            var concerns = _db.Concerns.AsQueryable();
+            var concerns = _db.Concerns
+                .Where(c => c.Status != "Draft");
 
             TotalConcerns = await concerns.CountAsync();
             TotalUnresolved = await concerns.CountAsync(c => c.Status == "Unresolved");
@@ -61,7 +62,7 @@ namespace VoxAngelos.Pages.LGU
             PendingRecommendations = await _db.Recommendations.CountAsync(r => r.Status == "Pending");
 
             // Category Breakdown
-            var categoryGroups = await _db.Concerns
+            var categoryGroups = await concerns
                 .GroupBy(c => c.Category)
                 .Select(g => new { Category = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
@@ -78,7 +79,7 @@ namespace VoxAngelos.Pages.LGU
                 : 0;
 
             // Average Response Time (days from submission to resolution)
-            var resolvedConcerns = await _db.Concerns
+            var resolvedConcerns = await concerns
                 .Where(c => c.Status == "Resolved" && c.UpdatedAt != null)
                 .ToListAsync();
 
@@ -89,7 +90,7 @@ namespace VoxAngelos.Pages.LGU
             
 
             // Top Barangays
-            var barangayGroups = await _db.Concerns
+            var barangayGroups = await concerns
                 .Where(c => c.LocationName != null)
                 .GroupBy(c => c.LocationName)
                 .Select(g => new { Barangay = g.Key, Count = g.Count() })
@@ -123,7 +124,7 @@ namespace VoxAngelos.Pages.LGU
             TrendData = System.Text.Json.JsonSerializer.Serialize(data);
 
             // Recent Activity — last 10 concern events
-            var recent = await _db.Concerns
+            var recent = await concerns
                 .Include(c => c.Citizen)
                 .ThenInclude(u => u.UserProfile)
                 .OrderByDescending(c => c.UpdatedAt ?? c.SubmittedAt)
