@@ -37,7 +37,7 @@ namespace VoxAngelos.Pages.User
 
             var allConcerns = await _db.Concerns
                 .Include(c => c.Attachments)
-                .Where(c => c.CitizenId == user.Id)
+                .Where(c => c.CitizenId == user.Id && c.Status != "Draft")
                 .OrderByDescending(c => c.SubmittedAt)
                 .Select(c => new ConcernNotificationViewModel
                 {

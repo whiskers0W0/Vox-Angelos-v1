@@ -28,7 +28,7 @@ namespace VoxAngelos.Pages.LGU
             var concerns = await _db.Concerns
                 .Include(c => c.Citizen)
                 .ThenInclude(u => u.UserProfile)
-                .Where(c => c.Latitude != null && c.Longitude != null)
+                .Where(c => c.Status != "Draft" && c.Latitude != null && c.Longitude != null)
                 .Select(c => new
                 {
                     id = c.Id,
