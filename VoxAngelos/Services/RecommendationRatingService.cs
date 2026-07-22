@@ -52,17 +52,16 @@ namespace VoxAngelos.Services
             // Atomic upsert — a citizen re-rating overwrites their previous rating
             // instead of accumulating duplicate rows (matches the unique index on
             // (RecommendationId, CitizenId)).
-            await _db.Database.ExecuteSqlInterpolatedAsync($"""
+            var inserted = await _db.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO "RecommendationRatings"
                     ("RecommendationId", "CitizenId", "UrgencyStars", "RelevanceStars", "FeasibilityStars", "RatedAt", "UpdatedAt")
                 VALUES ({recommendationId}, {citizenId}, {urgencyStars}, {relevanceStars}, {feasibilityStars}, {now}, NULL)
                 ON CONFLICT ("RecommendationId", "CitizenId")
-                DO UPDATE SET
-                    "UrgencyStars" = {urgencyStars},
-                    "RelevanceStars" = {relevanceStars},
-                    "FeasibilityStars" = {feasibilityStars},
-                    "UpdatedAt" = {now}
+                DO NOTHING
                 """);
+
+            if (inserted == 0)
+                throw new InvalidOperationException("You have already rated this recommendation.");
 
             // Recompute this recommendation's cached aggregates in one statement. Postgres
             // takes a row lock on the targeted Recommendations row for the duration of the

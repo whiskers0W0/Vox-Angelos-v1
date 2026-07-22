@@ -6,7 +6,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/citizen-create.css" />
+    <link rel="stylesheet" href="~/css/citizen-create.css" asp-append-version="true" />
 }
 <div class="content-header">
     <h1 class="page-title">Submit a Concern</h1>
@@ -138,15 +138,38 @@
                     <span>Anong uri ng rekomendasyon ang nais ninyong ihain?</span>
                 </p>
                 <div class="category-grid">
-                    <button class="category-btn" data-value="Infrastructure">Infrastructure</button>
-                    <button class="category-btn" data-value="Environment">Environment</button>
-                    <button class="category-btn" data-value="Community Program">Community Program</button>
-                    <button class="category-btn" data-value="Public Safety">Public Safety</button>
-                    <button class="category-btn" id="btnOthers" data-value="Others">Others, please specify</button>
-                </div>
-
-                <div class="other-spec-container" id="otherSpecContainer" style="display: none;">
-                    <input type="text" id="otherSpecification" class="other-input" placeholder="Tell us the category name..." />
+                    <button class="category-btn" type="button" data-value="Infrastructure & Public Works">
+                        <span class="category-name">Infrastructure & Public Works</span>
+                        <span class="category-example">Example: roads, drainage, sidewalks, or streetlights</span>
+                    </button>
+                    <button class="category-btn" type="button" data-value="Environment & Sanitation">
+                        <span class="category-name">Environment & Sanitation</span>
+                        <span class="category-example">Example: garbage collection, waste bins, flooding, or pollution</span>
+                    </button>
+                    <button class="category-btn" type="button" data-value="Community & Social Welfare">
+                        <span class="category-name">Community & Social Welfare</span>
+                        <span class="category-example">Example: livelihood, youth activities, or family assistance</span>
+                    </button>
+                    <button class="category-btn" type="button" data-value="Public Safety, Traffic & Transport">
+                        <span class="category-name">Public Safety, Traffic & Transport</span>
+                        <span class="category-example">Example: crosswalks, traffic flow, road safety, or lighting</span>
+                    </button>
+                    <button class="category-btn" type="button" data-value="Urban Planning & Public Spaces">
+                        <span class="category-name">Urban Planning & Public Spaces</span>
+                        <span class="category-example">Example: parks, public spaces, zoning, or city planning</span>
+                    </button>
+                    <button class="category-btn" type="button" data-value="Senior Citizen Support">
+                        <span class="category-name">Senior Citizen Support</span>
+                        <span class="category-example">Example: senior programs, facilities, or accessibility</span>
+                    </button>
+                    <button class="category-btn" type="button" data-value="PWD Accessibility & Services">
+                        <span class="category-name">PWD Accessibility & Services</span>
+                        <span class="category-example">Example: ramps, accessible facilities, or disability support</span>
+                    </button>
+                    <button class="category-btn category-unsure" type="button" data-value="Unsure">
+                        <span class="category-name">Unsure</span>
+                        <span class="category-example">Describe your recommendation and we will classify it for you.</span>
+                    </button>
                 </div>
             </div>
 
@@ -409,10 +432,6 @@
         const successState = document.getElementById('successState');
         const recommendationStatus = document.getElementById('recommendationStatus');
 
-        // UPDATED: Category selection with "Others" logic
-        const otherContainer = document.getElementById('otherSpecContainer');
-        const otherInput = document.getElementById('otherSpecification');
-
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 // Remove 'selected' from all buttons and add to the clicked one
@@ -420,15 +439,6 @@
                 btn.classList.add('selected');
         
                 selectedCategory = btn.dataset.value;
-
-                // Toggle the 'Others' input box
-                if (selectedCategory === "Others") {
-                    otherContainer.style.display = 'block';
-                    otherInput.focus();
-                } else {
-                    otherContainer.style.display = 'none';
-                    otherInput.value = ''; // Clear input if user switches to a preset
-                }
             });
         });
             
@@ -443,15 +453,9 @@
             fileLabel.textContent = files.length ? files.map(f => f.name).join(', ') : '';
         });
 
-                // UPDATED: Modified renderReview to show the custom "Other" value and justification
         function renderReview() {
-            let categoryDisplay = selectedCategory;
-            if (selectedCategory === "Others") {
-                categoryDisplay = otherInput.value.trim() || "Other (Not specified)";
-            }
-
             document.getElementById('r-justification').textContent = document.getElementById('projectJustification').value || '—';
-            document.getElementById('r-type').textContent = categoryDisplay || '—';
+            document.getElementById('r-type').textContent = selectedCategory || '—';
             document.getElementById('r-title').textContent = document.getElementById('projectTitle').value || '—';
             document.getElementById('r-location').textContent = document.getElementById('projectLocation').value || '—';
             document.getElementById('r-description').textContent = document.getElementById('projectDescription').value || '—';
@@ -507,9 +511,7 @@
         function buildRecommendationFormData(includeAttachments) {
             const formData = new FormData();
             formData.append('RecJustification', document.getElementById('projectJustification').value);
-            formData.append('RecCategory', selectedCategory === 'Others'
-                ? document.getElementById('otherSpecification').value
-                : selectedCategory);
+            formData.append('RecCategory', selectedCategory);
             formData.append('RecTitle', document.getElementById('projectTitle').value);
             formData.append('RecLocation', document.getElementById('projectLocation').value);
             formData.append('RecDescription', document.getElementById('projectDescription').value);
@@ -616,10 +618,6 @@
                     document.querySelector('.category-grid').classList.add('input-error');
                     isValid = false;
                 }
-                // If "Others" is picked, check the text input
-                if (selectedCategory === "Others" && !otherInput.value.trim()) {
-                    invalidate(otherInput);
-                }
             }
             else if (step === 2) {
                 // Validate Title, Location, and Description
@@ -705,10 +703,8 @@
                 selectedCategory = savedRecommendationDraft.Category;
                 categoryButton.classList.add('selected');
             } else if (savedRecommendationDraft.Category) {
-                selectedCategory = 'Others';
-                document.getElementById('btnOthers').classList.add('selected');
-                otherContainer.style.display = 'block';
-                otherInput.value = savedRecommendationDraft.Category;
+                selectedCategory = 'Unsure';
+                document.querySelector('.category-btn[data-value="Unsure"]').classList.add('selected');
             }
 
             if (!savedConcernDraft.HasDraft) {
