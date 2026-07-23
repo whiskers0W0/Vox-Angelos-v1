@@ -26,6 +26,8 @@ namespace VoxAngelos.Data
         public DbSet<UserLoginAudit> UserLoginAudits { get; set; }
         public DbSet<Concern> Concerns { get; set; }
         public DbSet<ConcernAttachment> ConcernAttachments { get; set; }
+        public DbSet<ConcernTimelineEvent> ConcernTimelineEvents { get; set; }
+        public DbSet<UserNotification> UserNotifications { get; set; }
         public DbSet<Recommendation> Recommendations { get; set; }
         public DbSet<RecommendationRating> RecommendationRatings { get; set; }
         public DbSet<RecommendationAttachment> RecommendationAttachments { get; set; }
@@ -165,6 +167,24 @@ namespace VoxAngelos.Data
             builder.Entity<Concern>()
                 .HasIndex(c => c.Location)
                 .HasMethod("GIST");
+
+            builder.Entity<ConcernTimelineEvent>()
+                .HasOne(e => e.Concern)
+                .WithMany(c => c.TimelineEvents)
+                .HasForeignKey(e => e.ConcernId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ConcernTimelineEvent>()
+                .HasIndex(e => new { e.ConcernId, e.CreatedAt });
+
+            builder.Entity<UserNotification>()
+                .HasOne(n => n.RecipientUser)
+                .WithMany()
+                .HasForeignKey(n => n.RecipientUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<UserNotification>()
+                .HasIndex(n => new { n.RecipientUserId, n.IsRead, n.CreatedAt });
         }
     }
 }

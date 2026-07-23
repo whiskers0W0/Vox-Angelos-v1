@@ -98,6 +98,7 @@ namespace VoxAngelos.Pages.LGU
         public async Task<IActionResult> OnPostApproveAsync(int recommendationId, string? lguNotes)
         {
             var user = await _userManager.GetUserAsync(User);
+            var reviewedAt = DateTime.UtcNow;
 
             // Guarded by current Status so two staff reviewing the same recommendation
             // at once can't both "win" — only the first review is applied.
@@ -107,12 +108,36 @@ namespace VoxAngelos.Pages.LGU
                     .SetProperty(r => r.Status, "Published")
                     .SetProperty(r => r.LguNotes, lguNotes)
                     .SetProperty(r => r.ReviewedByLguId, user!.Id)
-                    .SetProperty(r => r.ReviewedAt, DateTime.UtcNow));
+                    .SetProperty(r => r.ReviewedAt, reviewedAt));
 
             if (updated == 0)
                 TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
             else
+            {
+                var recommendation = await _db.Recommendations
+                    .Where(r => r.Id == recommendationId)
+                    .Select(r => new { r.CitizenId })
+                    .SingleAsync();
+                var actorName = user?.Department ?? user?.Email ?? "LGU Office";
+                var notificationMessage = string.IsNullOrWhiteSpace(lguNotes)
+                    ? "Your recommendation has been published."
+                    : lguNotes;
+
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = recommendation.CitizenId,
+                    Title = "Your recommendation was published",
+                    Message = notificationMessage,
+                    NotificationType = "RecommendationUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Index",
+                    CreatedAt = reviewedAt
+                });
+                await _db.SaveChangesAsync();
+
                 await _feedHub.Clients.Group(FeedHub.DiscoverGroup).SendAsync("PostPublished");
+            }
 
             return RedirectToPage(new { filter = "Pending" });
         }
@@ -120,6 +145,7 @@ namespace VoxAngelos.Pages.LGU
         public async Task<IActionResult> OnPostRejectAsync(int recommendationId, string? lguNotes)
         {
             var user = await _userManager.GetUserAsync(User);
+            var reviewedAt = DateTime.UtcNow;
 
             var updated = await _db.Recommendations
                 .Where(r => r.Id == recommendationId && r.Status == "Pending")
@@ -127,10 +153,34 @@ namespace VoxAngelos.Pages.LGU
                     .SetProperty(r => r.Status, "Rejected")
                     .SetProperty(r => r.LguNotes, lguNotes)
                     .SetProperty(r => r.ReviewedByLguId, user!.Id)
-                    .SetProperty(r => r.ReviewedAt, DateTime.UtcNow));
+                    .SetProperty(r => r.ReviewedAt, reviewedAt));
 
             if (updated == 0)
                 TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
+            else
+            {
+                var recommendation = await _db.Recommendations
+                    .Where(r => r.Id == recommendationId)
+                    .Select(r => new { r.CitizenId })
+                    .SingleAsync();
+                var actorName = user?.Department ?? user?.Email ?? "LGU Office";
+                var notificationMessage = string.IsNullOrWhiteSpace(lguNotes)
+                    ? "Your recommendation was not published."
+                    : lguNotes;
+
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = recommendation.CitizenId,
+                    Title = "Your recommendation was not published",
+                    Message = notificationMessage,
+                    NotificationType = "RecommendationUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Index",
+                    CreatedAt = reviewedAt
+                });
+                await _db.SaveChangesAsync();
+            }
 
             return RedirectToPage(new { filter = "Pending" });
         }

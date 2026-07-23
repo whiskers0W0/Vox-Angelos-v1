@@ -43,5 +43,6 @@ namespace VoxAngelos.Data
         public DateTime? UpdatedAt { get; set; }
 
         public ICollection<ConcernAttachment> Attachments { get; set; } = new List<ConcernAttachment>();
+        public ICollection<ConcernTimelineEvent> TimelineEvents { get; set; } = new List<ConcernTimelineEvent>();
     }
 }
