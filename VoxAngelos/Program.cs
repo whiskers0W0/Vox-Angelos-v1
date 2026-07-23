@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,13 @@ using VoxAngelos.Services;
 using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Persist Data Protection keys to disk so antiforgery tokens and auth cookies
+// survive app restarts — without this, every restart regenerates the key ring
+// and invalidates any token/cookie already sitting in a user's open browser tab.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
+    .SetApplicationName("VoxAngelos");
 
 // Allow the request to reach the recommendation handler. The handler itself
 // enforces the 100 MB per-video limit and returns a user-friendly message.

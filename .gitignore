@@ -371,3 +371,6 @@ appsettings.Development.json
 # User-uploaded verification photos (ID/selfies) — not for source control
 VoxAngelos/wwwroot/uploads/ids/
 VoxAngelos/wwwroot/uploads/selfies/
+
+# Data Protection key ring — machine-local, must never be committed/shared
+VoxAngelos/DataProtection-Keys/
