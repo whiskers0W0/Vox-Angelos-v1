@@ -7,6 +7,14 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/citizen-create.css" asp-append-version="true" />
+    <style>
+        .concern-attachment-preview { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; margin-top: 12px; }
+        .concern-attachment-item { position: relative; width: 150px; padding: 8px; border-radius: 10px; background: #eef2ff; box-shadow: inset 2px 2px 5px rgba(191,197,223,.6), inset -2px -2px 5px #fff; }
+        .concern-attachment-item img, .concern-attachment-item video { display: block; width: 100%; height: 96px; border-radius: 7px; object-fit: cover; background: #111827; }
+        .concern-attachment-name { display: block; margin-top: 7px; padding-right: 22px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .concern-attachment-remove { position: absolute; top: 3px; right: 3px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: #b91c1c; color: #fff; cursor: pointer; font-size: 16px; line-height: 20px; }
+        .concern-file-placeholder { display: flex; align-items: center; justify-content: center; height: 96px; border-radius: 7px; background: #dbeafe; color: #1e40af; font-size: 13px; font-weight: 600; }
+    </style>
 }
 <div class="content-header">
     <h1 class="page-title">Submit a Concern</h1>
@@ -28,7 +36,10 @@
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
             </div>
-            <span class="alert-text">@TempData["ConcernSuccess"]</span>
+            <span class="alert-text">
+                @TempData["ConcernSuccess"]
+                <a asp-page="/User/Notifications" style="margin-left: 8px; color: #166534; text-decoration: underline;">View My Concerns</a>
+            </span>
             <button type="button" class="alert-close" onclick="this.parentElement.style.display='none';">
                 &times;
             </button>
@@ -43,6 +54,19 @@
 
             <form id="concernForm" method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
+
+                @if (!ViewContext.ViewData.ModelState.IsValid)
+                {
+                    <div class="custom-alert-container" role="alert">
+                        <div class="neomorphic-alert" style="border: 1px solid #fecaca;">
+                            <div class="alert-icon-circle" style="background: #fee2e2; color: #b91c1c;">!</div>
+                            <div class="alert-text" style="color: #b91c1c;">
+                                <strong>Your concern was not sent.</strong>
+                                <div asp-validation-summary="All"></div>
+                            </div>
+                        </div>
+                    </div>
+                }
 
                 <!-- Hidden fields populated by JS -->
                 <input type="hidden" id="hdnLocationName" name="LocationName" />
@@ -98,6 +122,7 @@
                     <input type="file" id="concernFileInput" name="Attachments"
                            style="display:none;" multiple accept="image/*,video/*,.pdf" />
                     <span class="concern-file-names" id="concernFileNames"></span>
+                    <div id="concernAttachmentPreview" class="concern-attachment-preview" aria-live="polite"></div>
                 </div>
                 <span class="text-danger small" id="err-attachment"></span>
 
@@ -369,6 +394,19 @@
     </div>
 </div>
 
+<!-- AI Classification Error Modal -->
+<div class="map-modal-overlay" id="classificationErrorModal" role="dialog" aria-modal="true" aria-labelledby="classificationErrorTitle">
+    <div class="map-modal" style="max-width:420px; padding: 26px; text-align:center;">
+        <div style="width:52px;height:52px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fee2e2;color:#b91c1c;font-size:28px;font-weight:700;">!</div>
+        <h3 id="classificationErrorTitle" style="margin:0 0 10px;font-size:19px;font-weight:700;color:#1a1a2e;">We couldn't categorize your concern</h3>
+        <p id="classificationErrorMessage" style="margin:0 0 10px;color:#4b5563;line-height:1.5;">The AI service could not analyze your concern right now.</p>
+        <p style="margin:0 0 20px;color:#6b7280;font-size:13px;line-height:1.45;">Your concern was not sent. Your description, location, and attachments are still saved on this form. You can edit the details and submit again later.</p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+            <button id="classificationErrorBackBtn" type="button" class="btn-submit" style="padding:10px 24px;">Back to Form</button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         const savedConcernDraft = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
@@ -587,7 +625,8 @@
                     }
                 })
                 .catch(err => {
-                    recommendationStatus.textContent = err.message;
+                    recommendationStatus.textContent = `Recommendation was not sent. ${err.message}`;
+                    recommendationStatus.style.color = '#b91c1c';
                     console.error('Submission error:', err);
                 });
             }
@@ -869,14 +908,92 @@
         const concernUploadBtn = document.getElementById('concernUploadBtn');
         const concernFileInput = document.getElementById('concernFileInput');
         const concernFileNames = document.getElementById('concernFileNames');
+        const concernAttachmentPreview = document.getElementById('concernAttachmentPreview');
         const concernSaveDraftBtn = document.getElementById('concernSaveDraftBtn');
         const concernDraftStatus = document.getElementById('concernDraftStatus');
+        let selectedConcernFiles = [];
+        let concernPreviewUrls = [];
 
         concernUploadBtn.addEventListener('click', () => concernFileInput.click());
         concernFileInput.addEventListener('change', () => {
-            const files = Array.from(concernFileInput.files);
-            concernFileNames.textContent = files.length ? files.map(f => f.name).join(', ') : '';
+            const newlySelectedFiles = Array.from(concernFileInput.files);
+            newlySelectedFiles.forEach(file => {
+                const isAlreadySelected = selectedConcernFiles.some(selectedFile =>
+                    selectedFile.name === file.name &&
+                    selectedFile.size === file.size &&
+                    selectedFile.lastModified === file.lastModified);
+
+                if (!isAlreadySelected) {
+                    selectedConcernFiles.push(file);
+                }
+            });
+
+            syncConcernFileInput();
+            renderConcernAttachmentPreview();
         });
+
+        function syncConcernFileInput() {
+            const transfer = new DataTransfer();
+            selectedConcernFiles.forEach(file => transfer.items.add(file));
+            concernFileInput.files = transfer.files;
+        }
+
+        function renderConcernAttachmentPreview() {
+            concernPreviewUrls.forEach(URL.revokeObjectURL);
+            concernPreviewUrls = [];
+            concernAttachmentPreview.innerHTML = '';
+            concernFileNames.textContent = selectedConcernFiles.length
+                ? `${selectedConcernFiles.length} file${selectedConcernFiles.length === 1 ? '' : 's'} selected`
+                : '';
+
+            selectedConcernFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'concern-attachment-item';
+
+                if (file.type.startsWith('image/')) {
+                    const image = document.createElement('img');
+                    const url = URL.createObjectURL(file);
+                    concernPreviewUrls.push(url);
+                    image.src = url;
+                    image.alt = `Preview of ${file.name}`;
+                    item.appendChild(image);
+                } else if (file.type.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    const url = URL.createObjectURL(file);
+                    concernPreviewUrls.push(url);
+                    video.src = url;
+                    video.controls = true;
+                    video.preload = 'metadata';
+                    video.setAttribute('aria-label', `Preview of ${file.name}`);
+                    item.appendChild(video);
+                } else {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'concern-file-placeholder';
+                    placeholder.textContent = 'PDF document';
+                    item.appendChild(placeholder);
+                }
+
+                const name = document.createElement('span');
+                name.className = 'concern-attachment-name';
+                name.title = file.name;
+                name.textContent = file.name;
+                item.appendChild(name);
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'concern-attachment-remove';
+                removeButton.textContent = '×';
+                removeButton.title = `Remove ${file.name}`;
+                removeButton.setAttribute('aria-label', `Remove ${file.name}`);
+                removeButton.addEventListener('click', () => {
+                    selectedConcernFiles.splice(index, 1);
+                    syncConcernFileInput();
+                    renderConcernAttachmentPreview();
+                });
+                item.appendChild(removeButton);
+                concernAttachmentPreview.appendChild(item);
+            });
+        }
 
         function buildConcernDraftFormData() {
             const formData = new FormData();
@@ -941,6 +1058,13 @@
                 // Hidden fields for confirmed category
         let confirmedCategory = '';
         let confirmedOffice = '';
+        const classificationErrorModal = document.getElementById('classificationErrorModal');
+        const classificationErrorMessage = document.getElementById('classificationErrorMessage');
+
+        function showClassificationError(message) {
+            classificationErrorMessage.textContent = message;
+            classificationErrorModal.classList.add('active');
+        }
 
         // Concern submit — Step 1: validate then classify
         document.getElementById('concernSubmitBtn').addEventListener('click', async () => {
@@ -998,10 +1122,10 @@
                     document.getElementById('modalEmail').textContent = result.email;
                     document.getElementById('categoryModalOverlay').classList.add('active');
                 } else {
-                    alert('Could not classify concern. Please try again.');
+                    showClassificationError('The AI service could not categorize your concern right now. Please try again in a moment.');
                 }
             } catch (e) {
-                alert('Error connecting to AI service. Please try again.');
+                showClassificationError('We could not connect to the AI service. Please check your connection and try again.');
             } finally {
                 submitBtn.textContent = 'Submit';
                 submitBtn.disabled = false;
@@ -1039,6 +1163,11 @@
 
         document.getElementById('categoryCancelBtn').addEventListener('click', () => {
             document.getElementById('categoryModalOverlay').classList.remove('active');
+        });
+
+        document.getElementById('classificationErrorBackBtn').addEventListener('click', () => {
+            classificationErrorModal.classList.remove('active');
+            document.getElementById('concernDescription').focus();
         });
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&libraries=places&v=beta&callback=initMap" async defer></script>
