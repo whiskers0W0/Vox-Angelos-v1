@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using VoxAngelos.Data;
@@ -44,17 +45,24 @@ namespace VoxAngelos.Pages.User
         public Concern? SavedConcernDraft { get; private set; }
         public Recommendation? SavedRecommendationDraft { get; private set; }
 
+        // This page hosts two independent forms (Concern and Recommendation) on one
+        // PageModel. Each handler validates only its own fields manually — but with
+        // nullable reference types enabled, ASP.NET Core implicitly treats every
+        // non-nullable string [BindProperty] as required for ModelState.IsValid,
+        // regardless of which form actually posted ([ValidateNever] does NOT suppress
+        // this implicit check). Declaring each side's string fields nullable (like
+        // LocationName already was) is what actually avoids it.
         [BindProperty] public string Description { get; set; } = string.Empty;
         [BindProperty] public string? LocationName { get; set; }
         [BindProperty] public double? Latitude { get; set; }
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
-        [BindProperty] public string RecJustification { get; set; } = string.Empty;
-        [BindProperty] public string RecCategory { get; set; } = string.Empty;
-        [BindProperty] public string RecTitle { get; set; } = string.Empty;
-        [BindProperty] public string RecLocation { get; set; } = string.Empty;
-        [BindProperty] public string RecDescription { get; set; } = string.Empty;
-        [BindProperty] public string RecBeneficiaries { get; set; } = string.Empty;
+        [BindProperty] public string? RecJustification { get; set; }
+        [BindProperty] public string? RecCategory { get; set; }
+        [BindProperty] public string? RecTitle { get; set; }
+        [BindProperty] public string? RecLocation { get; set; }
+        [BindProperty] public string? RecDescription { get; set; }
+        [BindProperty] public string? RecBeneficiaries { get; set; }
         [BindProperty] public int RecPeopleAffected { get; set; }
         [BindProperty] public bool RecIsAnonymous { get; set; }
         [BindProperty] public List<IFormFile> RecAttachments { get; set; } = new();
@@ -290,12 +298,12 @@ namespace VoxAngelos.Pages.User
                 _db.Recommendations.Add(recommendation);
             }
 
-            recommendation.Justification = RecJustification;
-            recommendation.Category = RecCategory;
-            recommendation.Title = RecTitle;
-            recommendation.Location = RecLocation;
-            recommendation.Description = RecDescription;
-            recommendation.Beneficiaries = RecBeneficiaries;
+            recommendation.Justification = RecJustification ?? string.Empty;
+            recommendation.Category = RecCategory ?? string.Empty;
+            recommendation.Title = RecTitle ?? string.Empty;
+            recommendation.Location = RecLocation ?? string.Empty;
+            recommendation.Description = RecDescription ?? string.Empty;
+            recommendation.Beneficiaries = RecBeneficiaries ?? string.Empty;
             recommendation.EstimatedPeopleAffected = RecPeopleAffected;
             recommendation.IsAnonymous = RecIsAnonymous;
             recommendation.Status = "Pending";

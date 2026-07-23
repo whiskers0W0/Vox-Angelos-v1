@@ -10,13 +10,6 @@ using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Persist Data Protection keys to disk so antiforgery tokens and auth cookies
-// survive app restarts — without this, every restart regenerates the key ring
-// and invalidates any token/cookie already sitting in a user's open browser tab.
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
-    .SetApplicationName("VoxAngelos");
-
 // Allow the request to reach the recommendation handler. The handler itself
 // enforces the 100 MB per-video limit and returns a user-friendly message.
 const long maximumUploadRequestSize = 105L * 1024 * 1024;
@@ -34,7 +27,10 @@ if (rawUrl.StartsWith("postgresql://") || rawUrl.StartsWith("postgres://"))
 {
     var uri = new Uri(rawUrl);
     var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={(uri.Port == -1 ? 5432 : uri.Port)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    // Cap the pool well under Render's free-tier Postgres connection limit — with no
+    // limit set, Npgsql defaults to 100 and the server starts forcibly resetting
+    // connections under moderate concurrent load instead of the pool just queuing.
+    connectionString = $"Host={uri.Host};Port={(uri.Port == -1 ? 5432 : uri.Port)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;Maximum Pool Size=10;Minimum Pool Size=0";
 }
 else
 {
@@ -51,6 +47,14 @@ builder.Services.AddScoped<RecommendationRatingService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.UseNetTopologySuite()));
+
+// Persist Data Protection keys (antiforgery tokens, auth cookies) to the shared
+// Postgres DB instead of local disk — Render's free-tier containers respin on a
+// fresh filesystem after idling, which silently invalidates any token/cookie
+// already embedded in a page a user has open. The DB survives that.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ApplicationDbContext>()
+    .SetApplicationName("VoxAngelos");
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

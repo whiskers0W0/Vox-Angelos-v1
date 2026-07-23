@@ -861,8 +861,18 @@
             mapModalOverlay.classList.remove('active');
         });
 
-        mapModalOverlay.addEventListener('click', (e) => {
-            if (e.target === mapModalOverlay) mapModalOverlay.classList.remove('active');
+        // Only close on a genuine click on the backdrop itself — not a map-drag
+        // (mousedown inside the map, mouseup outside it) which the browser would
+        // otherwise resolve to a "click" on this overlay and wrongly dismiss it.
+        let mapOverlayMouseDownOnBackdrop = false;
+        mapModalOverlay.addEventListener('mousedown', (e) => {
+            mapOverlayMouseDownOnBackdrop = (e.target === mapModalOverlay);
+        });
+        mapModalOverlay.addEventListener('mouseup', (e) => {
+            if (mapOverlayMouseDownOnBackdrop && e.target === mapModalOverlay) {
+                mapModalOverlay.classList.remove('active');
+            }
+            mapOverlayMouseDownOnBackdrop = false;
         });
 
         // Concern file upload
