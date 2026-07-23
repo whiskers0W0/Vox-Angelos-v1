@@ -297,7 +297,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
                 if (Input.IdPhoto != null && Input.IdPhoto.Length > 0)
                 {
-                    string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "ids");
+                    string uploadsFolder = IdentityDocumentStorage.IdsFolder(_environment);
                     if (!Directory.Exists(uploadsFolder))
                         Directory.CreateDirectory(uploadsFolder);
 
@@ -315,7 +315,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
                 if (Input.SelfiePhoto != null && Input.SelfiePhoto.Length > 0)
                 {
-                    string selfieFolder = Path.Combine(_environment.WebRootPath, "uploads", "selfies");
+                    string selfieFolder = IdentityDocumentStorage.SelfiesFolder(_environment);
                     if (!Directory.Exists(selfieFolder))
                         Directory.CreateDirectory(selfieFolder);
 
@@ -390,7 +390,7 @@ await _context.SaveChangesAsync();
 // ── Run OCR on the ID photo ────────────────────────────
 if (savedFileName != null)
 {
-    string idPhotoFullPath = Path.Combine(_environment.WebRootPath, "uploads", "ids", savedFileName);
+    string idPhotoFullPath = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
     var ocrResult = await _ocrService.ExtractIdDataAsync(idPhotoFullPath);
 
     var ocrVerification = new UserOcrVerification

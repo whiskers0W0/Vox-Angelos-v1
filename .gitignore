@@ -372,6 +372,7 @@ appsettings.Development.json
 VoxAngelos/wwwroot/uploads/ids/
 VoxAngelos/wwwroot/uploads/selfies/
 VoxAngelos/wwwroot/uploads/concerns/
+VoxAngelos/App_Data/identity-documents/
 
 # Data Protection key ring — machine-local, must never be committed/shared
 VoxAngelos/DataProtection-Keys/

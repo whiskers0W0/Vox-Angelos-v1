@@ -59,7 +59,7 @@ namespace VoxAngelos.Services
 
             foreach (var doc in expiredIds)
             {
-                DeleteFileIfExists(env, "ids", doc.IdPhotoPath);
+                DeleteFileIfExists(IdentityDocumentStorage.IdsFolder(env), doc.IdPhotoPath);
                 doc.IdPhotoPath = null;
                 purgedCount++;
             }
@@ -70,7 +70,7 @@ namespace VoxAngelos.Services
 
             foreach (var selfie in expiredSelfies)
             {
-                DeleteFileIfExists(env, "selfies", selfie.LiveSelfiePath);
+                DeleteFileIfExists(IdentityDocumentStorage.SelfiesFolder(env), selfie.LiveSelfiePath);
                 selfie.LiveSelfiePath = null;
                 purgedCount++;
             }
@@ -84,15 +84,15 @@ namespace VoxAngelos.Services
             }
         }
 
-        private void DeleteFileIfExists(IWebHostEnvironment env, string subfolder, string? fileName)
+        private void DeleteFileIfExists(string folder, string? fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName)) return;
 
             // Stored paths are bare filenames (see Register.cshtml.cs) — reject anything
-            // that isn't, so a malformed value can never be used to escape the uploads folder.
+            // that isn't, so a malformed value can never be used to escape the identity-documents folder.
             if (Path.GetFileName(fileName) != fileName) return;
 
-            var fullPath = Path.Combine(env.WebRootPath, "uploads", subfolder, fileName);
+            var fullPath = Path.Combine(folder, fileName);
             if (File.Exists(fullPath))
                 File.Delete(fullPath);
         }

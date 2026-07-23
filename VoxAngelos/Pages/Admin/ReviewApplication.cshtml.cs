@@ -3,28 +3,35 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.Admin
 {
     [Authorize(Policy = "RequireAdminRole")]
     public class ReviewApplicationModel : PageModel
     {
+        private static readonly FileExtensionContentTypeProvider ContentTypeProvider = new();
+
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
+        private readonly IWebHostEnvironment _environment;
         private readonly ILogger<ReviewApplicationModel> _logger;
 
         public ReviewApplicationModel(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IEmailSender emailSender,
+            IWebHostEnvironment environment,
             ILogger<ReviewApplicationModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _emailSender = emailSender;
+            _environment = environment;
             _logger = logger;
         }
 
@@ -61,6 +68,50 @@ namespace VoxAngelos.Pages.Admin
             }
 
             return Page();
+        }
+
+        // Serves the private ID photo / live selfie for a single application. The class-level
+        // [Authorize(Policy = "RequireAdminRole")] above covers this handler too, so citizens,
+        // LGU accounts, and logged-out requests are rejected before any file lookup happens.
+        // Files live under App_Data (outside wwwroot), so this handler is the only way to
+        // read them — there is no public URL that serves them directly.
+        public async Task<IActionResult> OnGetIdentityMediaAsync(int documentId, string mediaType)
+        {
+            string? fileName;
+            string folder;
+
+            if (mediaType == "id")
+            {
+                var doc = await _context.UserIdentityDocuments.FindAsync(documentId);
+                fileName = doc?.IdPhotoPath;
+                folder = IdentityDocumentStorage.IdsFolder(_environment);
+            }
+            else if (mediaType == "selfie")
+            {
+                var face = await _context.UserFaceVerifications
+                    .FirstOrDefaultAsync(f => f.IdentityDocumentId == documentId);
+                fileName = face?.LiveSelfiePath;
+                folder = IdentityDocumentStorage.SelfiesFolder(_environment);
+            }
+            else
+            {
+                return BadRequest();
+            }
+
+            // Covers both "never uploaded" and "purged after the retention window" (the
+            // path field is cleared to null by SensitiveMediaRetentionService) — either way
+            // the page's existing "No photo" / "No selfie" placeholder is what should show.
+            if (string.IsNullOrWhiteSpace(fileName) || Path.GetFileName(fileName) != fileName)
+                return NotFound();
+
+            var fullPath = Path.Combine(folder, fileName);
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound();
+
+            if (!ContentTypeProvider.TryGetContentType(fullPath, out var contentType))
+                contentType = "application/octet-stream";
+
+            return PhysicalFile(fullPath, contentType);
         }
 
         public async Task<IActionResult> OnPostApproveAsync(string userId)
