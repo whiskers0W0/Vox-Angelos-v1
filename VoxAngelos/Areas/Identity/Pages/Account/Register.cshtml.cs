@@ -72,6 +72,20 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
         public string ReturnUrl { get; set; }
 
+        // Canonicalizes a PH mobile number to "+63XXXXXXXXXX" regardless of how it
+        // arrives (bare 10 digits from the form field, "+63"-prefixed from the
+        // Step 1 duplicate-check AJAX call, a leading 0, stray spaces/dashes, etc.)
+        // — without this, the same number could be stored/compared in different
+        // shapes across call sites, silently defeating the uniqueness check.
+        private static string NormalizePhone(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone)) return phone;
+            var digits = new string(phone.Where(char.IsDigit).ToArray());
+            if (digits.StartsWith("63")) digits = digits.Substring(2);
+            else if (digits.StartsWith("0")) digits = digits.Substring(1);
+            return "+63" + digits;
+        }
+
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
         public class InputModel
@@ -223,8 +237,9 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             // 2. Check for duplicate Phone Number
             if (!string.IsNullOrWhiteSpace(phone))
             {
+                var normalizedPhone = NormalizePhone(phone);
                 var existingPhone = await _userManager.Users
-                    .FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+                    .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone);
 
                 if (existingPhone != null)
                 {
@@ -261,8 +276,9 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (ModelState.IsValid)
             {
                 // ── Duplicate phone check ──────────────────────────────────────────
+                var normalizedPhone = NormalizePhone(Input.PhoneNumber);
                 var existingUserWithPhone = await _userManager.Users
-                    .FirstOrDefaultAsync(u => u.PhoneNumber == Input.PhoneNumber);
+                    .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone);
 
                 if (existingUserWithPhone != null)
                 {
@@ -316,7 +332,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 {
                     UserName = Input.Email,
                     Email = Input.Email,
-                    PhoneNumber = Input.PhoneNumber,
+                    PhoneNumber = normalizedPhone,
                     TwoFactorEnabled = true,
                     ApprovalStatus = "Pending",
                     CreatedAt = DateTime.UtcNow
