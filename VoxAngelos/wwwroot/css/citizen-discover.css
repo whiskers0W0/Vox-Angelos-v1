@@ -570,6 +570,30 @@
     font-weight: 500;
 }
 
+.leaderboard-open-btn {
+    margin-top: 14px;
+    padding: 9px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--sidebar-bg);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.leaderboard-open-btn:hover {
+    filter: brightness(1.08);
+}
+
+.recommendation-focus {
+    animation: recommendation-focus-pulse 1.8s ease-out;
+}
+
+@keyframes recommendation-focus-pulse {
+    0%, 100% { box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010; }
+    35% { box-shadow: 0 0 0 4px rgba(43, 69, 176, .28), 0 10px 24px rgba(43, 69, 176, .18); }
+}
+
 .rating-summary {
     flex-wrap: wrap;
     align-items: center;
@@ -638,6 +662,127 @@
     line-height: 1.3;
 }
 
+/* The original mini-list remains in the markup during this UI trial so it can
+   be restored without rebuilding the leaderboard data. */
+.ranking-list {
+    display: none;
+}
+
+.leaderboard-insights {
+    display: grid;
+    gap: 14px;
+}
+
+.insight-section {
+    padding: 13px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .78);
+    box-shadow: inset 1px 1px 2px rgba(255, 255, 255, .8), 1px 1px 4px rgba(0, 0, 0, .06);
+}
+
+.insight-label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--sidebar-bg);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.insight-section p,
+.insight-section strong,
+.insight-score {
+    display: block;
+    margin: 0;
+}
+
+.insight-section p,
+.insight-help {
+    color: var(--text-muted, #666);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.insight-section strong {
+    color: #303030;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.insight-score {
+    margin-top: 5px;
+    color: var(--sidebar-bg);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.insight-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    text-align: center;
+}
+
+.insight-stats div + div {
+    border-left: 1px solid rgba(43, 69, 176, .16);
+}
+
+.insight-stats strong,
+.insight-stats span {
+    display: block;
+}
+
+.insight-stats strong {
+    color: var(--sidebar-bg);
+    font-size: 21px;
+}
+
+.insight-stats span {
+    margin-top: 3px;
+    color: var(--text-muted, #666);
+    font-size: 10px;
+}
+
+.insight-help {
+    margin: 0;
+    padding: 0 4px;
+    text-align: center;
+}
+
+.back-to-top-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 92px;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--sidebar-bg);
+    color: #fff;
+    box-shadow: 0 5px 14px rgba(43, 69, 176, .28);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.back-to-top-btn[hidden] {
+    display: none;
+}
+
+.back-to-top-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+}
+
+.back-to-top-btn span:first-child {
+    font-size: 18px;
+    line-height: 1;
+}
+
 /* ── Individual Mini Rank Items ── */
 .mini-rank-item {
     display: flex;
@@ -648,6 +793,19 @@
     margin-bottom: 8px;
     background: #ffffff;
     box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 1px 1px 4px 0 #00000010;
+}
+
+.mini-rank-link {
+    width: 100%;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mini-rank-link:hover,
+.mini-rank-link:focus-visible {
+    background: #eef2ff;
+    outline: 2px solid rgba(43, 69, 176, .35);
 }
 
 .mini-number {

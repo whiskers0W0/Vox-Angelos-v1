@@ -147,6 +147,63 @@
     box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
 }
 
+.field-input {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid transparent;
+    background: #f0f2f9;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1e293b;
+    outline: none;
+    box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+}
+
+.field-input:focus {
+    border-color: var(--profile-blue);
+    box-shadow: 0 0 0 3px rgba(43, 69, 162, .14), inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+}
+
+.field-error {
+    display: block;
+    min-height: 16px;
+    margin: 5px 0 0 10px;
+    color: #b91c1c;
+    font-size: 12px;
+}
+
+.profile-readonly-note {
+    display: block;
+    margin: 5px 0 0 10px;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.profile-feedback {
+    margin: 0 0 20px;
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.profile-feedback-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.profile-feedback-error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.validation-summary-valid {
+    display: none;
+}
+
     .field-value-box.password {
         letter-spacing: 3px;
     }
@@ -164,6 +221,44 @@
     margin-top: 40px;
     display: flex;
     justify-content: center;
+    gap: 10px;
+}
+
+.profile-edit-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.profile-save-btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 12px 24px;
+    background: var(--profile-blue);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 2px 4px 7px rgba(43, 69, 162, .28);
+}
+
+.profile-save-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+.profile-cancel-btn {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 12px 20px;
+    background: #fff;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.profile-cancel-btn:hover {
+    background: #f8fafc;
 }
 
 /* ── Responsive ── */

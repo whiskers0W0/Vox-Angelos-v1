@@ -1,12 +1,14 @@
-﻿@page
+@page
 @model VoxAngelos.Pages.User.ProfileModel
 @{
     Layout = "_CitizenLayout";
     ViewData["Title"] = "Profile";
+    var profile = Model.Profile;
+    var displayName = string.IsNullOrWhiteSpace(profile.DisplayName) ? "Citizen" : profile.DisplayName;
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/citizen-profile.css" />
+    <link rel="stylesheet" href="~/css/citizen-profile.css" asp-append-version="true" />
 }
 
 <div class="content-header">
@@ -16,64 +18,69 @@
 <div class="profile-container">
     <div class="profile-card-wrapper">
         <div class="profile-avatar-wrap">
-            <div class="profile-avatar">
-                <svg viewBox="0 0 24 24" fill="currentColor">
+            <div class="profile-avatar" aria-label="Citizen profile avatar">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                 </svg>
             </div>
-            <button class="edit-avatar-btn" title="Change Photo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
-            </button>
         </div>
 
         <div class="profile-card">
             <div class="profile-header-info">
-                <h2 class="user-display-name">Juan Dela Cruz</h2>
+                <h2 class="user-display-name">@displayName</h2>
                 <span class="user-role-badge">Verified Citizen</span>
             </div>
+
+            <p class="profile-security-note">Your identity information is protected and cannot be changed from this page.</p>
 
             <div class="profile-fields-grid">
                 <div class="profile-field">
                     <label>First Name</label>
-                    <div class="field-value-box">Juan</div>
+                    <div class="field-value-box">@(profile.FirstName ?? "Not available")</div>
                 </div>
-
                 <div class="profile-field">
                     <label>Middle Name</label>
-                    <div class="field-value-box">Martinez</div>
+                    <div class="field-value-box">@(profile.MiddleName ?? "Not available")</div>
                 </div>
-
                 <div class="profile-field">
                     <label>Last Name</label>
-                    <div class="field-value-box">Dela Cruz</div>
+                    <div class="field-value-box">@(profile.LastName ?? "Not available")</div>
                 </div>
-
                 <div class="profile-field">
                     <label>Phone Number</label>
-                    <div class="field-value-box">+63 9123456789</div>
+                    <div class="field-value-box">@(profile.PhoneNumber ?? "Not available")</div>
                 </div>
-
+                <div class="profile-field">
+                    <label>Barangay</label>
+                    <div class="field-value-box">@(profile.Barangay ?? "Not available")</div>
+                </div>
+                <div class="profile-field">
+                    <label>City</label>
+                    <div class="field-value-box">@(profile.City ?? "Not available")</div>
+                </div>
                 <div class="profile-field">
                     <label>Email Address</label>
-                    <div class="field-value-box">jdc@gmail.com</div>
+                    <div class="field-value-box">@(profile.EmailAddress ?? "Not available")</div>
+                    <small class="profile-readonly-note">Change this securely from Account Security in the sidebar.</small>
                 </div>
-
                 <div class="profile-field">
-                    <label>Password</label>
-                    <div class="field-value-box password">••••••••••</div>
+                    <label>Birth Date</label>
+                    <div class="field-value-box">@(profile.BirthDate?.ToString("MMMM dd, yyyy") ?? "Not available")</div>
                 </div>
-
                 <div class="profile-field">
                     <label>Identification Type</label>
-                    <div class="field-value-box">PhilSys ID</div>
+                    <div class="field-value-box">@(profile.IdType ?? "Not available")</div>
                 </div>
-
                 <div class="profile-field">
                     <label>ID Document</label>
-                    <div class="field-value-box link">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; margin-right:5px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                        national_id.jpg
-                    </div>
+                    @if (!string.IsNullOrWhiteSpace(profile.IdDocumentPath))
+                    {
+                        <a class="field-value-box link" href="@profile.IdDocumentPath" target="_blank" rel="noopener">View verified document</a>
+                    }
+                    else
+                    {
+                        <div class="field-value-box">Not available</div>
+                    }
                 </div>
             </div>
         </div>

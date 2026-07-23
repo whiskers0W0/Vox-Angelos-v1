@@ -1,0 +1,148 @@
+@page
+@model VoxAngelos.Pages.User.AccountSecurityModel
+@{
+    Layout = "_CitizenLayout";
+    ViewData["Title"] = "Account Security";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/citizen-account-security.css" asp-append-version="true" />
+}
+
+<div class="content-header">
+    <div>
+        <h1 class="page-title">Account Security</h1>
+        <p class="security-subtitle">Protect your sign-in details and verify important changes.</p>
+    </div>
+    <a asp-page="/User/Profile" class="security-back-link">Back to Profile</a>
+</div>
+
+<div class="security-container">
+    @if (TempData["SecuritySuccess"] != null)
+    {
+        <div class="security-feedback security-success" role="status">@TempData["SecuritySuccess"]</div>
+    }
+    @if (TempData["SecurityError"] != null)
+    {
+        <div class="security-feedback security-error" role="alert">@TempData["SecurityError"]</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.PendingNewEmail))
+    {
+        <div class="security-email-pending" role="status">
+            <strong>One final step is required</strong>
+            <span>Your OTP was verified. Open the confirmation link sent to <strong>@Model.PendingNewEmail</strong> to finish changing your email address. Until then, your current email remains active.</span>
+            @if (!string.IsNullOrWhiteSpace(Model.EmailConfirmationPreview))
+            {
+                <a href="@Model.EmailConfirmationPreview" class="security-dev-confirm-link">Development only: Confirm this test email change</a>
+            }
+        </div>
+    }
+
+    @if (Model.PendingChangeType is not null)
+    {
+        var changeName = Model.PendingChangeType == AccountSecurityModel.PendingSecurityChangeType.Password
+            ? "password change"
+            : "email address change";
+
+        <section class="security-card security-otp-card">
+            <div class="security-card-heading">
+                <div class="security-icon" aria-hidden="true">&#128274;</div>
+                <div>
+                    <h2>Verify @changeName</h2>
+                    <p>Enter the 6-digit code sent to <strong>@Model.CurrentEmail</strong>.</p>
+                </div>
+            </div>
+
+            <div class="security-info-note">The code expires shortly. You have three attempts. For your protection, only this pending change can be completed right now.</div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.OtpPreview))
+            {
+                <div class="security-dev-otp" role="status">
+                    <strong>Development test code:</strong> <code>@Model.OtpPreview</code>
+                    <span>This preview is shown only while the project runs in Development.</span>
+                </div>
+            }
+
+            <form method="post" asp-page-handler="VerifyOtp">
+                <div asp-validation-summary="ModelOnly" class="security-validation"></div>
+                <div class="security-fields">
+                    <div class="security-field security-otp-field">
+                        <label asp-for="OtpInput.Code">Verification Code</label>
+                        <input asp-for="OtpInput.Code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />
+                        <span asp-validation-for="OtpInput.Code"></span>
+                    </div>
+                </div>
+                <button type="submit" class="security-primary-btn">Verify Code</button>
+            </form>
+        </section>
+    }
+    else
+    {
+        <section class="security-card">
+            <div class="security-card-heading">
+                <div class="security-icon" aria-hidden="true">&#128274;</div>
+                <div>
+                    <h2>Change Password</h2>
+                    <p>Use a strong password you do not use on another site.</p>
+                </div>
+            </div>
+
+            <div class="security-info-note">For your protection, confirm the change with your current password, then enter a 6-digit verification code sent to your current email.</div>
+
+            <form method="post" asp-page-handler="ChangePassword">
+                <div asp-validation-summary="ModelOnly" class="security-validation"></div>
+                <div class="security-fields">
+                    <div class="security-field">
+                        <label asp-for="PasswordInput.CurrentPassword">Current Password</label>
+                        <input asp-for="PasswordInput.CurrentPassword" autocomplete="current-password" />
+                        <span asp-validation-for="PasswordInput.CurrentPassword"></span>
+                    </div>
+                    <div class="security-field">
+                        <label asp-for="PasswordInput.NewPassword">New Password</label>
+                        <input asp-for="PasswordInput.NewPassword" autocomplete="new-password" />
+                        <span asp-validation-for="PasswordInput.NewPassword"></span>
+                    </div>
+                    <div class="security-field">
+                        <label asp-for="PasswordInput.ConfirmPassword">Confirm New Password</label>
+                        <input asp-for="PasswordInput.ConfirmPassword" autocomplete="new-password" />
+                        <span asp-validation-for="PasswordInput.ConfirmPassword"></span>
+                    </div>
+                </div>
+                <button type="submit" class="security-primary-btn">Send Verification Code</button>
+            </form>
+        </section>
+
+        <section class="security-card">
+            <div class="security-card-heading">
+                <div class="security-icon" aria-hidden="true">&#9993;</div>
+                <div>
+                    <h2>Change Email Address</h2>
+                    <p>Current email: <strong>@Model.CurrentEmail</strong></p>
+                </div>
+            </div>
+
+            <div class="security-info-note">For your protection, confirm the change with your current password and a 6-digit code sent to your current email. After that, a confirmation link will be sent to the new email address.</div>
+
+            <form method="post" asp-page-handler="RequestEmailChange" autocomplete="off">
+                <div asp-validation-summary="ModelOnly" class="security-validation"></div>
+                <div class="security-fields">
+                    <div class="security-field">
+                        <label asp-for="EmailInput.NewEmail">New Email Address</label>
+                        <input asp-for="EmailInput.NewEmail" autocomplete="off" data-lpignore="true" data-1p-ignore="true" />
+                        <span asp-validation-for="EmailInput.NewEmail"></span>
+                    </div>
+                    <div class="security-field">
+                        <label asp-for="EmailInput.CurrentPassword">Current Password</label>
+                        <input asp-for="EmailInput.CurrentPassword" autocomplete="off" data-lpignore="true" data-1p-ignore="true" />
+                        <span asp-validation-for="EmailInput.CurrentPassword"></span>
+                    </div>
+                </div>
+                <button type="submit" class="security-primary-btn">Send Verification Code</button>
+            </form>
+        </section>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
