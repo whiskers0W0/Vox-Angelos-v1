@@ -71,7 +71,10 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     "Your Vox Angelos Login Code",
                     $"Your 6-digit login code is: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
 
-                // Remove OTP from TempData after sending so it can't be read client-side
+                GeneratedOtp = otp;
+
+                // Remove the raw OTP from TempData after sending; GeneratedOtp (above) is the
+                // only copy that survives into the view, and only for the dev-console preview.
                 TempData.Remove("2FA_OTP");
             }
 

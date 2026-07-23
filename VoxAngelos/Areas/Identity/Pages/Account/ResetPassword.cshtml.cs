@@ -64,12 +64,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             var user = await _userManager.FindByEmailAsync(Input.Email);
             if (user == null || !await _userManager.IsInRoleAsync(user, "User"))
             {
-                return RedirectToPage("./ResetPasswordConfirmation");
+                // Same redirect as the success path below — don't let the target reveal
+                // whether the account exists.
+                return RedirectToPage("./Login");
             }
 
             var result = await _userManager.ResetPasswordAsync(user, Input.Code, Input.Password);
             if (result.Succeeded)
-                return RedirectToPage("./ResetPasswordConfirmation");
+                return RedirectToPage("./Login");
 
             foreach (var error in result.Errors)
                 ModelState.AddModelError(string.Empty, error.Description);

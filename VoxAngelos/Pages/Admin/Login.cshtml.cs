@@ -77,6 +77,7 @@ namespace VoxAngelos.Pages.Admin
                 $"Admin login OTP for <strong>{user.Email}</strong>: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
 
             TempData["Admin_2FA_UserId"] = user.Id;
+            TempData["Admin_2FA_OtpPreview"] = otp;
 
             return RedirectToPage("/Admin/LoginOtp");
         }

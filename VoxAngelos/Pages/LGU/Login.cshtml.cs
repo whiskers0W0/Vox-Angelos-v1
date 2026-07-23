@@ -77,6 +77,7 @@ namespace VoxAngelos.Pages.LGU
                 $"LGU login OTP for <strong>{user.Email}</strong>: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
 
             TempData["LGU_2FA_UserId"] = user.Id;
+            TempData["LGU_2FA_OtpPreview"] = otp;
 
             return RedirectToPage("/LGU/LoginOtp");
         }

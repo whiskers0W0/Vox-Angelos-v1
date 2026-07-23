@@ -70,6 +70,8 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 $"<p><a href='{HtmlEncoder.Default.Encode(callbackUrl)}' style='background:#1a237e;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;'>Reset Password</a></p>" +
                 $"<p>If you did not request this, please ignore this email.</p>");
 
+            TempData["DevResetLinkPreview"] = callbackUrl;
+
             return RedirectToPage("./ForgotPasswordConfirmation");
         }
     }
