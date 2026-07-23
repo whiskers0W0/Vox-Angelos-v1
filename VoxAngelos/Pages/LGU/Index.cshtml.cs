@@ -156,6 +156,8 @@ namespace VoxAngelos.Pages.LGU
         public async Task<IActionResult> OnPostUpdateStatusAsync(
             int concernId, string status, string? notes)
         {
+            var updatedAt = DateTime.UtcNow;
+
             // Guarded by current Status so two staff updating the same concern at once
             // can't overwrite each other — only the first update lands, atomically.
             var updated = await _db.Concerns
@@ -163,7 +165,7 @@ namespace VoxAngelos.Pages.LGU
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(c => c.Status, status)
                     .SetProperty(c => c.LguNotes, notes)
-                    .SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
+                    .SetProperty(c => c.UpdatedAt, updatedAt));
 
             if (updated == 0)
             {
@@ -171,8 +173,41 @@ namespace VoxAngelos.Pages.LGU
             }
             else
             {
-                var category = await _db.Concerns.Where(c => c.Id == concernId).Select(c => c.Category).FirstOrDefaultAsync();
-                await NotifyDepartmentsAsync(category);
+                var concern = await _db.Concerns
+                    .Where(c => c.Id == concernId)
+                    .Select(c => new { c.Category, c.CitizenId })
+                    .SingleAsync();
+                var lguUser = await _userManager.GetUserAsync(User);
+                var actorName = lguUser?.Department ?? lguUser?.Email ?? "LGU Office";
+                var updateMessage = string.IsNullOrWhiteSpace(notes)
+                    ? $"The LGU updated the concern status to {status}."
+                    : notes;
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concernId,
+                    EventType = "Status Updated",
+                    Status = status,
+                    Message = updateMessage,
+                    ActorRole = "LGU",
+                    ActorName = actorName,
+                    CreatedAt = updatedAt
+                });
+
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId,
+                    Title = "Your concern was updated",
+                    Message = updateMessage,
+                    NotificationType = "ConcernUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Notifications",
+                    CreatedAt = updatedAt
+                });
+                await _db.SaveChangesAsync();
+
+                await NotifyDepartmentsAsync(concern.Category);
             }
 
             return RedirectToPage(new { filter = CurrentFilter });
@@ -180,11 +215,12 @@ namespace VoxAngelos.Pages.LGU
 
         public async Task<IActionResult> OnPostChooseConcernAsync(int concernId)
         {
+            var updatedAt = DateTime.UtcNow;
             var updated = await _db.Concerns
                 .Where(c => c.Id == concernId && c.Status == "Unresolved")
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(c => c.Status, "Chosen")
-                    .SetProperty(c => c.UpdatedAt, DateTime.UtcNow));
+                    .SetProperty(c => c.UpdatedAt, updatedAt));
 
             if (updated == 0)
             {
@@ -192,8 +228,39 @@ namespace VoxAngelos.Pages.LGU
             }
             else
             {
-                var category = await _db.Concerns.Where(c => c.Id == concernId).Select(c => c.Category).FirstOrDefaultAsync();
-                await NotifyDepartmentsAsync(category);
+                var concern = await _db.Concerns
+                    .Where(c => c.Id == concernId)
+                    .Select(c => new { c.Category, c.CitizenId })
+                    .SingleAsync();
+                var lguUser = await _userManager.GetUserAsync(User);
+                var actorName = lguUser?.Department ?? lguUser?.Email ?? "LGU Office";
+                const string updateMessage = "An LGU office has accepted this concern for action.";
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concernId,
+                    EventType = "Concern Chosen",
+                    Status = "Chosen",
+                    Message = updateMessage,
+                    ActorRole = "LGU",
+                    ActorName = actorName,
+                    CreatedAt = updatedAt
+                });
+
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId,
+                    Title = "Your concern was accepted",
+                    Message = updateMessage,
+                    NotificationType = "ConcernUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Notifications",
+                    CreatedAt = updatedAt
+                });
+                await _db.SaveChangesAsync();
+
+                await NotifyDepartmentsAsync(concern.Category);
             }
 
             return RedirectToPage(new { filter = "Chosen" });

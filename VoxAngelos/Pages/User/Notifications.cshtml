@@ -2,12 +2,12 @@
 @model VoxAngelos.Pages.User.NotificationsModel
 @{
     Layout = "_CitizenLayout";
-    ViewData["Title"] = "Notifications";
+    ViewData["Title"] = "Your Concerns";
 }
 
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/citizen-notification.css" />
+    <link rel="stylesheet" href="~/css/citizen-notification.css" asp-append-version="true" />
 }
 
 <div class="content-header">
@@ -16,11 +16,11 @@
 
 <div class="tab-group">
     <div class="tab-indicator"></div>
-    <button class="tab-btn active" data-view="outbox">Sent</button>
-    <button class="tab-btn" data-view="inbox">Response</button>
+    <button class="tab-btn active" data-view="outbox">My Concerns</button>
+    <button class="tab-btn" data-view="inbox">LGU Responses</button>
 </div>
 
-<!-- Outbox -->
+<!-- Submitted concerns -->
 <div id="outboxView" class="view-section active-view">
     <div class="outbox-feed">
         @if (!Model.Outbox.Any())
@@ -61,12 +61,35 @@
                     <p class="concern-excerpt">@concern.Description</p>
                 </div>
 
-                @if (concern.FirstAttachmentPath != null)
+                @if (concern.Attachments.Any())
                 {
                     <div class="concern-attachments">
-                        <div class="concern-photo">
-                            <img src="@concern.FirstAttachmentPath" alt="Concern photo" />
-                        </div>
+                        @foreach (var attachment in concern.Attachments)
+                        {
+                            if (attachment.FileType == "video")
+                            {
+                                <video class="concern-media" controls preload="metadata">
+                                    <source src="@attachment.FilePath" />
+                                    Your browser does not support video playback.
+                                </video>
+                            }
+                            else if (attachment.FileType == "document")
+                            {
+                                <a class="concern-document" href="@attachment.FilePath" target="_blank" rel="noopener" title="Open PDF document in a new tab">
+                                    <span class="concern-document-icon" aria-hidden="true">PDF</span>
+                                    <span>
+                                        <strong>Attached document</strong>
+                                        <small>Open PDF</small>
+                                    </span>
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="concern-photo" href="@attachment.FilePath" target="_blank" rel="noopener" title="Open image in a new tab">
+                                    <img src="@attachment.FilePath" alt="Open attached concern image" />
+                                </a>
+                            }
+                        }
                     </div>
                 }
 
@@ -78,17 +101,46 @@
                     </svg>
                     @concern.LocationName
                 </div>
+
+                <details class="concern-timeline">
+                    <summary>
+                        <span>View timeline</span>
+                        <span class="timeline-count">@concern.Timeline.Count event@(concern.Timeline.Count == 1 ? "" : "s")</span>
+                    </summary>
+                    <ol class="timeline-list">
+                        @foreach (var timelineEvent in concern.Timeline)
+                        {
+                            var timelineStatusCss = timelineEvent.Status.ToLower().Replace(" ", "-");
+                            <li class="timeline-item">
+                                <span class="timeline-marker @timelineStatusCss" aria-hidden="true"></span>
+                                <div class="timeline-content">
+                                    <div class="timeline-heading">
+                                        <strong>@timelineEvent.EventType</strong>
+                                        <span class="timeline-status @timelineStatusCss">@timelineEvent.Status</span>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(timelineEvent.Message))
+                                    {
+                                        <p class="timeline-message">@timelineEvent.Message</p>
+                                    }
+                                    <div class="timeline-meta">
+                                        @(timelineEvent.ActorName ?? timelineEvent.ActorRole) · @timelineEvent.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy h:mm tt")
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                </details>
             </div>
         }
     </div>
 </div>
 
-<!-- Inbox -->
+<!-- LGU responses and status updates -->
 <div id="inboxView" class="view-section">
     <div class="inbox-feed">
         @if (!Model.Inbox.Any())
         {
-            <p class="empty-state">No replies from LGU yet.</p>
+            <p class="empty-state">No LGU responses or status updates yet.</p>
         }
         @foreach (var concern in Model.Inbox)
         {
@@ -105,7 +157,7 @@
                             <div class="author-name">@Model.CitizenFullName</div>
                         </div>
                     </div>
-                    <div class="card-date">@Model.GetTimeAgo(concern.SubmittedAt)</div>
+                    <div class="card-date">@Model.GetTimeAgo(concern.UpdatedAt ?? concern.SubmittedAt)</div>
                 </div>
 
                 <div class="card-meta">
@@ -125,7 +177,11 @@
                             </div>
                             <div class="office-name">LGU Office</div>
                         </div>
-                        <p class="reply-text">@concern.LguNotes</p>
+                        <p class="reply-text">
+                            @(string.IsNullOrWhiteSpace(concern.LguNotes)
+                                ? $"Your concern status is now {concern.Status}."
+                                : concern.LguNotes)
+                        </p>
                     </div>
                 </div>
             </div>

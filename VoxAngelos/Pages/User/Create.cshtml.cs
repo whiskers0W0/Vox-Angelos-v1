@@ -49,6 +49,7 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public double? Latitude { get; set; }
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
+        [BindProperty] public string? ConfirmedCategory { get; set; }
         [BindProperty] public string RecJustification { get; set; } = string.Empty;
         [BindProperty] public string RecCategory { get; set; } = string.Empty;
         [BindProperty] public string RecTitle { get; set; } = string.Empty;
@@ -98,6 +99,21 @@ namespace VoxAngelos.Pages.User
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage("/Login");
 
+            // This handler submits only a concern. Ignore validation generated for
+            // the separate recommendation form that shares this Razor Page.
+            foreach (var recommendationField in new[]
+            {
+                nameof(RecJustification),
+                nameof(RecCategory),
+                nameof(RecTitle),
+                nameof(RecLocation),
+                nameof(RecDescription),
+                nameof(RecBeneficiaries)
+            })
+            {
+                ModelState.Remove(recommendationField);
+            }
+
             if (string.IsNullOrWhiteSpace(Description))
                 ModelState.AddModelError("Description", "Description is required.");
             if (string.IsNullOrWhiteSpace(LocationName) || Latitude == null || Longitude == null)
@@ -136,11 +152,25 @@ namespace VoxAngelos.Pages.User
             concern.Latitude = Latitude;
             concern.Longitude = Longitude;
             concern.Status = "Unresolved";
-            concern.Category = await _classifier.ClassifyAsync(
-                Description,
-                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            concern.Category = !string.IsNullOrWhiteSpace(ConfirmedCategory)
+                ? ConfirmedCategory
+                : await _classifier.ClassifyAsync(
+                    Description,
+                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
             concern.SubmittedAt = DateTime.UtcNow;
 
+            await _db.SaveChangesAsync();
+
+            _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+            {
+                ConcernId = concern.Id,
+                EventType = "Submitted",
+                Status = concern.Status,
+                Message = "Your concern was submitted and is awaiting review.",
+                ActorRole = "Citizen",
+                ActorName = user.UserName ?? user.Email ?? "Citizen",
+                CreatedAt = concern.SubmittedAt
+            });
             await _db.SaveChangesAsync();
 
             if (Attachments != null && Attachments.Count > 0)
@@ -156,7 +186,9 @@ namespace VoxAngelos.Pages.User
                     var filePath = Path.Combine(uploadsFolder, fileName);
                     using var stream = new FileStream(filePath, FileMode.Create);
                     await file.CopyToAsync(stream);
-                    var fileType = file.ContentType.StartsWith("video") ? "video" : "image";
+                    var fileType = file.ContentType.StartsWith("video") ? "video"
+                                 : file.ContentType.StartsWith("image") ? "image"
+                                 : "document";
                     _db.ConcernAttachments.Add(new ConcernAttachment
                     {
                         ConcernId = concern.Id,

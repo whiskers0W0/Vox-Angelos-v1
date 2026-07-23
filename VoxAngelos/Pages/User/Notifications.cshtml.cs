@@ -49,22 +49,96 @@ namespace VoxAngelos.Pages.User
                     SubmittedAt = c.SubmittedAt,
                     UpdatedAt = c.UpdatedAt,
                     LguNotes = c.LguNotes,
-                    FirstAttachmentPath = c.Attachments
-                        .Where(a => a.FileType == "image")
-                        .Select(a => a.FilePath)
-                        .FirstOrDefault()
+                    Attachments = c.Attachments
+                        .OrderBy(a => a.UploadedAt)
+                        .Select(a => new ConcernAttachmentViewModel
+                        {
+                            FilePath = a.FilePath,
+                            // Older concern uploads stored PDFs as "image". Identify
+                            // them from the saved file extension so existing records
+                            // render as documents too.
+                            FileType = a.FilePath.EndsWith(".pdf") ? "document" : a.FileType
+                        })
+                        .ToList(),
+                    Timeline = c.TimelineEvents
+                        .OrderBy(e => e.CreatedAt)
+                        .Select(e => new ConcernTimelineItemViewModel
+                        {
+                            EventType = e.EventType,
+                            Status = e.Status,
+                            Message = e.Message,
+                            ActorRole = e.ActorRole,
+                            ActorName = e.ActorName,
+                            CreatedAt = e.CreatedAt
+                        })
+                        .ToList()
                 })
                 .ToListAsync();
 
+            foreach (var concern in allConcerns)
+            {
+                var hasSavedTimeline = concern.Timeline.Any();
+
+                if (!concern.Timeline.Any(e => e.EventType == "Submitted"))
+                {
+                    concern.Timeline.Add(new ConcernTimelineItemViewModel
+                    {
+                        EventType = "Submitted",
+                        Status = "Unresolved",
+                        Message = "Your concern was submitted.",
+                        ActorRole = "Citizen",
+                        ActorName = CitizenFullName,
+                        CreatedAt = concern.SubmittedAt
+                    });
+                }
+
+                if (!hasSavedTimeline && concern.UpdatedAt.HasValue)
+                {
+                    concern.Timeline.Add(new ConcernTimelineItemViewModel
+                    {
+                        EventType = "Status Updated",
+                        Status = concern.Status,
+                        Message = string.IsNullOrWhiteSpace(concern.LguNotes)
+                            ? $"The concern status is {concern.Status}."
+                            : concern.LguNotes,
+                        ActorRole = "LGU",
+                        ActorName = "LGU Office",
+                        CreatedAt = concern.UpdatedAt.Value
+                    });
+                }
+
+                concern.Timeline = concern.Timeline
+                    .OrderBy(e => e.CreatedAt)
+                    .ToList();
+            }
+
             // Outbox — no LGU action yet
-            Outbox = allConcerns
-                .Where(c => c.Status == "Unresolved")
-                .ToList();
+            Outbox = allConcerns;
 
             // Inbox — any LGU action has occurred
             Inbox = allConcerns
-                .Where(c => c.Status != "Unresolved")
+                .Where(c => c.Status != "Unresolved" || !string.IsNullOrWhiteSpace(c.LguNotes))
                 .ToList();
+        }
+
+        public async Task<IActionResult> OnPostMarkNotificationReadAsync(int notificationId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            var notification = await _db.UserNotifications
+                .FirstOrDefaultAsync(n => n.Id == notificationId && n.RecipientUserId == user.Id);
+
+            if (notification == null) return NotFound();
+
+            if (!notification.IsRead)
+            {
+                notification.IsRead = true;
+                notification.ReadAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+
+            return new JsonResult(new { success = true });
         }
 
         public string GetTimeAgo(DateTime dt)
@@ -88,6 +162,23 @@ namespace VoxAngelos.Pages.User
         public DateTime SubmittedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string? LguNotes { get; set; }
-        public string? FirstAttachmentPath { get; set; }
+        public List<ConcernAttachmentViewModel> Attachments { get; set; } = new();
+        public List<ConcernTimelineItemViewModel> Timeline { get; set; } = new();
+    }
+
+    public class ConcernAttachmentViewModel
+    {
+        public string FilePath { get; set; } = string.Empty;
+        public string FileType { get; set; } = string.Empty;
+    }
+
+    public class ConcernTimelineItemViewModel
+    {
+        public string EventType { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string? Message { get; set; }
+        public string ActorRole { get; set; } = string.Empty;
+        public string? ActorName { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
