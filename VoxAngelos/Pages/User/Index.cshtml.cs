@@ -89,6 +89,8 @@ namespace VoxAngelos.Pages.User
             public int MyUrgency { get; set; }
             public int MyRelevance { get; set; }
             public int MyFeasibility { get; set; }
+            public bool IsOwnRecommendation { get; set; }
+            public bool HasRated { get; set; }
             public List<string> AttachmentPaths { get; set; } = new();
             public List<string> AttachmentTypes { get; set; } = new();
         }
@@ -107,14 +109,14 @@ namespace VoxAngelos.Pages.User
 
             var myRatings = await _ratingService.GetMyRatingsAsync(CurrentUserId);
 
-            Recommendations = recs.Select(r => MapToViewModel(r, myRatings)).ToList();
+            Recommendations = recs.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
 
             var topRated = await _ratingService.GetTopRecommendationsAsync(forLgu: false);
-            TopRated = topRated.Select(r => MapToViewModel(r, myRatings)).ToList();
+            TopRated = topRated.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
         }
 
         private static RecommendationCardViewModel MapToViewModel(
-            Recommendation r, Dictionary<int, RecommendationRating> myRatings)
+            Recommendation r, Dictionary<int, RecommendationRating> myRatings, string currentUserId)
         {
             myRatings.TryGetValue(r.Id, out var mine);
 
@@ -139,6 +141,8 @@ namespace VoxAngelos.Pages.User
                 MyUrgency = mine?.UrgencyStars ?? 0,
                 MyRelevance = mine?.RelevanceStars ?? 0,
                 MyFeasibility = mine?.FeasibilityStars ?? 0,
+                IsOwnRecommendation = r.CitizenId == currentUserId,
+                HasRated = mine != null,
                 AttachmentPaths = r.Attachments.Select(a => a.FilePath).ToList(),
                 AttachmentTypes = r.Attachments.Select(a => a.FileType).ToList()
             };
@@ -150,6 +154,19 @@ namespace VoxAngelos.Pages.User
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
+            var rec = await _db.Recommendations.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == recommendationId && r.Status == "Published");
+            if (rec == null) return NotFound();
+
+            if (rec.CitizenId == user.Id)
+                return BadRequest("You cannot rate your own recommendation.");
+
+            if (await _db.RecommendationRatings
+                .AnyAsync(r => r.RecommendationId == recommendationId && r.CitizenId == user.Id))
+            {
+                return BadRequest("You have already rated this recommendation.");
+            }
+
             try
             {
                 await _ratingService.SubmitRatingAsync(
@@ -159,8 +176,12 @@ namespace VoxAngelos.Pages.User
             {
                 return BadRequest(ex.Message);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
-            var rec = await _db.Recommendations.AsNoTracking()
+            rec = await _db.Recommendations.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == recommendationId);
             if (rec == null) return NotFound();
 

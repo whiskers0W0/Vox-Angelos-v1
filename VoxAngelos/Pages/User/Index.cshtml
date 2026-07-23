@@ -6,7 +6,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/citizen-discover.css" />
+    <link rel="stylesheet" href="~/css/citizen-discover.css" asp-append-version="true" />
 }
 
 <div class="content-header">
@@ -21,6 +21,14 @@
             {
                 <option value="@office.Code">@office.Name</option>
             }
+        </select>
+
+        <select class="filter-select" id="periodFilter" aria-label="Filter by publication date">
+            <option value="">All Dates</option>
+            <option value="day">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="year">This Year</option>
         </select>
 
         <select class="filter-select" id="dateSort" aria-label="Sort by date">
@@ -63,7 +71,7 @@
 
         @foreach (var rec in Model.Recommendations)
         {
-            <div class="proposal-card" data-title="@rec.Title.ToLower()" data-description="@rec.Description.ToLower()" data-office="@rec.AssignedOffice" data-date="@rec.ApprovedAt.ToString("yyyy-MM-dd")">
+            <div class="proposal-card" data-title="@rec.Title.ToLower()" data-description="@rec.Description.ToLower()" data-category="@rec.Category.ToLowerInvariant()" data-office="@rec.AssignedOffice" data-date="@rec.ApprovedAt.ToString("yyyy-MM-dd")">
                 <div class="card-header">
                     <div class="author-info">
                         <div class="avatar">
@@ -78,7 +86,6 @@
                 </div>
 
                 <div class="card-meta">
-                    <span class="meta-label">Category: <span class="meta-value">@rec.Category</span></span>
                     @if (!string.IsNullOrEmpty(rec.AssignedOffice))
                     {
                         <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
@@ -102,9 +109,16 @@
                             var path = rec.AttachmentPaths[i];
                             var type = rec.AttachmentTypes[i];
                             <div class="attachment-thumb">
-                                @if (type.StartsWith("image/"))
+                                @if (type == "image" || type.StartsWith("image/"))
                                 {
                                     <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                }
+                                else if (type == "video" || type.StartsWith("video/"))
+                                {
+                                    <video controls preload="metadata" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+                                        <source src="@path" />
+                                        Your browser does not support video playback.
+                                    </video>
                                 }
                                 else
                                 {
@@ -130,6 +144,10 @@
                 @await Html.PartialAsync("_RatingWidget", rec)
             </div>
         }
+
+        <div id="noFilterResults" hidden style="text-align:center;padding:60px;color:#888;">
+            <p>No recommendations match your filters.</p>
+        </div>
     </div>
 </div>
 
@@ -167,7 +185,6 @@
                             <div class="card-date">@rec.ApprovedAt.ToString("MM/dd/yy")</div>
                         </div>
                         <div class="card-meta">
-                            <span class="meta-label">Category: <span class="meta-value">@rec.Category</span></span>
                             @if (!string.IsNullOrEmpty(rec.AssignedOffice))
                             {
                                 <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
@@ -190,9 +207,16 @@
                                     var path = rec.AttachmentPaths[i];
                                     var type = rec.AttachmentTypes[i];
                                     <div class="attachment-thumb">
-                                        @if (type.StartsWith("image/"))
+                                        @if (type == "image" || type.StartsWith("image/"))
                                         {
                                             <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+                                        }
+                                        else if (type == "video" || type.StartsWith("video/"))
+                                        {
+                                            <video controls preload="metadata" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+                                                <source src="@path" />
+                                                Your browser does not support video playback.
+                                            </video>
                                         }
                                         else
                                         {
@@ -289,8 +313,10 @@
         // Search + office filter + date sort
         const searchInput = document.getElementById('searchInput');
         const officeFilter = document.getElementById('officeFilter');
+        const periodFilter = document.getElementById('periodFilter');
         const dateSort = document.getElementById('dateSort');
         const proposalsFeed = document.getElementById('proposalsFeed');
+        const noFilterResults = document.getElementById('noFilterResults');
 
         function escapeHtml(str) {
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -308,20 +334,57 @@
             el.innerHTML = escapeHtml(original).replace(re, m => `<mark class="search-highlight">${m}</mark>`);
         }
 
+        function parseCardDate(value) {
+            const [year, month, day] = value.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        function matchesPeriod(cardDate, period) {
+            if (!period) return true;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (period === 'day')
+                return cardDate.getTime() === today.getTime();
+
+            if (period === 'week') {
+                const weekStart = new Date(today);
+                const daysSinceMonday = (today.getDay() + 6) % 7;
+                weekStart.setDate(today.getDate() - daysSinceMonday);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                return cardDate >= weekStart && cardDate < weekEnd;
+            }
+
+            if (period === 'month')
+                return cardDate.getFullYear() === today.getFullYear()
+                    && cardDate.getMonth() === today.getMonth();
+
+            return cardDate.getFullYear() === today.getFullYear();
+        }
+
         function applyFilters() {
             const query = (searchInput.value || '').toLowerCase().trim();
             const office = officeFilter.value;
+            const period = periodFilter.value;
 
             const cards = Array.from(proposalsFeed.querySelectorAll('.proposal-card'));
+            let visibleCount = 0;
 
             cards.forEach(card => {
                 const title = card.dataset.title || '';
                 const desc = card.dataset.description || '';
+                const cardCategory = card.dataset.category || '';
                 const cardOffice = card.dataset.office || '';
+                const cardDate = parseCardDate(card.dataset.date);
 
-                const matchesQuery = !query || title.includes(query) || desc.includes(query);
+                const matchesQuery = !query || title.includes(query) || desc.includes(query) || cardCategory.includes(query);
                 const matchesOffice = !office || cardOffice === office;
-                card.style.display = (matchesQuery && matchesOffice) ? '' : 'none';
+                const matchesDate = matchesPeriod(cardDate, period);
+                const isVisible = matchesQuery && matchesOffice && matchesDate;
+                card.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
 
                 const titleEl = card.querySelector('.proposal-title');
                 const descEl = card.querySelector('.proposal-excerpt');
@@ -330,15 +393,17 @@
             });
 
             const sorted = cards.slice().sort((a, b) => {
-                const da = new Date(a.dataset.date);
-                const db = new Date(b.dataset.date);
+                const da = parseCardDate(a.dataset.date);
+                const db = parseCardDate(b.dataset.date);
                 return dateSort.value === 'asc' ? da - db : db - da;
             });
             sorted.forEach(card => proposalsFeed.appendChild(card));
+            noFilterResults.hidden = visibleCount !== 0;
         }
 
         searchInput.addEventListener('input', applyFilters);
         officeFilter.addEventListener('change', applyFilters);
+        periodFilter.addEventListener('change', applyFilters);
         dateSort.addEventListener('change', applyFilters);
 
         // Multi-category star rating
@@ -360,6 +425,26 @@
                 });
             });
             starsEl.addEventListener('mouseleave', () => paintStars(starsEl, Number(starsEl.dataset.selected || 0)));
+        });
+
+        document.querySelectorAll('.rating-widget .btn-start-rating').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const widget = btn.closest('.rating-widget');
+                widget.querySelector('.rating-editor').classList.remove('is-hidden');
+                btn.closest('.rating-start-action').hidden = true;
+            });
+        });
+
+        document.querySelectorAll('.rating-widget .btn-cancel-rating').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const widget = btn.closest('.rating-widget');
+                widget.querySelectorAll('.stars').forEach(starsEl => {
+                    starsEl.dataset.selected = '0';
+                    paintStars(starsEl, 0);
+                });
+                widget.querySelector('.rating-editor').classList.add('is-hidden');
+                widget.querySelector('.rating-start-action').hidden = false;
+            });
         });
 
         document.querySelectorAll('.rating-widget .btn-submit-rating').forEach(btn => {
@@ -392,7 +477,8 @@
                 try {
                     const res = await fetch('?handler=Rate', { method: 'POST', body: formData });
                     if (!res.ok) {
-                        feedback.textContent = 'Could not submit your rating. Please try again.';
+                        const errorMessage = await res.text();
+                        feedback.textContent = errorMessage || 'Could not submit your rating. Please try again.';
                         return;
                     }
                     const data = await res.json();
@@ -404,9 +490,16 @@
                     widget.querySelector('[data-avg-for="relevance"]').textContent = `avg ${data.avgRelevance.toFixed(1)}`;
                     widget.querySelector('[data-avg-for="feasibility"]').textContent = `avg ${data.avgFeasibility.toFixed(1)}`;
 
-                    feedback.textContent = 'Thanks for rating!';
+                    groups.forEach(group => {
+                        group.classList.remove('stars');
+                        group.classList.add('stars-readonly');
+                        group.style.pointerEvents = 'none';
+                    });
+                    btn.remove();
+                    widget.querySelector('.btn-cancel-rating')?.remove();
+                    feedback.textContent = 'Thanks for rating! You can only rate a recommendation once.';
                 } finally {
-                    btn.disabled = false;
+                    if (btn.isConnected) btn.disabled = false;
                 }
             });
         });
