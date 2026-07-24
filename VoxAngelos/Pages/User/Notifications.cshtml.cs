@@ -20,13 +20,17 @@ namespace VoxAngelos.Pages.User
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
+        public string CurrentStatusFilter { get; private set; } = "All";
         public List<ConcernNotificationViewModel> Outbox { get; set; } = new();
-        public List<ConcernNotificationViewModel> Inbox { get; set; } = new();
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string status = "All")
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return;
+
+            CurrentStatusFilter = status is "All" or "Unresolved" or "Chosen" or "In Progress" or "Resolved"
+                ? status
+                : "All";
 
             var profile = await _db.UserProfiles
                 .FirstOrDefaultAsync(p => p.UserId == user.Id);
@@ -35,9 +39,16 @@ namespace VoxAngelos.Pages.User
                 ? $"{profile.FirstName} {profile.LastName}"
                 : user.Email ?? "Citizen";
 
-            var allConcerns = await _db.Concerns
+            var concernsQuery = _db.Concerns
                 .Include(c => c.Attachments)
-                .Where(c => c.CitizenId == user.Id && c.Status != "Draft")
+                .Where(c => c.CitizenId == user.Id && c.Status != "Draft");
+
+            if (CurrentStatusFilter != "All")
+            {
+                concernsQuery = concernsQuery.Where(c => c.Status == CurrentStatusFilter);
+            }
+
+            var allConcerns = await concernsQuery
                 .OrderByDescending(c => c.SubmittedAt)
                 .Select(c => new ConcernNotificationViewModel
                 {
@@ -114,11 +125,6 @@ namespace VoxAngelos.Pages.User
 
             // Outbox — no LGU action yet
             Outbox = allConcerns;
-
-            // Inbox — any LGU action has occurred
-            Inbox = allConcerns
-                .Where(c => c.Status != "Unresolved" || !string.IsNullOrWhiteSpace(c.LguNotes))
-                .ToList();
         }
 
         public async Task<IActionResult> OnPostMarkNotificationReadAsync(int notificationId)

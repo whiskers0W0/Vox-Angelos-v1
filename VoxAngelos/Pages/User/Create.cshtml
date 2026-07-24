@@ -97,6 +97,47 @@
                 </div>
                 
                 <span class="text-danger small" id="err-description"></span>
+
+                <div class="concern-category-section">
+                    <p class="concern-category-question">Which category seems closest to your concern? <span class="concern-category-optional">Optional</span></p>
+                    <p class="concern-category-hint">Use these examples to help describe the concern clearly. The AI will use your description—not this choice—to determine the LGU office.</p>
+                    <div class="concern-category-grid" id="concernCategoryGrid">
+                        <button class="concern-category-btn" type="button" data-value="Infrastructure & Public Works">
+                            <span class="category-name">Infrastructure & Public Works</span>
+                            <span class="category-example">Example: roads, drainage, sidewalks, or streetlights</span>
+                        </button>
+                        <button class="concern-category-btn" type="button" data-value="Environment & Sanitation">
+                            <span class="category-name">Environment & Sanitation</span>
+                            <span class="category-example">Example: garbage collection, waste bins, flooding, or pollution</span>
+                        </button>
+                        <button class="concern-category-btn" type="button" data-value="Community & Social Welfare">
+                            <span class="category-name">Community & Social Welfare</span>
+                            <span class="category-example">Example: livelihood, youth activities, or family assistance</span>
+                        </button>
+                        <button class="concern-category-btn" type="button" data-value="Public Safety, Traffic & Transport">
+                            <span class="category-name">Public Safety, Traffic & Transport</span>
+                            <span class="category-example">Example: crosswalks, traffic flow, road safety, or lighting</span>
+                        </button>
+                        <button class="concern-category-btn" type="button" data-value="Urban Planning & Public Spaces">
+                            <span class="category-name">Urban Planning & Public Spaces</span>
+                            <span class="category-example">Example: parks, public spaces, zoning, or city planning</span>
+                        </button>
+                        <button class="concern-category-btn" type="button" data-value="Senior Citizen Support">
+                            <span class="category-name">Senior Citizen Support</span>
+                            <span class="category-example">Example: senior programs, facilities, or accessibility</span>
+                        </button>
+                        <button class="concern-category-btn" type="button" data-value="PWD Accessibility & Services">
+                            <span class="category-name">PWD Accessibility & Services</span>
+                            <span class="category-example">Example: ramps, accessible facilities, or disability support</span>
+                        </button>
+                        <button class="concern-category-btn concern-category-unsure" type="button" data-value="Unsure">
+                            <span class="category-name">Unsure</span>
+                            <span class="category-example">Describe your concern and we will classify it for you.</span>
+                        </button>
+                    </div>
+                </div>
+                <span class="text-danger small" id="err-category"></span>
+
                 <!-- Location -->
                 <div class="concern-location-row">
                     <label class="concern-form-label">Location:</label>
@@ -353,47 +394,6 @@
     </div>
 </div>
 
-<!-- AI Category Confirmation Modal -->
-<div class="map-modal-overlay" id="categoryModalOverlay">
-    <div class="map-modal" style="max-width:420px; padding: 24px;">
-        <div style="text-align:center; margin-bottom:16px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#2B45B0" stroke-width="2"
-                 style="width:48px;height:48px;margin-bottom:8px;">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <h3 style="margin:0;font-size:18px;font-weight:700;color:#1a1a2e;">Concern Categorized</h3>
-        </div>
-        <p style="text-align:center;color:#555;margin-bottom:8px;">
-            Our AI has categorized your concern as:
-        </p>
-        <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:12px;text-align:center;">
-            <strong id="modalCategory" style="color:#2B45B0;font-size:16px;"></strong>
-        </div>
-        <p style="text-align:center;color:#555;margin-bottom:6px;">
-            This will be sent to:
-        </p>
-        <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:20px;text-align:center;">
-            <strong id="modalOffice" style="color:#1a1a2e;"></strong><br>
-            <span id="modalEmail" style="color:#2B45B0;font-size:13px;"></span>
-        </div>
-        <p style="text-align:center;color:#888;font-size:13px;margin-bottom:20px;">
-            Is this correct? You can confirm or cancel to edit your description.
-        </p>
-        <div style="display:flex;gap:10px;justify-content:center;">
-            <button id="categoryConfirmBtn" class="btn-submit"
-                    style="padding:10px 28px;">
-                ✓ Confirm & Submit
-            </button>
-            <button id="categoryCancelBtn"
-                    style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:white;cursor:pointer;font-size:14px;">
-                Cancel
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- AI Classification Error Modal -->
 <div class="map-modal-overlay" id="classificationErrorModal" role="dialog" aria-modal="true" aria-labelledby="classificationErrorTitle">
     <div class="map-modal" style="max-width:420px; padding: 26px; text-align:center;">
@@ -413,6 +413,7 @@
         {
             HasDraft = Model.SavedConcernDraft != null,
             Description = Model.SavedConcernDraft?.Description,
+            Category = Model.SavedConcernDraft?.Category,
             LocationName = Model.SavedConcernDraft?.LocationName,
             Latitude = Model.SavedConcernDraft?.Latitude,
             Longitude = Model.SavedConcernDraft?.Longitude
@@ -922,6 +923,7 @@
         const concernSaveDraftBtn = document.getElementById('concernSaveDraftBtn');
         const concernDraftStatus = document.getElementById('concernDraftStatus');
         let selectedConcernFiles = [];
+        let selectedConcernCategory = '';
         let concernPreviewUrls = [];
 
         concernUploadBtn.addEventListener('click', () => concernFileInput.click());
@@ -1008,6 +1010,7 @@
         function buildConcernDraftFormData() {
             const formData = new FormData();
             formData.append('Description', document.getElementById('concernDescription').value);
+            formData.append('ConcernCategoryHint', selectedConcernCategory);
             formData.append('LocationName', document.getElementById('hdnLocationName').value);
             formData.append('Latitude', document.getElementById('hdnLatitude').value);
             formData.append('Longitude', document.getElementById('hdnLongitude').value);
@@ -1049,6 +1052,13 @@
             document.getElementById('hdnLatitude').value = savedConcernDraft.Latitude ?? '';
             document.getElementById('hdnLongitude').value = savedConcernDraft.Longitude ?? '';
 
+            const savedCategoryButton = Array.from(document.querySelectorAll('.concern-category-btn'))
+                .find(button => button.dataset.value === savedConcernDraft.Category);
+            if (savedCategoryButton) {
+                selectedConcernCategory = savedConcernDraft.Category;
+                savedCategoryButton.classList.add('selected');
+            }
+
             if (savedConcernDraft.LocationName) {
                 selectedAddress = savedConcernDraft.LocationName;
                 concernLocationText.textContent = savedConcernDraft.LocationName;
@@ -1067,9 +1077,17 @@
         // Concern submit
                 // Hidden fields for confirmed category
         let confirmedCategory = '';
-        let confirmedOffice = '';
         const classificationErrorModal = document.getElementById('classificationErrorModal');
         const classificationErrorMessage = document.getElementById('classificationErrorMessage');
+
+        document.querySelectorAll('.concern-category-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.concern-category-btn').forEach(item => item.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedConcernCategory = button.dataset.value;
+                document.getElementById('err-category').textContent = '';
+            });
+        });
 
         function showClassificationError(message) {
             classificationErrorMessage.textContent = message;
@@ -1124,13 +1142,9 @@
 
                 if (result.success) {
                     confirmedCategory = result.category;
-                    confirmedOffice = result.office;
 
-                    // Show confirmation popup
-                    document.getElementById('modalCategory').textContent = result.category;
-                    document.getElementById('modalOffice').textContent = result.office;
-                    document.getElementById('modalEmail').textContent = result.email;
-                    document.getElementById('categoryModalOverlay').classList.add('active');
+                    submitBtn.textContent = 'Submitting...';
+                    submitConfirmedConcern();
                 } else {
                     showClassificationError('The AI service could not categorize your concern right now. Please try again in a moment.');
                 }
@@ -1142,8 +1156,8 @@
             }
         });
 
-        // Step 2: Citizen confirms — add hidden fields and submit form
-        document.getElementById('categoryConfirmBtn').addEventListener('click', () => {
+        // Submit with the AI-determined routing category.
+        function submitConfirmedConcern() {
             const form = document.getElementById('concernForm');
 
             // Add hidden fields for confirmed category/office
@@ -1157,23 +1171,8 @@
             }
             catField.value = confirmedCategory;
 
-            let officeField = document.getElementById('ConfirmedOffice');
-            if (!officeField) {
-                officeField = document.createElement('input');
-                officeField.type = 'hidden';
-                officeField.id = 'ConfirmedOffice';
-                officeField.name = 'ConfirmedOffice';
-                form.appendChild(officeField);
-            }
-            officeField.value = confirmedOffice;
-
-            document.getElementById('categoryModalOverlay').classList.remove('active');
             form.submit();
-        });
-
-        document.getElementById('categoryCancelBtn').addEventListener('click', () => {
-            document.getElementById('categoryModalOverlay').classList.remove('active');
-        });
+        }
 
         document.getElementById('classificationErrorBackBtn').addEventListener('click', () => {
             classificationErrorModal.classList.remove('active');

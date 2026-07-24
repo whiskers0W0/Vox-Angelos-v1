@@ -22,6 +22,17 @@ namespace VoxAngelos.Pages.User
         private readonly ConcernClassificationService _classifier;
         private readonly UrgencyScoreService _urgencyScore;
         private readonly IHubContext<FeedHub> _feedHub;
+        private static readonly HashSet<string> ConcernCategoryHints = new(StringComparer.Ordinal)
+        {
+            "Infrastructure & Public Works",
+            "Environment & Sanitation",
+            "Community & Social Welfare",
+            "Public Safety, Traffic & Transport",
+            "Urban Planning & Public Spaces",
+            "Senior Citizen Support",
+            "PWD Accessibility & Services",
+            "Unsure"
+        };
 
         public CreateModel(ApplicationDbContext db,
                            UserManager<ApplicationUser> userManager,
@@ -58,6 +69,7 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public double? Longitude { get; set; }
         [BindProperty] public List<IFormFile> Attachments { get; set; } = new();
         [BindProperty] public string? ConfirmedCategory { get; set; }
+        [BindProperty] public string? ConcernCategoryHint { get; set; }
         [BindProperty] public string? RecJustification { get; set; }
         [BindProperty] public string? RecCategory { get; set; }
         [BindProperty] public string? RecTitle { get; set; }
@@ -243,6 +255,10 @@ namespace VoxAngelos.Pages.User
             }
 
             draft.Description = Description ?? string.Empty;
+            draft.Category = !string.IsNullOrWhiteSpace(ConcernCategoryHint)
+                && ConcernCategoryHints.Contains(ConcernCategoryHint)
+                    ? ConcernCategoryHint
+                    : null;
             draft.LocationName = LocationName;
             draft.Latitude = Latitude;
             draft.Longitude = Longitude;

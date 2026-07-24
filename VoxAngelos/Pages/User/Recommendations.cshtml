@@ -1,0 +1,183 @@
+@page
+@model VoxAngelos.Pages.User.RecommendationsModel
+@{
+    Layout = "_CitizenLayout";
+    ViewData["Title"] = "Your Recommendations";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/citizen-recommendations.css" asp-append-version="true" />
+}
+
+<div class="content-header recommendation-page-header">
+    <div>
+        <h1 class="page-title">Your Recommendations</h1>
+        <p>Follow LGU decisions and see how citizens have rated your ideas.</p>
+    </div>
+</div>
+
+<nav class="recommendation-status-filter" aria-label="Filter your recommendations by status">
+    @foreach (var filter in new[] { "All", "Pending", "Published", "Rejected" })
+    {
+        <a asp-page="/User/Recommendations"
+           asp-route-status="@filter"
+           class="recommendation-status-filter-btn @(Model.CurrentStatusFilter == filter ? "active" : "")">
+            @filter
+        </a>
+    }
+</nav>
+
+<div id="recommendationsView" class="view-section active-view">
+    @if (!Model.Recommendations.Any())
+    {
+        <div class="recommendation-empty-state">
+            <strong>No recommendations found.</strong>
+            <span>Submit a recommendation to track its LGU review and community ratings here.</span>
+            <a asp-page="/User/Create">Create a recommendation</a>
+        </div>
+    }
+    else
+    {
+        <div class="recommendation-feed">
+            @foreach (var recommendation in Model.Recommendations)
+            {
+                var statusCss = recommendation.Status.ToLowerInvariant().Replace(" ", "-");
+                <article class="recommendation-card">
+                    <span class="recommendation-status @statusCss">@recommendation.Status</span>
+                    <div class="recommendation-card-header">
+                        <div>
+                            <span class="recommendation-author">@Model.CitizenFullName</span>
+                            <span class="recommendation-office">@(recommendation.AssignedOffice ?? "Awaiting office routing")</span>
+                        </div>
+                        <time>@Model.GetTimeAgo(recommendation.SubmittedAt)</time>
+                    </div>
+
+                    <h2>@recommendation.Title</h2>
+                    <p class="recommendation-description">@recommendation.Description</p>
+
+                    <div class="recommendation-meta">
+                        <span>@recommendation.Location</span>
+                        @if (!string.IsNullOrWhiteSpace(recommendation.Category))
+                        {
+                            <span>@recommendation.Category</span>
+                        }
+                    </div>
+
+                    @if (recommendation.Attachments.Any())
+                    {
+                        <div class="recommendation-attachments">
+                            @foreach (var attachment in recommendation.Attachments)
+                            {
+                                if (attachment.FileType == "video")
+                                {
+                                    <video controls preload="metadata" class="recommendation-media">
+                                        <source src="@attachment.FilePath" />
+                                        Your browser does not support video playback.
+                                    </video>
+                                }
+                                else if (attachment.FileType == "document")
+                                {
+                                    <a class="recommendation-document" href="@attachment.FilePath" target="_blank" rel="noopener">
+                                        <strong>PDF</strong><span>Open attached document</span>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a href="@attachment.FilePath" target="_blank" rel="noopener" class="recommendation-photo">
+                                        <img src="@attachment.FilePath" alt="Attached recommendation image" />
+                                    </a>
+                                }
+                            }
+                        </div>
+                    }
+
+                    <section class="rating-snapshot" aria-label="Community rating summary">
+                        <div class="rating-summary-heading">
+                            <strong>@recommendation.CompositeScore.ToString("0.0")★</strong>
+                            <span>@recommendation.RatingCount rating@(recommendation.RatingCount == 1 ? "" : "s")</span>
+                        </div>
+                        <div class="rating-metrics">
+                            <span>Urgency <strong>@recommendation.AvgUrgency.ToString("0.0")★</strong></span>
+                            <span>Relevance <strong>@recommendation.AvgRelevance.ToString("0.0")★</strong></span>
+                            <span>Feasibility <strong>@recommendation.AvgFeasibility.ToString("0.0")★</strong></span>
+                        </div>
+                    </section>
+
+                    @if (recommendation.Status is "Published" or "Rejected" || !string.IsNullOrWhiteSpace(recommendation.LguNotes))
+                    {
+                        <section class="recommendation-lgu-note">
+                            <strong>LGU update</strong>
+                            <p>@(string.IsNullOrWhiteSpace(recommendation.LguNotes)
+                                ? $"Your recommendation was {recommendation.Status.ToLowerInvariant()}."
+                                : recommendation.LguNotes)</p>
+                        </section>
+                    }
+
+                    <details class="recommendation-timeline">
+                        <summary>
+                            <span>View progress</span>
+                            <span>@recommendation.Timeline.Count event@(recommendation.Timeline.Count == 1 ? "" : "s")</span>
+                        </summary>
+                        <ol>
+                            @foreach (var timelineEvent in recommendation.Timeline)
+                            {
+                                <li>
+                                    <span class="timeline-marker @timelineEvent.Status.ToLowerInvariant().Replace(" ", "-")" aria-hidden="true"></span>
+                                    <div>
+                                        <div><strong>@timelineEvent.EventType</strong><span>@timelineEvent.Status</span></div>
+                                        <p>@timelineEvent.Message</p>
+                                        <small>@timelineEvent.ActorName · @timelineEvent.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy h:mm tt")</small>
+                                    </div>
+                                </li>
+                            }
+                        </ol>
+                    </details>
+
+                    <div class="recommendation-actions">
+                        @if (recommendation.Status == "Published")
+                        {
+                            <a asp-page="/User/Index">View on Discover</a>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+@* The LGU update details are shown in each recommendation card's timeline. *@
+@*<div id="updatesView" class="view-section">
+    @if (!Model.LguUpdates.Any())
+    {
+        <div class="recommendation-empty-state">
+            <strong>No LGU updates yet.</strong>
+            <span>Published or rejected recommendations, along with LGU notes, will appear here.</span>
+        </div>
+    }
+    else
+    {
+        <div class="recommendation-update-feed">
+            @foreach (var recommendation in Model.LguUpdates)
+            {
+                var statusCss = recommendation.Status.ToLowerInvariant().Replace(" ", "-");
+                <article class="recommendation-update-card">
+                    <span class="recommendation-status @statusCss">@recommendation.Status</span>
+                    <div>
+                        <h2>@recommendation.Title</h2>
+                        <span class="recommendation-update-date">@Model.GetTimeAgo(recommendation.ReviewedAt ?? recommendation.SubmittedAt)</span>
+                    </div>
+                    <section>
+                        <strong>@(recommendation.AssignedOffice ?? "LGU Office")</strong>
+                        <p>@(string.IsNullOrWhiteSpace(recommendation.LguNotes)
+                            ? $"Your recommendation was {recommendation.Status.ToLowerInvariant()}."
+                            : recommendation.LguNotes)</p>
+                    </section>
+                    <div class="recommendation-update-rating">
+                        <strong>@recommendation.CompositeScore.ToString("0.0")★</strong>
+                        <span>@recommendation.RatingCount rating@(recommendation.RatingCount == 1 ? "" : "s") received</span>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>*@
