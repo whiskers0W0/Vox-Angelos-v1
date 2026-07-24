@@ -368,12 +368,19 @@
         "Passport": { ratio: 0.75, label: "Passport" }
         };
 
-        const dimensionOk = await checkIdDimensions(idInput.files[0], idType, idDimensions);
+        // Phones embed an EXIF orientation tag on freshly-taken photos instead of
+        // rotating the actual pixel data; browsers honor it for display, but the
+        // raw bytes we'd otherwise upload are still sideways. Re-drawing onto a
+        // canvas bakes in the on-screen orientation and strips the EXIF tag, the
+        // same way the selfie capture already does via canvas.toBlob().
+        const normalizedIdPhoto = await normalizeImageOrientation(idInput.files[0]);
+
+        const dimensionOk = await checkIdDimensions(normalizedIdPhoto, idType, idDimensions);
         if (!dimensionOk) return;
 
         $('#loadingModal').css('display', 'flex');
         const formData = new FormData();
-        formData.append('idPhoto', idInput.files[0]);
+        formData.append('idPhoto', normalizedIdPhoto);
         formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
@@ -392,6 +399,23 @@
         showResultModal('error', 'Failed', data.error || 'Identity could not be confirmed.');
         }
         } catch(e) { $('#loadingModal').hide(); showResultModal('error', 'Error', 'Connection error.'); }
+        }
+
+        function normalizeImageOrientation(file) {
+        return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        URL.revokeObjectURL(img.src);
+        canvas.toBlob((blob) => {
+        resolve(new File([blob], 'id-photo.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.92);
+        };
+        img.src = URL.createObjectURL(file);
+        });
         }
 
         function checkIdDimensions(file, idType, rules) {
