@@ -119,6 +119,9 @@ builder.Services.AddScoped<UrgencyScoreService>();
 // 5d. Rate limiting on the endpoints that call paid/quota-limited external APIs
 // (Google Cloud NLP/Vision and the Hugging-Face-hosted face/ID verification API) —
 // mitigates "Denial of Wallet" bot abuse of registration and concern submission.
+// Disabled in Development so repeated local testing never gets throttled — the
+// real quota risk is only in Production, where this stays fully enforced.
+var isDevelopment = builder.Environment.IsDevelopment();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -126,27 +129,33 @@ builder.Services.AddRateLimiter(options =>
     // Registration's identity-verification step (OCR + face match) is the most
     // expensive call chain in the app — it hits both Google Cloud Vision and the
     // Hugging Face face-verification API for a single request.
-    options.AddPolicy("registration", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        factory: _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(5),
-            QueueLimit = 0
-        }));
+    options.AddPolicy("registration", httpContext => isDevelopment
+        ? RateLimitPartition.GetNoLimiter(httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
 
     // Concern/recommendation submission triggers a Google Cloud Natural Language
     // classification call per submission.
-    options.AddPolicy("concern-submission", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        partitionKey: httpContext.User.Identity?.IsAuthenticated == true
+    options.AddPolicy("concern-submission", httpContext => isDevelopment
+        ? RateLimitPartition.GetNoLimiter(httpContext.User.Identity?.IsAuthenticated == true
             ? httpContext.User.Identity!.Name!
-            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        factory: _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 20,
-            Window = TimeSpan.FromMinutes(10),
-            QueueLimit = 0
-        }));
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.Identity?.IsAuthenticated == true
+                ? httpContext.User.Identity!.Name!
+                : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0
+            }));
 
     options.OnRejected = async (context, token) =>
     {
