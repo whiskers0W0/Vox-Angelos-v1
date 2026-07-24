@@ -414,9 +414,16 @@ if (savedFileName != null)
         user.Id, ocrResult.LocalityMatched);
 }
 
-                    // Face verification (bypassed for testing)
-                    bool isMatch = true;
-                    decimal confidence = 1.0m;
+                    // Face verification
+                    bool isMatch = false;
+                    decimal confidence = 0m;
+
+                    if (savedFileName != null && savedSelfieFileName != null)
+                    {
+                        string idPhotoFullPathForFaceMatch = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
+                        string selfiePhotoFullPath = Path.Combine(IdentityDocumentStorage.SelfiesFolder(_environment), savedSelfieFileName);
+                        (isMatch, confidence) = await _faceVerificationService.VerifyFacesAsync(idPhotoFullPathForFaceMatch, selfiePhotoFullPath);
+                    }
 
                     var faceVerification = new UserFaceVerification
                     {
