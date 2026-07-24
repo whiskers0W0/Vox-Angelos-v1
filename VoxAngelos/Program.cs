@@ -10,13 +10,6 @@ using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Persist Data Protection keys to disk so antiforgery tokens and auth cookies
-// survive app restarts — without this, every restart regenerates the key ring
-// and invalidates any token/cookie already sitting in a user's open browser tab.
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
-    .SetApplicationName("VoxAngelos");
-
 // Allow the request to reach the recommendation handler. The handler itself
 // enforces the 100 MB per-video limit and returns a user-friendly message.
 const long maximumUploadRequestSize = 105L * 1024 * 1024;
@@ -34,7 +27,10 @@ if (rawUrl.StartsWith("postgresql://") || rawUrl.StartsWith("postgres://"))
 {
     var uri = new Uri(rawUrl);
     var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={(uri.Port == -1 ? 5432 : uri.Port)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    // Cap the pool well under Render's free-tier Postgres connection limit — with no
+    // limit set, Npgsql defaults to 100 and the server starts forcibly resetting
+    // connections under moderate concurrent load instead of the pool just queuing.
+    connectionString = $"Host={uri.Host};Port={(uri.Port == -1 ? 5432 : uri.Port)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;Maximum Pool Size=10;Minimum Pool Size=0";
 }
 else
 {
@@ -51,6 +47,14 @@ builder.Services.AddScoped<RecommendationRatingService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.UseNetTopologySuite()));
+
+// Persist Data Protection keys (antiforgery tokens, auth cookies) to the shared
+// Postgres DB instead of local disk — Render's free-tier containers respin on a
+// fresh filesystem after idling, which silently invalidates any token/cookie
+// already embedded in a page a user has open. The DB survives that.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ApplicationDbContext>()
+    .SetApplicationName("VoxAngelos");
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -115,6 +119,9 @@ builder.Services.AddScoped<UrgencyScoreService>();
 // 5d. Rate limiting on the endpoints that call paid/quota-limited external APIs
 // (Google Cloud NLP/Vision and the Hugging-Face-hosted face/ID verification API) —
 // mitigates "Denial of Wallet" bot abuse of registration and concern submission.
+// Disabled in Development so repeated local testing never gets throttled — the
+// real quota risk is only in Production, where this stays fully enforced.
+var isDevelopment = builder.Environment.IsDevelopment();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -122,27 +129,33 @@ builder.Services.AddRateLimiter(options =>
     // Registration's identity-verification step (OCR + face match) is the most
     // expensive call chain in the app — it hits both Google Cloud Vision and the
     // Hugging Face face-verification API for a single request.
-    options.AddPolicy("registration", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        factory: _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(5),
-            QueueLimit = 0
-        }));
+    options.AddPolicy("registration", httpContext => isDevelopment
+        ? RateLimitPartition.GetNoLimiter(httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
 
     // Concern/recommendation submission triggers a Google Cloud Natural Language
     // classification call per submission.
-    options.AddPolicy("concern-submission", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        partitionKey: httpContext.User.Identity?.IsAuthenticated == true
+    options.AddPolicy("concern-submission", httpContext => isDevelopment
+        ? RateLimitPartition.GetNoLimiter(httpContext.User.Identity?.IsAuthenticated == true
             ? httpContext.User.Identity!.Name!
-            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        factory: _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 20,
-            Window = TimeSpan.FromMinutes(10),
-            QueueLimit = 0
-        }));
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.Identity?.IsAuthenticated == true
+                ? httpContext.User.Identity!.Name!
+                : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0
+            }));
 
     options.OnRejected = async (context, token) =>
     {

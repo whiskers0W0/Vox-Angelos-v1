@@ -72,6 +72,20 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
         public string ReturnUrl { get; set; }
 
+        // Canonicalizes a PH mobile number to "+63XXXXXXXXXX" regardless of how it
+        // arrives (bare 10 digits from the form field, "+63"-prefixed from the
+        // Step 1 duplicate-check AJAX call, a leading 0, stray spaces/dashes, etc.)
+        // — without this, the same number could be stored/compared in different
+        // shapes across call sites, silently defeating the uniqueness check.
+        private static string NormalizePhone(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone)) return phone;
+            var digits = new string(phone.Where(char.IsDigit).ToArray());
+            if (digits.StartsWith("63")) digits = digits.Substring(2);
+            else if (digits.StartsWith("0")) digits = digits.Substring(1);
+            return "+63" + digits;
+        }
+
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
         public class InputModel
@@ -223,8 +237,9 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             // 2. Check for duplicate Phone Number
             if (!string.IsNullOrWhiteSpace(phone))
             {
+                var normalizedPhone = NormalizePhone(phone);
                 var existingPhone = await _userManager.Users
-                    .FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+                    .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone);
 
                 if (existingPhone != null)
                 {
@@ -261,8 +276,9 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (ModelState.IsValid)
             {
                 // ── Duplicate phone check ──────────────────────────────────────────
+                var normalizedPhone = NormalizePhone(Input.PhoneNumber);
                 var existingUserWithPhone = await _userManager.Users
-                    .FirstOrDefaultAsync(u => u.PhoneNumber == Input.PhoneNumber);
+                    .FirstOrDefaultAsync(u => u.PhoneNumber == normalizedPhone);
 
                 if (existingUserWithPhone != null)
                 {
@@ -281,7 +297,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
                 if (Input.IdPhoto != null && Input.IdPhoto.Length > 0)
                 {
-                    string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "ids");
+                    string uploadsFolder = IdentityDocumentStorage.IdsFolder(_environment);
                     if (!Directory.Exists(uploadsFolder))
                         Directory.CreateDirectory(uploadsFolder);
 
@@ -299,7 +315,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
                 if (Input.SelfiePhoto != null && Input.SelfiePhoto.Length > 0)
                 {
-                    string selfieFolder = Path.Combine(_environment.WebRootPath, "uploads", "selfies");
+                    string selfieFolder = IdentityDocumentStorage.SelfiesFolder(_environment);
                     if (!Directory.Exists(selfieFolder))
                         Directory.CreateDirectory(selfieFolder);
 
@@ -316,7 +332,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 {
                     UserName = Input.Email,
                     Email = Input.Email,
-                    PhoneNumber = Input.PhoneNumber,
+                    PhoneNumber = normalizedPhone,
                     TwoFactorEnabled = true,
                     ApprovalStatus = "Pending",
                     CreatedAt = DateTime.UtcNow
@@ -374,7 +390,7 @@ await _context.SaveChangesAsync();
 // ── Run OCR on the ID photo ────────────────────────────
 if (savedFileName != null)
 {
-    string idPhotoFullPath = Path.Combine(_environment.WebRootPath, "uploads", "ids", savedFileName);
+    string idPhotoFullPath = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
     var ocrResult = await _ocrService.ExtractIdDataAsync(idPhotoFullPath);
 
     var ocrVerification = new UserOcrVerification
@@ -398,9 +414,16 @@ if (savedFileName != null)
         user.Id, ocrResult.LocalityMatched);
 }
 
-                    // Face verification (bypassed for testing)
-                    bool isMatch = true;
-                    decimal confidence = 1.0m;
+                    // Face verification
+                    bool isMatch = false;
+                    decimal confidence = 0m;
+
+                    if (savedFileName != null && savedSelfieFileName != null)
+                    {
+                        string idPhotoFullPathForFaceMatch = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
+                        string selfiePhotoFullPath = Path.Combine(IdentityDocumentStorage.SelfiesFolder(_environment), savedSelfieFileName);
+                        (isMatch, confidence) = await _faceVerificationService.VerifyFacesAsync(idPhotoFullPathForFaceMatch, selfiePhotoFullPath);
+                    }
 
                     var faceVerification = new UserFaceVerification
                     {

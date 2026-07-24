@@ -1,14 +1,22 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace VoxAngelos.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionKeyContext
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
+
+        // Data Protection keys (antiforgery tokens, auth cookies) live here instead of
+        // local disk so they survive Render's container respins/redeploys — the app's
+        // ephemeral filesystem otherwise regenerates them and invalidates any token
+        // already embedded in a page a user has open (surfaces as submissions/logins
+        // silently failing, or "the antiforgery token could not be decrypted").
+        public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
         public DbSet<UserProfile> UserProfiles { get; set; }
         public DbSet<UserIdentityDocument> UserIdentityDocuments { get; set; }

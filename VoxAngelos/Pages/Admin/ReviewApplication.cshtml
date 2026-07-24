@@ -83,7 +83,7 @@
                         <p class="photo-label">ID PHOTO</p>
                         @if (doc?.IdPhotoPath != null)
                         {
-                            <img src="/uploads/ids/@doc.IdPhotoPath"
+                            <img src="/Admin/ReviewApplication?handler=IdentityMedia&documentId=@doc.Id&mediaType=id"
                                  class="review-photo"
                                  onclick="openModal(this.src)"
                                  title="Click to enlarge" />
@@ -97,7 +97,7 @@
                         <p class="photo-label">LIVE SELFIE</p>
                         @if (face?.LiveSelfiePath != null)
                         {
-                            <img src="/uploads/selfies/@face.LiveSelfiePath"
+                            <img src="/Admin/ReviewApplication?handler=IdentityMedia&documentId=@doc?.Id&mediaType=selfie"
                                  class="review-photo"
                                  onclick="openModal(this.src)"
                                  title="Click to enlarge" />

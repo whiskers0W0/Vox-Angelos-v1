@@ -368,12 +368,19 @@
         "Passport": { ratio: 0.75, label: "Passport" }
         };
 
-        const dimensionOk = await checkIdDimensions(idInput.files[0], idType, idDimensions);
+        // Phones embed an EXIF orientation tag on freshly-taken photos instead of
+        // rotating the actual pixel data; browsers honor it for display, but the
+        // raw bytes we'd otherwise upload are still sideways. Re-drawing onto a
+        // canvas bakes in the on-screen orientation and strips the EXIF tag, the
+        // same way the selfie capture already does via canvas.toBlob().
+        const normalizedIdPhoto = await normalizeImageOrientation(idInput.files[0]);
+
+        const dimensionOk = await checkIdDimensions(normalizedIdPhoto, idType, idDimensions);
         if (!dimensionOk) return;
 
         $('#loadingModal').css('display', 'flex');
         const formData = new FormData();
-        formData.append('idPhoto', idInput.files[0]);
+        formData.append('idPhoto', normalizedIdPhoto);
         formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
@@ -392,6 +399,23 @@
         showResultModal('error', 'Failed', data.error || 'Identity could not be confirmed.');
         }
         } catch(e) { $('#loadingModal').hide(); showResultModal('error', 'Error', 'Connection error.'); }
+        }
+
+        function normalizeImageOrientation(file) {
+        return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        URL.revokeObjectURL(img.src);
+        canvas.toBlob((blob) => {
+        resolve(new File([blob], 'id-photo.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.92);
+        };
+        img.src = URL.createObjectURL(file);
+        });
         }
 
         function checkIdDimensions(file, idType, rules) {
@@ -433,6 +457,33 @@
         const originalText = btn.textContent;
         btn.disabled = true; btn.textContent = 'Creating Account...';
 
+        // Re-check email/phone duplicates right before the real submit — Step 1
+        // already checked these, but time has passed (ID/selfie verification in
+        // between), so someone else could have taken the same email/phone since
+        // then. Catching it here, with a clear popup back to Step 1, is much
+        // better than only finding out after this expensive step, buried in an
+        // inline message on a step that's no longer visible.
+        const email = $('#Input_Email').val();
+        const phone = '+63' + $('#Input_PhoneNumber').val();
+        try {
+        const dupRes = await fetch(`?handler=CheckDuplicates&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
+        const dupData = await dupRes.json().catch(() => null);
+        if (dupData && !dupData.success) {
+        btn.disabled = false; btn.textContent = originalText;
+        $('.custom-duplicate-error').remove();
+        for (const [id, msg] of Object.entries(dupData.errors)) {
+        $(`#${id}`).after(`<span class="text-danger custom-duplicate-error tech-validation">${msg}</span>`);
+        }
+        const messages = Object.values(dupData.errors).join(' ');
+        showResultModal('error', 'Please Check Your Info', messages, () => showStep(3, 1));
+        return;
+        }
+        } catch (e) {
+        // If the duplicate pre-check itself fails to reach the server, fall
+        // through to the real submit below — it re-validates the same thing
+        // server-side and will surface its own error if still a problem.
+        }
+
         const form = document.getElementById('registerForm');
         const formData = new FormData(form);
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
@@ -443,29 +494,59 @@
         body: formData,
         headers: { 'RequestVerificationToken': token }
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
 
-        if (data.success) {
+        if (data?.success) {
         window.location.href = data.redirectUrl;
         return;
         }
 
-        if (data.fieldErrors) {
+        let shown = false;
+
+        if (data?.fieldErrors) {
         for (const [id, msg] of Object.entries(data.fieldErrors)) {
         const field = document.getElementById(id);
+        // Fields like Input_PhoneNumber live on Step 1, but this handler only
+        // ever runs from Step 3 — if the field's step is currently hidden,
+        // inserting the message right after it is invisible to the user (this
+        // was the "nothing happens" bug). Always also surface it in the
+        // Step 3 general error banner so it's visible regardless of which
+        // step the failing field lives on.
+        const isVisible = field && field.offsetParent !== null;
         if (field) {
         field.insertAdjacentHTML('afterend', `<span class="text-danger custom-account-error tech-validation">${msg}</span>`);
-        } else {
+        }
+        if (!isVisible) {
         const el = document.getElementById('createAccountGeneralError');
         el.textContent = (el.textContent ? el.textContent + ' ' : '') + msg;
         el.style.display = 'block';
         }
+        shown = true;
         }
         }
 
-        if (data.generalErrors && data.generalErrors.length) {
+        if (data?.generalErrors && data.generalErrors.length) {
         const el = document.getElementById('createAccountGeneralError');
         el.textContent = data.generalErrors.join(' ');
+        el.style.display = 'block';
+        shown = true;
+        }
+
+        // Rate-limiter rejections (and other flat error responses) use
+        // {success:false, error:"..."} instead of fieldErrors/generalErrors.
+        if (!shown && data?.error) {
+        const el = document.getElementById('createAccountGeneralError');
+        el.textContent = data.error;
+        el.style.display = 'block';
+        shown = true;
+        }
+
+        // Last resort: something failed (non-2xx, unparseable body, or a shape
+        // we don't recognize) but we still haven't shown anything — never let
+        // the button just silently reset with no explanation.
+        if (!shown) {
+        const el = document.getElementById('createAccountGeneralError');
+        el.textContent = `Something went wrong (server returned ${res.status}). Please try again.`;
         el.style.display = 'block';
         }
         } catch (e) {

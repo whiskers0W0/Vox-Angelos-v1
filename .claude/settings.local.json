@@ -16,7 +16,10 @@
       "Bash(dotnet restore *)",
       "Skill(run)",
       "Bash(dotnet --version)",
-      "Bash(dotnet user-secrets list *)"
+      "Bash(dotnet user-secrets list *)",
+      "Bash(git merge *)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Development dotnet run --no-launch-profile --urls \"http://localhost:5080\")",
+      "Bash(echo \"started with pid $!\")"
     ]
   }
 }

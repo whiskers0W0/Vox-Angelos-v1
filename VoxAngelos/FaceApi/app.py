@@ -13,7 +13,7 @@ print("✅ BACKEND STARTING ON PORT 5051")
 
 app = Flask(__name__)
 
-CORS(app, origins=["https://localhost:7244", "http://localhost:7244"], supports_credentials=True)
+CORS(app, origins=re.compile(r"^https?://localhost:\d+$"), supports_credentials=True)
 
 UPLOAD_FOLDER = "temp_uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -163,14 +163,23 @@ def normalize_image(file_storage, output_path):
         print(f"Normalize error: {e}")
         return False
 
-def get_face_encoding(img_path):
+def get_face_encoding(img_path, allow_multiple=False):
     try:
         image = face_recognition.load_image_file(img_path)
-        encodings = face_recognition.face_encodings(image)
+        locations = face_recognition.face_locations(image)
+        if len(locations) == 0:
+            return None, "No face detected."
+        if len(locations) > 1:
+            if not allow_multiple:
+                return None, "Multiple faces detected."
+            # PhilSys (Philippine National ID) cards embed a small secondary
+            # B&W "ghost" photo alongside the main color portrait, so more
+            # than one face is expected here. Use the largest face found,
+            # since the main portrait is always significantly bigger.
+            locations = [max(locations, key=lambda loc: (loc[2] - loc[0]) * (loc[1] - loc[3]))]
+        encodings = face_recognition.face_encodings(image, known_face_locations=locations)
         if len(encodings) == 0:
             return None, "No face detected."
-        if len(encodings) > 1:
-            return None, "Multiple faces detected."
         return encodings[0], None
     except Exception as e:
         return None, str(e)
@@ -190,7 +199,7 @@ def verify():
            not normalize_image(request.files["selfie"], selfie_path):
             return jsonify({"isMatch": False, "error": "Image processing failed."})
 
-        id_enc, id_err = get_face_encoding(id_path)
+        id_enc, id_err = get_face_encoding(id_path, allow_multiple=True)
         selfie_enc, self_err = get_face_encoding(selfie_path)
 
         if id_enc is None:
