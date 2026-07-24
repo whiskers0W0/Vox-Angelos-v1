@@ -17,6 +17,17 @@ namespace VoxAngelos.Pages.LGU
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ConcernClassificationService _classifier;
         private readonly IHubContext<FeedHub> _feedHub;
+        private static readonly IReadOnlyDictionary<string, string> DepartmentDisplayNames =
+            new Dictionary<string, string>
+            {
+                ["SWDO"] = "Social Welfare and Development Office",
+                ["CEO"] = "City Engineer's Office",
+                ["CENRO"] = "City Environment and Natural Resources Office",
+                ["ACDO"] = "City Development / Urban Planning Office",
+                ["PPTRO"] = "Public Safety, Traffic and Transport Regulation Office",
+                ["OSCA"] = "Office of Senior Citizens Affairs",
+                ["PWDAO"] = "Persons With Disability Affairs Office"
+            };
 
         public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
             ConcernClassificationService classifier, IHubContext<FeedHub> feedHub)
@@ -38,6 +49,9 @@ namespace VoxAngelos.Pages.LGU
                 .Select(d => _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(d!)).SendAsync("ConcernFeedChanged"));
             return Task.WhenAll(tasks);
         }
+
+        private static string GetDepartmentDisplayName(string department) =>
+            DepartmentDisplayNames.GetValueOrDefault(department, department);
 
         public string[] Departments => ConcernClassificationService.Departments;
 
@@ -134,16 +148,54 @@ namespace VoxAngelos.Pages.LGU
             if (!ConcernClassificationService.Departments.Contains(newCategory))
                 return BadRequest("Unknown department.");
 
-            var previousCategory = await _db.Concerns
+            var concern = await _db.Concerns
                 .Where(c => c.Id == concernId)
-                .Select(c => c.Category)
+                .Select(c => new { c.Category, c.CitizenId, c.Status })
                 .FirstOrDefaultAsync();
+            if (concern == null) return NotFound();
 
             var user = await _userManager.GetUserAsync(User);
+            if (user?.Department != concern.Category) return Forbid();
+
+            if (concern.Status != "Unresolved")
+            {
+                TempData["ConcernError"] = "Only unresolved concerns can be reassigned. Once an office accepts a concern, it must finish or escalate it through the LGU workflow.";
+                return RedirectToPage(new { filter = CurrentFilter });
+            }
+
             try
             {
                 await _classifier.RecordCorrectionAsync(concernId, newCategory, wasCorrect: false, user!.Id);
-                await NotifyDepartmentsAsync(previousCategory, newCategory);
+
+                var forwardedAt = DateTime.UtcNow;
+                var actorName = user.Department ?? user.Email ?? "LGU Office";
+                var updateMessage = $"Your concern was forwarded to the {GetDepartmentDisplayName(newCategory)} for review.";
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concernId,
+                    EventType = "Concern Forwarded",
+                    Status = "Unresolved",
+                    Message = updateMessage,
+                    ActorRole = "LGU",
+                    ActorName = actorName,
+                    CreatedAt = forwardedAt
+                });
+
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId,
+                    Title = "Your concern was forwarded",
+                    Message = updateMessage,
+                    NotificationType = "ConcernUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Notifications",
+                    CreatedAt = forwardedAt
+                });
+
+                await _db.SaveChangesAsync();
+                await NotifyDepartmentsAsync(concern.Category, newCategory);
             }
             catch (ConcernAlreadyReviewedException)
             {

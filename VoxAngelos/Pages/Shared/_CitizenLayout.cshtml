@@ -81,6 +81,13 @@
                         </svg>
                         <span>My Concerns</span>
                     </a>
+                    <a asp-page="/User/Recommendations" class="nav-item @(path == "/user/recommendations" ? "active" : "")">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 4h14v16H5z" />
+                            <path d="M8 8h8M8 12h8M8 16h5" />
+                        </svg>
+                        <span>My Recommendations</span>
+                    </a>
                     <a asp-page="/User/Create" class="nav-item @(path == "/user/create" ? "active" : "")">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10" />

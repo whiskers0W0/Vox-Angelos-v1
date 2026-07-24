@@ -87,9 +87,12 @@
                             <input type="hidden" name="concernId" value="@concern.Id" />
                             <button type="submit" class="btn-feedback-correct">✓ Category Correct</button>
                         </form>
-                        <button type="button" class="btn-feedback-wrong" data-bs-toggle="modal"
-                                data-bs-target="#reassignModal"
-                                onclick="openReassignModal(@concern.Id)">✕ Wrong Department</button>
+                        @if (concern.Status == "Unresolved")
+                        {
+                            <button type="button" class="btn-feedback-wrong" data-bs-toggle="modal"
+                                    data-bs-target="#reassignModal"
+                                    onclick="openReassignModal(@concern.Id)">✕ Wrong Department</button>
+                        }
                     }
                 </div>
             }

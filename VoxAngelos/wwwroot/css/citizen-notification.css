@@ -31,6 +31,52 @@
     letter-spacing: -0.5px;
 }
 
+.status-filter {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    margin: 0 auto 14px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scrollbar-width: thin;
+}
+
+.status-filter-btn {
+    flex: 0 0 auto;
+    padding: 9px 15px;
+    border: 1px solid #d2dbef;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(29, 63, 151, 0.1);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.status-filter-btn:hover,
+.status-filter-btn:focus-visible {
+    border-color: #3156c9;
+    color: #1e45b7;
+    transform: translateY(-1px);
+}
+
+.status-filter-btn.active {
+    border-color: #2548ba;
+    background: #3156c9;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(37, 72, 186, 0.25);
+}
+
+.status-filter-btn:focus-visible {
+    outline: 2px solid #3156c9;
+    outline-offset: 2px;
+}
+
 /* ── Tabs ─────────────────────────────────── */
 
 
@@ -98,6 +144,32 @@
     flex-direction: column;
     gap: 20px;
     width: 100%;
+}
+
+.concern-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: min(680px, 100%);
+    margin: 10px auto 0;
+    padding: 26px 24px;
+    border: 1px solid #d8e1f3;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #315684;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(31, 54, 109, 0.14);
+}
+
+.concern-empty-state strong {
+    color: #111827;
+    font-size: 17px;
+}
+
+.concern-empty-state a {
+    color: #1f46b8;
+    font-weight: 800;
 }
 
 .view-section {

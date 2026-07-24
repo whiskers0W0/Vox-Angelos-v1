@@ -131,7 +131,7 @@ namespace VoxAngelos.Pages.LGU
                     NotificationType = "RecommendationUpdate",
                     SenderRole = "LGU",
                     SenderName = actorName,
-                    LinkUrl = "/User/Index",
+                    LinkUrl = "/User/Recommendations",
                     CreatedAt = reviewedAt
                 });
                 await _db.SaveChangesAsync();
@@ -176,7 +176,7 @@ namespace VoxAngelos.Pages.LGU
                     NotificationType = "RecommendationUpdate",
                     SenderRole = "LGU",
                     SenderName = actorName,
-                    LinkUrl = "/User/Index",
+                    LinkUrl = "/User/Recommendations",
                     CreatedAt = reviewedAt
                 });
                 await _db.SaveChangesAsync();

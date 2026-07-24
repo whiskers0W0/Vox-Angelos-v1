@@ -14,18 +14,26 @@
     <h1 class="page-title">Your Concerns</h1>
 </div>
 
-<div class="tab-group">
-    <div class="tab-indicator"></div>
-    <button class="tab-btn active" data-view="outbox">My Concerns</button>
-    <button class="tab-btn" data-view="inbox">LGU Responses</button>
-</div>
+<nav class="status-filter" aria-label="Filter your concerns by status">
+    @foreach (var filter in new[] { "All", "Unresolved", "Chosen", "In Progress", "Resolved" })
+    {
+        <a asp-page="/User/Notifications"
+           asp-route-status="@filter"
+           class="status-filter-btn @(Model.CurrentStatusFilter == filter ? "active" : "")">
+            @filter
+        </a>
+    }
+</nav>
 
-<!-- Submitted concerns -->
 <div id="outboxView" class="view-section active-view">
     <div class="outbox-feed">
         @if (!Model.Outbox.Any())
         {
-            <p class="empty-state">No concerns submitted yet.</p>
+            <div class="concern-empty-state">
+                <strong>No concerns found.</strong>
+                <span>Submit a concern to track its LGU review, updates, and resolution here.</span>
+                <a asp-page="/User/Create">Create a concern</a>
+            </div>
         }
         @foreach (var concern in Model.Outbox)
         {
@@ -135,91 +143,3 @@
     </div>
 </div>
 
-<!-- LGU responses and status updates -->
-<div id="inboxView" class="view-section">
-    <div class="inbox-feed">
-        @if (!Model.Inbox.Any())
-        {
-            <p class="empty-state">No LGU responses or status updates yet.</p>
-        }
-        @foreach (var concern in Model.Inbox)
-        {
-            <div class="concern-card">
-                <div class="card-header">
-                    <div class="author-info">
-                        <div class="avatar">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <circle cx="12" cy="8" r="4" />
-                                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="author-name">@Model.CitizenFullName</div>
-                        </div>
-                    </div>
-                    <div class="card-date">@Model.GetTimeAgo(concern.UpdatedAt ?? concern.SubmittedAt)</div>
-                </div>
-
-                <div class="card-meta">
-                    <span class="meta-label">
-                        Category: <span class="meta-value">@concern.Category</span>
-                    </span>
-                </div>
-
-                <div class="inbox-reply">
-                    <div class="reply-box">
-                        <div class="office-info">
-                            <div class="office-avatar">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="8" r="4" />
-                                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                                </svg>
-                            </div>
-                            <div class="office-name">LGU Office</div>
-                        </div>
-                        <p class="reply-text">
-                            @(string.IsNullOrWhiteSpace(concern.LguNotes)
-                                ? $"Your concern status is now {concern.Status}."
-                                : concern.LguNotes)
-                        </p>
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
-</div>
-
-
-@section Scripts {
-    <script>
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        const outboxView = document.getElementById('outboxView');
-        const inboxView = document.getElementById('inboxView');
-        const tabIndicator = document.querySelector('.tab-indicator');
-
-        tabButtons.forEach((btn, index) => {
-            btn.addEventListener('click', () => {
-                tabButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                tabIndicator.style.transform = `translateX(${index * 100}%)`;
-
-                const selectedView = btn.dataset.view;
-
-                if (selectedView === "outbox") {
-                    outboxView.classList.add("active-view");
-                    inboxView.classList.remove("active-view");
-                } else {
-                    outboxView.classList.remove("active-view");
-                    inboxView.classList.add("active-view");
-                }
-            });
-        });
-
-        document.querySelectorAll('.vote-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                btn.classList.toggle('voted');
-            });
-        });
-    </script>
-}
