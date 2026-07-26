@@ -13,7 +13,7 @@
     <title>Vox Angelos</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Syne+Mono&family=Barlow:wght@300;400&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="~/css/index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/index.css?v=home-hero-fullbleed-v2" asp-append-version="true" />
 </head>
 <body>
 
@@ -41,50 +41,25 @@
             <div class="s-pip rounded-circle"></div>
         </div>
 
-        <!-- Radar -->
-        <div class="radar-wrap position-relative flex-shrink-0" style="z-index: 15;">
-            <div class="r-dish">
-                <div class="r-ring r-ring-1"></div>
-                <div class="r-ring r-ring-2"></div>
-                <div class="r-ring r-ring-3"></div>
-                <div class="r-cross"></div>
-                <div class="r-sweep"></div>
-            </div>
-            <div class="r-ping r-ping-1"></div>
-            <div class="r-ping r-ping-2"></div>
-            <div class="r-ping r-ping-3"></div>
-            <div class="r-logo d-flex align-items-center justify-content-center">
-                <img src="~/assets/VoxAngelosLogo.png" alt="Vox Angelos logo" />
-            </div>
+        <!-- Submission-first hero: presentation-only, with no form, request, route, or persistence contract. -->
+        <div class="home-submission-hero" id="heroModeSwitcher" data-mode="concern">
+            <div class="hero-brand" aria-label="Vox Angelos"><img src="~/assets/VoxAngelosLogo.png" alt="" /></div>
+            <div class="hero-copy"><span class="hero-kicker">A clearer path to civic action</span><h1 id="heroModeTitle">What concern needs attention?</h1></div>
+            <div class="hero-mode-switcher" role="radiogroup" aria-label="Choose a submission type"><button type="button" class="hero-mode-button is-active" data-mode="concern" role="radio" aria-checked="true">Report a concern</button><button type="button" class="hero-mode-button" data-mode="recommendation" role="radio" aria-checked="false">Propose an idea</button></div>
+            <div class="hero-composer" aria-live="polite"><div class="hero-composer-heading"><label for="heroModeMessage" id="heroModeLabel">Describe the concern</label><span class="hero-mode-badge" id="heroModeBadge">Concern report</span></div><textarea id="heroModeMessage" rows="3" autocomplete="off" placeholder="Example: The streetlight near our barangay hall has been out for several nights."></textarea><div class="hero-composer-footer"><span id="heroModeHelper">Keep it specific: include the issue, where it is happening, and who it affects.</span><span class="hero-composer-scope">Non-urgent matters only</span></div><div class="hero-composer-submit-row"><button id="heroModeSubmit" class="hero-submit-button" type="button">Submit concern <span aria-hidden="true">→</span></button></div></div>
+            <div class="hero-portal-row"><span>Have an account already?</span><a asp-area="Identity" asp-page="/Account/Login" class="home-portal-link">Enter citizen portal <span aria-hidden="true">→</span></a></div>
         </div>
-
-        <!-- Title -->
-        <div class="title-wrap w-100 text-center">
-            <span class="title d-inline-block">Vox Angelos</span>
-        </div>
-
-        <!-- Eyebrow -->
-        <div class="eyebrow w-100">Citizen &nbsp;·&nbsp; Voice &nbsp;·&nbsp; Governance</div>
-
-        <!-- Tagline -->
-        <div class="tagline w-100 text-center">
-            Where <strong>Citizens</strong> meet <strong>Governance</strong>
-        </div>
-
-        <!-- CTA -->
-        <a asp-area="Identity" asp-page="/Account/Login" class="cta btn d-inline-flex align-items-center flex-shrink-0">
-            Enter Portal
-            <span class="cta-arr ms-2"></span>
-        </a>
-
-        <!-- Footer badges inside stage -->
-        <div class="footer-bar d-flex align-items-center justify-content-center flex-wrap gap-2 px-3" style="z-index:30; position: relative; margin-top: 2rem;">
-            <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Community Voiced</div>
-            <div class="f-sep"></div>
-            <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Government Actioned</div>
-            <div class="f-sep"></div>
-            <div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Data Secured</div>
-        </div>
+        <div class="footer-bar home-proof-bar d-flex align-items-center justify-content-center flex-wrap gap-2 px-3" style="z-index:30; position:relative;"><div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Community voiced</div><div class="f-sep"></div><div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Government actioned</div><div class="f-sep"></div><div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Data secured</div></div>
+        <script>
+            (() => {
+                const root = document.getElementById('heroModeSwitcher');
+                if (!root) return;
+                const copy = { concern: { title: 'What concern needs attention?', label: 'Describe the concern', badge: 'Concern report', placeholder: 'Example: The streetlight near our barangay hall has been out for several nights.', helper: 'Keep it specific: include the issue, where it is happening, and who it affects.', submit: 'Submit concern' }, recommendation: { title: 'What improvement would you like to propose?', label: 'Share your recommendation', badge: 'Community recommendation', placeholder: 'Example: Add shaded seating and clear waste bins near the public market entrance.', helper: 'Share the improvement you propose, the location or service involved, and the people it may help.', submit: 'Submit recommendation' } };
+                const fields = { title: document.getElementById('heroModeTitle'), label: document.getElementById('heroModeLabel'), badge: document.getElementById('heroModeBadge'), input: document.getElementById('heroModeMessage'), helper: document.getElementById('heroModeHelper'), submit: document.getElementById('heroModeSubmit') };
+                root.querySelectorAll('.hero-mode-button').forEach(button => button.addEventListener('click', () => { const mode = button.dataset.mode; const content = copy[mode]; root.dataset.mode = mode; root.querySelectorAll('.hero-mode-button').forEach(item => { const selected = item === button; item.classList.toggle('is-active', selected); item.setAttribute('aria-checked', String(selected)); }); fields.title.textContent = content.title; fields.label.textContent = content.label; fields.badge.textContent = content.badge; fields.input.placeholder = content.placeholder; fields.helper.textContent = content.helper; fields.submit.firstChild.textContent = `${content.submit} `; }));
+                fields.input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) event.preventDefault(); });
+            })();
+        </script>
 
     </div>
 

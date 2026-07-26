@@ -11,9 +11,14 @@
     <link rel="stylesheet" href="~/css/citizen-profile.css" asp-append-version="true" />
 }
 
-<div class="content-header">
-    <h1 class="page-title">Profile</h1>
-</div>
+<header class="content-header citizen-page-header">
+    <div>
+        <span class="citizen-page-eyebrow">Citizen account</span>
+        <h1 class="page-title">Profile</h1>
+        <p class="citizen-page-description">Review the verified identity information connected to your account.</p>
+    </div>
+    <a asp-page="/User/AccountSecurity" class="citizen-secondary-action">Manage account security</a>
+</header>
 
 <div class="profile-container">
     <div class="profile-card-wrapper">

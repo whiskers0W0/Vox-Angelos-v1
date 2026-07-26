@@ -24,27 +24,34 @@
     <div class="tech-wrapper">
         <div class="row g-0">
             <div class="col-lg-5 panel-left">
-                <div class="eyebrow mb-2">Vox Angelos</div>
-                <h1 class="title mb-3">Admin<br />Portal</h1>
-                <p class="tagline mb-0">
-                    System administration<br />
-                    <strong>authorized personnel only</strong>
-                </p>
+                <div class="admin-brand" aria-label="Vox Angelos Administration">
+                    <img src="~/assets/VoxAngelosLogo.png" alt="" />
+                    <span><strong>Vox Angelos</strong><small>Administration</small></span>
+                </div>
+                <span class="eyebrow">Restricted access</span>
+                <h1 class="title">City operations,<br />under control.</h1>
+                <p class="tagline">Access the administrative workspace for account approvals, city-office routing, and platform oversight.</p>
+                <ul class="admin-points" aria-label="Administrative workspace features">
+                    <li><span aria-hidden="true">01</span> Review verified accounts</li>
+                    <li><span aria-hidden="true">02</span> Manage city operations</li>
+                    <li><span aria-hidden="true">03</span> Monitor civic participation</li>
+                </ul>
             </div>
 
             <div class="col-lg-7 panel-right">
-                <div class="eyebrow mb-3">Secure Sign-In</div>
+                <section class="admin-login-form">
+                    <span class="eyebrow">Administrator sign in</span>
+                    <h2>Access the console</h2>
+                    <p class="admin-login-intro">Use an authorized administrator account. A one-time verification code is required before entering the workspace.</p>
 
-                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-                {
-                    <div class="error-alert">
-                        <p style="font-family: var(--font-stack); font-size:0.75rem; color:var(--color-error); margin:0; font-weight:700; text-transform:uppercase; letter-spacing:0.02em;">
-                            ⚠️ System Alert: @Model.ErrorMessage
-                        </p>
-                    </div>
-                }
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="error-alert" role="alert">
+                            <p>System alert: @Model.ErrorMessage</p>
+                        </div>
+                    }
 
-                <form method="post" autocomplete="off">
+                    <form method="post" autocomplete="off">
                     @Html.AntiForgeryToken()
 
                     <div class="mb-3">
@@ -87,10 +94,12 @@
                         </button>
                     </div>
 
-                    <div class="d-flex justify-content-end">
-                        <a href="/Identity/Account/ForgotPassword" class="tech-link">Forgot Password?</a>
+                    <div class="form-footer">
+                        <span class="verification-note">One-time verification is required after sign-in.</span>
+                        <a href="/Identity/Account/ForgotPassword" class="tech-link">Forgot password?</a>
                     </div>
-                </form>
+                    </form>
+                </section>
             </div>
         </div>
     </div>

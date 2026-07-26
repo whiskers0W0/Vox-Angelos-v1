@@ -5,104 +5,143 @@
     ViewData["Title"] = "NLP Accuracy";
 }
 @section Styles {
-    <link rel="stylesheet" href="~/css/admin-dashboard.css" />
+    <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-nlpaccuracy.css" asp-append-version="true" />
 }
 
-<div class="content-header">
-    <h1 class="page-title">NLP Classification Accuracy</h1>
-</div>
+<div class="admin-nlp-workspace">
+    <header class="admin-nlp-header">
+        <div>
+            <span class="admin-nlp-eyebrow">Classification quality control</span>
+            <h1>NLP classification accuracy</h1>
+            <p>Track LGU feedback to understand how reliably incoming concerns are routed to the correct department.</p>
+        </div>
+        <div class="admin-nlp-target" aria-label="Accuracy target">
+            <span>Accuracy target</span>
+            <strong>@VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%</strong>
+            <small>Minimum reviewed accuracy</small>
+        </div>
+    </header>
 
-<div class="threshold-banner @(Model.ThresholdMet ? "threshold-met" : "threshold-unmet")">
-    @if (Model.TotalReviewed == 0)
-    {
-        <span>No classification feedback logged yet. Accuracy will appear once LGU staff start confirming/reassigning concern categories.</span>
-    }
-    else if (Model.ThresholdMet)
-    {
-        <span>✓ Target reached — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</span>
-    }
-    else
-    {
-        <span>Below target — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</span>
-    }
-</div>
+    <section class="admin-nlp-threshold @(Model.ThresholdMet ? "admin-nlp-threshold--met" : "admin-nlp-threshold--unmet")" aria-live="polite">
+        <div>
+            <span>Threshold status</span>
+            <strong>@(Model.TotalReviewed == 0 ? "Awaiting feedback" : Model.ThresholdMet ? "Target reached" : "Below target")</strong>
+        </div>
+        <p>
+            @if (Model.TotalReviewed == 0)
+            {
+                <text>No classification feedback logged yet. Accuracy will appear once LGU staff start confirming/reassigning concern categories.</text>
+            }
+            else if (Model.ThresholdMet)
+            {
+                <text>✓ Target reached — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</text>
+            }
+            else
+            {
+                <text>Below target — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</text>
+            }
+        </p>
+    </section>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-number">@Model.TotalReviewed</div>
-        <div class="stat-label">Total Reviewed</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" style="color:#16a34a;">@Model.CorrectCount</div>
-        <div class="stat-label">Correct on First Try</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" style="color:#dc2626;">@Model.IncorrectCount</div>
-        <div class="stat-label">Misclassified</div>
-    </div>
-</div>
+    <section class="admin-nlp-summary-grid" aria-label="Classification accuracy summary">
+        <article class="admin-nlp-summary-card admin-nlp-summary-card--primary">
+            <span>Total Reviewed</span>
+            <strong>@Model.TotalReviewed</strong>
+            <p>LGU classification decisions</p>
+        </article>
+        <article class="admin-nlp-summary-card">
+            <span>Correct on First Try</span>
+            <strong class="admin-nlp-good">@Model.CorrectCount</strong>
+            <p>Matched without reassignment</p>
+        </article>
+        <article class="admin-nlp-summary-card">
+            <span>Misclassified</span>
+            <strong class="admin-nlp-bad">@Model.IncorrectCount</strong>
+            <p>Require category correction</p>
+        </article>
+        <article class="admin-nlp-summary-card">
+            <span>Overall Accuracy</span>
+            <strong class="@(Model.ThresholdMet ? "admin-nlp-good" : "admin-nlp-bad")">@Model.AccuracyPercent%</strong>
+            <p>Against the @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent% review target</p>
+        </article>
+    </section>
 
-<h2 class="section-title">Accuracy by Department</h2>
-<div class="table-container">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Department</th>
-                <th>Reviewed</th>
-                <th>Correct</th>
-                <th>Accuracy</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.ByDepartment.Any())
-            {
-                <tr><td colspan="4" class="empty-row">No data yet.</td></tr>
-            }
-            @foreach (var dept in Model.ByDepartment)
-            {
-                <tr>
-                    <td>@dept.Department</td>
-                    <td>@dept.Total</td>
-                    <td>@dept.Correct</td>
-                    <td>
-                        <span class="accuracy-pill @(dept.AccuracyPercent >= VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent ? "pill-good" : "pill-bad")">
-                            @dept.AccuracyPercent%
-                        </span>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+    <section class="admin-nlp-panel" aria-labelledby="departmentAccuracyHeading">
+        <header class="admin-nlp-panel-header">
+            <div>
+                <span>Department performance</span>
+                <h2 id="departmentAccuracyHeading">Accuracy by department</h2>
+            </div>
+            <p>Reviewed classifications, grouped by the final assigned category.</p>
+        </header>
+        <div class="admin-nlp-table-wrap">
+            <table class="admin-nlp-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Department</th>
+                        <th scope="col">Reviewed</th>
+                        <th scope="col">Correct</th>
+                        <th scope="col">Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.ByDepartment.Any())
+                    {
+                        <tr><td colspan="4" class="admin-nlp-empty">No data yet.</td></tr>
+                    }
+                    @foreach (var dept in Model.ByDepartment)
+                    {
+                        <tr>
+                            <td data-label="Department"><strong>@dept.Department</strong></td>
+                            <td data-label="Reviewed">@dept.Total</td>
+                            <td data-label="Correct">@dept.Correct</td>
+                            <td data-label="Accuracy">
+                                <span class="admin-nlp-accuracy @(dept.AccuracyPercent >= VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent ? "admin-nlp-accuracy--good" : "admin-nlp-accuracy--bad")">@dept.AccuracyPercent%</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-<h2 class="section-title">Recent Misclassifications</h2>
-<div class="table-container">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Concern</th>
-                <th>Guessed</th>
-                <th>Actual</th>
-                <th>Reviewed By</th>
-                <th>When</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.RecentMisclassifications.Any())
-            {
-                <tr><td colspan="5" class="empty-row">No misclassifications logged yet.</td></tr>
-            }
-            @foreach (var m in Model.RecentMisclassifications)
-            {
-                <tr>
-                    <td class="concern-excerpt-cell" title="@m.Description">#@m.ConcernId — @(m.Description.Length > 60 ? m.Description[..60] + "…" : m.Description)</td>
-                    <td>@m.GuessedCategory</td>
-                    <td>@m.ActualCategory</td>
-                    <td>@m.ReviewedByEmail</td>
-                    <td>@m.ReviewedAt.ToString("MMM dd, yyyy h:mm tt")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <section class="admin-nlp-panel admin-nlp-panel--spaced" aria-labelledby="misclassificationHeading">
+        <header class="admin-nlp-panel-header">
+            <div>
+                <span>Review audit</span>
+                <h2 id="misclassificationHeading">Recent misclassifications</h2>
+            </div>
+            <p>Latest reassignments requiring model-quality attention.</p>
+        </header>
+        <div class="admin-nlp-table-wrap">
+            <table class="admin-nlp-table admin-nlp-table--audit">
+                <thead>
+                    <tr>
+                        <th scope="col">Concern</th>
+                        <th scope="col">Guessed</th>
+                        <th scope="col">Actual</th>
+                        <th scope="col">Reviewed by</th>
+                        <th scope="col">When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.RecentMisclassifications.Any())
+                    {
+                        <tr><td colspan="5" class="admin-nlp-empty">No misclassifications logged yet.</td></tr>
+                    }
+                    @foreach (var m in Model.RecentMisclassifications)
+                    {
+                        <tr>
+                            <td class="admin-nlp-concern" data-label="Concern" title="@m.Description">#@m.ConcernId — @(m.Description.Length > 60 ? m.Description[..60] + "…" : m.Description)</td>
+                            <td data-label="Guessed">@m.GuessedCategory</td>
+                            <td data-label="Actual"><strong>@m.ActualCategory</strong></td>
+                            <td data-label="Reviewed by">@m.ReviewedByEmail</td>
+                            <td data-label="When"><time datetime="@m.ReviewedAt.ToString("O")">@m.ReviewedAt.ToString("MMM dd, yyyy h:mm tt")</time></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>

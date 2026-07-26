@@ -17,12 +17,12 @@
 <body>
     <div class="bg"></div>
 
-    <div id="notifModal" style="display:none; position:fixed; inset:0; background:#00000030; z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:rgba(234, 236, 245, 0.98); border-radius: 20px; padding:2.5rem; max-width:420px; width:90%; text-align:center; box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 0 20px 50px rgba(0,0,0,0.3);">
-            <div id="notifIcon" style="font-size:3rem; margin-bottom:1rem;"></div>
-            <h3 id="notifTitle" style="font-family: var(--font-stack); font-weight: 700; text-transform:uppercase; color:#2B45B0; margin-bottom:0.5rem;"></h3>
-            <p id="notifMessage" style="color:#718096; font-size:0.9rem; margin-bottom:1.5rem; line-height:1.6;"></p>
-            <button onclick="closeNotifModal()" class="cta" style="width: auto; padding: 10px 40px;">OK</button>
+    <div id="notifModal" class="login-notification-modal" role="dialog" aria-modal="true" aria-labelledby="notifTitle">
+        <div class="login-notification-card">
+            <div id="notifIcon" class="login-notification-icon"></div>
+            <h3 id="notifTitle"></h3>
+            <p id="notifMessage"></p>
+            <button onclick="closeNotifModal()" class="cta notification-confirm-btn">OK</button>
         </div>
     </div>
 
@@ -30,19 +30,26 @@
         <div class="row g-0">
             <div class="col-lg-5 panel-left">
                 <div class="glass-inner">
-                    <span class="sys-label">Vox Angelos</span>
-                    <h1 class="portal-title">Citizen<br />Login</h1>
-                    <div class="login-subtext">
-                        <p class="login-instruction">
-                            Log in to access your secure profile, track submitted reports, and continue engaging with Angeles City governance bodies.
-                        </p>
+                    <div class="portal-brand" aria-label="Vox Angelos">
+                        <img src="~/assets/VoxAngelosLogo.png" alt="" />
+                        <span><strong>Vox Angelos</strong><small>Citizen portal</small></span>
                     </div>
+                    <span class="sys-label">Angeles City civic platform</span>
+                    <h1 class="portal-title">A direct line<br />to your city.</h1>
+                    <p class="login-instruction">Submit local concerns, follow their official status, and take part in recommendations that improve Angeles City.</p>
+                    <ul class="portal-points" aria-label="Citizen portal features">
+                        <li><span aria-hidden="true">01</span> Track submitted concerns</li>
+                        <li><span aria-hidden="true">02</span> Receive LGU progress updates</li>
+                        <li><span aria-hidden="true">03</span> Support community ideas</li>
+                    </ul>
                 </div>
             </div>
 
             <div class="col-lg-7 panel-right">
-                <section>
-                    <span class="eyebrow">Authentication Required</span>
+                <section class="login-form-panel">
+                    <span class="eyebrow">Citizen sign in</span>
+                    <h2>Welcome back</h2>
+                    <p class="login-form-intro">Use your verified citizen account to continue to your workspace.</p>
                     <form id="account" method="post" autocomplete="off">
 
                         <div asp-validation-summary="ModelOnly" class="d-none" id="validationSummary" role="alert"></div>

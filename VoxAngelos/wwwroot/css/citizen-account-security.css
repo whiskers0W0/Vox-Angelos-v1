@@ -255,3 +255,144 @@
         grid-column: auto;
     }
 }
+
+/* ── Civic Dashboard: Account Security ────────────────────────── */
+.citizen-shell .security-subtitle { margin-top: 10px; color: var(--va-body); font-size: 13.5px; }
+.citizen-shell .security-back-link { color: var(--va-blue); }
+
+.citizen-shell .security-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px;
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+}
+
+.citizen-shell .security-card {
+    position: relative;
+    padding: 24px;
+    border: 1px solid var(--va-line);
+    border-top: 3px solid var(--va-blue);
+    border-radius: var(--va-radius);
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(27, 39, 60, .055);
+}
+.citizen-shell .security-card:nth-of-type(even) { border-top-color: var(--va-green); }
+
+.citizen-shell .security-card-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 17px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--va-line);
+}
+
+.citizen-shell .security-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 8px;
+    background: var(--va-blue-soft);
+    color: var(--va-blue);
+    font-size: 17px;
+}
+.citizen-shell .security-card h2 { color: var(--va-ink); font-size: 16px; letter-spacing: -.015em; }
+.citizen-shell .security-card-heading p { margin-top: 4px; color: var(--va-muted); font-size: 10.5px; line-height: 1.45; }
+
+.citizen-shell .security-info-note {
+    margin-bottom: 17px;
+    padding: 11px 12px;
+    border-left: 3px solid var(--va-blue);
+    border-radius: 0 7px 7px 0;
+    background: var(--va-blue-soft);
+    color: #50627f;
+    font-size: 10.5px;
+    line-height: 1.5;
+}
+
+.citizen-shell .security-fields {
+    grid-template-columns: 1fr;
+    gap: 13px;
+    margin-bottom: 17px;
+}
+.citizen-shell .security-field:last-child:nth-child(odd) { grid-column: auto; }
+.citizen-shell .security-field label {
+    margin-bottom: 6px;
+    color: #6f7b8f;
+    font-size: 8.5px;
+    letter-spacing: .07em;
+}
+.citizen-shell .security-field input {
+    height: 42px;
+    padding: 0 12px;
+    border-color: #d9e0e9;
+    border-radius: 7px;
+    background: #fbfcfd;
+    color: var(--va-ink);
+    font-size: 11.5px;
+}
+.citizen-shell .security-field input:focus {
+    border-color: var(--va-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(22, 70, 160, .09);
+}
+.citizen-shell .security-field span,
+.citizen-shell .security-validation { color: var(--va-red); font-size: 9.5px; }
+
+.citizen-shell .security-primary-btn {
+    min-height: 38px;
+    padding: 0 15px;
+    border-radius: 7px;
+    background: var(--va-blue);
+    box-shadow: 0 6px 14px rgba(22, 70, 160, .18);
+    font-size: 10.5px;
+    font-weight: 750;
+}
+.citizen-shell .security-primary-btn:hover { background: var(--va-blue-dark); filter: none; transform: translateY(-1px); }
+
+.citizen-shell .security-feedback,
+.citizen-shell .security-email-pending {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    box-shadow: none;
+    font-size: 10.5px;
+}
+.citizen-shell .security-success { border: 1px solid #bedfcf; background: var(--va-green-soft); color: var(--va-green); }
+.citizen-shell .security-error { border: 1px solid #efcbd0; background: var(--va-red-soft); color: var(--va-red); }
+.citizen-shell .security-email-pending { border-color: #ead29d; background: var(--va-amber-soft); color: #76500d; }
+
+.citizen-shell .security-dev-otp {
+    margin: 0 0 17px;
+    padding: 11px 12px;
+    border-color: #9aafd5;
+    border-radius: 7px;
+    background: #f8faff;
+    color: #395689;
+    font-size: 10px;
+}
+.citizen-shell .security-dev-otp code { color: var(--va-blue-dark); font-size: 18px; }
+.citizen-shell .security-dev-otp span { color: var(--va-muted); font-size: 9px; }
+.citizen-shell .security-dev-confirm-link { width: fit-content; padding: 8px 11px; border-radius: 6px; background: var(--va-blue); font-size: 10px; }
+
+.citizen-shell .security-otp-card {
+    grid-column: 1 / -1;
+    width: min(680px, 100%);
+    max-width: none;
+    justify-self: center;
+}
+.citizen-shell .security-otp-field { max-width: 320px; }
+.citizen-shell .security-otp-field input { height: 50px; font-size: 20px; }
+
+@media (max-width: 820px) {
+    .citizen-shell .security-container { grid-template-columns: 1fr; }
+    .citizen-shell .security-otp-card { grid-column: auto; }
+}
+
+@media (max-width: 520px) {
+    .citizen-shell .security-card { padding: 19px; }
+    .citizen-shell .security-primary-btn { width: 100%; }
+}

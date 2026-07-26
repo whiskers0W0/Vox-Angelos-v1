@@ -1,180 +1,20 @@
 ﻿@page
 @model VoxAngelos.Pages.LGU.ReviewRecommendationsModel
-@{
-    Layout = "_LGULayout";
-    ViewData["Title"] = "Review Recommendations";
-}
-
-@section Styles {
-    <link rel="stylesheet" href="~/css/lgu_review_recommendations.css" asp-append-version="true" />
-}
-
-<div class="content-header">
-    <h1 class="page-title">Review Recommendations</h1>
+@{ Layout = "_LGULayout"; ViewData["Title"] = "Review Recommendations"; }
+@section Styles { <link rel="stylesheet" href="~/css/lgu_review_recommendations.css" asp-append-version="true" /> }
+<div class="lgu-recommendations-workspace">
+    <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Citizen proposal operations</span><h1>Recommendation review queue</h1><p>Assess submitted proposals, verify their department routing, and record the publication decision with a clear public response.</p></div><div class="lgu-page-context"><span>Current view</span><strong>@Model.CurrentFilter recommendations</strong></div></header>
+    @if (TempData["RecError"] != null) { <div class="alert-error" role="alert">@TempData["RecError"]</div> }
+    <section class="lgu-queue-controls" aria-label="Recommendation status filters"><div class="lgu-filter-label"><span>Review status</span><strong>Select a decision stage</strong></div><div class="feed-filter-group">@foreach (var f in new[] { "Pending", "Published", "Rejected", "All" }) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" href="?filter=@f">@f</a> }</div></section>
+    @if (!Model.Recommendations.Any()) { <div class="empty-state"><strong>No recommendations in this queue.</strong><p>Choose another review status to inspect a different decision stage.</p></div> }
+    else { <div class="recommendations-list">@foreach (var rec in Model.Recommendations) { <article class="rec-card"><header class="rec-card-header"><div class="rec-heading"><div class="rec-routing"><span class="rec-category">@rec.Category</span><span class="rec-office" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span></div><h2 class="rec-title">@rec.Title</h2><span class="rec-meta">Submitted by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span></div><span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span></header>
+        <div class="rec-body"><div class="rec-narrative"><div><span>Justification</span><p>@rec.Justification</p></div><div><span>Proposal description</span><p>@rec.Description</p></div></div><dl class="rec-facts"><div><dt>Location</dt><dd>@rec.Location</dd></div><div><dt>Beneficiaries</dt><dd>@rec.Beneficiaries</dd></div><div><dt>Estimated people affected</dt><dd>@rec.EstimatedPeopleAffected</dd></div></dl>
+        <div class="rec-attachments"><span>Attachments</span>@if (rec.AttachmentPaths.Any()) { <div class="rec-attachment-list">@for (int i = 0; i < rec.AttachmentPaths.Count; i++) { var path = rec.AttachmentPaths[i]; var type = rec.AttachmentTypes[i]; if (type == "image" || type.StartsWith("image/")) { <button type="button" class="rec-attachment-preview" aria-label="Open attached image" onclick="openLightbox('@path', 'image')"><img src="@path" alt="Recommendation attachment" /></button> } else if (type == "video" || type.StartsWith("video/")) { <button type="button" class="rec-attachment-preview" aria-label="Open attached video" onclick="openLightbox('@path', 'video')"><video src="@path"></video></button> } else { <a href="@path" target="_blank" rel="noopener" class="rec-document-link">Document</a> } }</div> } else { <p>None attached.</p> }</div></div>
+        @if (rec.Status == "Pending") { <div class="rec-actions"><form method="post">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" value="@rec.Id" /><label for="notes-@rec.Id">Decision note <span>Optional</span></label><textarea name="lguNotes" id="notes-@rec.Id" class="rec-notes-input" placeholder="Add notes (optional)..."></textarea><div class="rec-action-btns"><button type="submit" asp-page-handler="Approve" class="btn-approve">Publish recommendation</button><button type="submit" asp-page-handler="Reject" class="btn-reject">Reject</button></div></form></div> } else { <div class="rec-reviewed"><span class="rec-review-label">LGU review record</span><p><strong>Notes:</strong> @(rec.LguNotes ?? "—")</p><p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p></div> }</article> }</div> }
 </div>
-
-@if (TempData["RecError"] != null)
-{
-    <div class="alert-error">@TempData["RecError"]</div>
-}
-
-<div class="feed-filter-group">
-    @foreach (var f in new[] { "Pending", "Published", "Rejected", "All" })
-    {
-        var isActive = Model.CurrentFilter == f ? "active" : "";
-        <a class="filter-btn @isActive" href="?filter=@f">@f</a>
-    }
-</div>
-
-@if (!Model.Recommendations.Any())
-{
-    <div class="empty-state">
-        <p>No citizen recommendations to review yet.</p>
-        <p class="muted">This section will be available once citizens begin submitting recommendations.</p>
-    </div>
-}
-else
-{
-    <div class="recommendations-list">
-        @foreach (var rec in Model.Recommendations)
-        {
-            <div class="rec-card">
-                <!-- Floating Status Badge -->
-                <span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span>
-
-                <div class="rec-card-header">
-                    <div>
-                        <span class="rec-category">@rec.Category</span>
-                        <span class="rec-category" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span>
-                        <h3 class="rec-title">@rec.Title</h3>
-                        <span class="rec-meta">by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span>
-                    </div>
-                </div>
-
-                <div class="rec-body">
-                    <p><strong>Justification:</strong> @rec.Justification</p>
-                    <p><strong>Description:</strong> @rec.Description</p>
-                    <p><strong>Location:</strong> @rec.Location</p>
-                    <p><strong>Beneficiaries:</strong> @rec.Beneficiaries</p>
-                    <p><strong>Est. People Affected:</strong> @rec.EstimatedPeopleAffected</p>
-                    @if (rec.AttachmentPaths.Any())
-                    {
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
-                            @for (int i = 0; i < rec.AttachmentPaths.Count; i++)
-                            {
-                                var path = rec.AttachmentPaths[i];
-                                var type = rec.AttachmentTypes[i];
-                                if (type == "image" || type.StartsWith("image/"))
-                                {
-                                    <img src="@path"
-                                         style="width:100px;height:100px;object-fit:cover;border-radius:8px;cursor:pointer;"
-                                         onclick="openLightbox('@path', 'image')" />
-                                }
-                                else if (type == "video" || type.StartsWith("video/"))
-                                {
-                                    <video src="@path"
-                                           style="width:100px;height:100px;border-radius:8px;cursor:pointer;"
-                                           onclick="openLightbox('@path', 'video')"></video>
-                                }
-                                else
-                                {
-                                    <a href="@path" target="_blank"
-                                       style="display:flex;align-items:center;padding:8px 12px;background:#f0f4ff;border-radius:8px;font-size:12px;color:#2D46B9;text-decoration:none;">
-                                        📄 Document
-                                    </a>
-                                }
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <p><strong>Attachments:</strong> None</p>
-                    }
-                </div>
-
-                @if (rec.Status == "Pending")
-                {
-                    <div class="rec-actions">
-                        <form method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="recommendationId" value="@rec.Id" />
-                            <textarea name="lguNotes" class="rec-notes-input"
-                                      placeholder="Add notes (optional)..."></textarea>
-                            <div class="rec-action-btns">
-                                <button type="submit" asp-page-handler="Approve"
-                                        class="btn-approve">
-                                    Publish
-                                </button>
-                                <button type="submit" asp-page-handler="Reject"
-                                        class="btn-reject">
-                                    Reject
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                }
-                else
-                {
-                    <div class="rec-reviewed">
-                        <p><strong>LGU Notes:</strong> @(rec.LguNotes ?? "—")</p>
-                        <p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-
-
-}
-
-<!-- Lightbox Modal -->
-<div id="lightboxOverlay" onclick="closeLightbox()"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
-    <button onclick="closeLightbox()"
-            style="position:absolute;top:20px;right:28px;background:none;border:none;color:white;font-size:32px;cursor:pointer;line-height:1;">
-        ✕
-    </button>
-    <div onclick="event.stopPropagation()" style="max-width:90vw;max-height:90vh;display:flex;align-items:center;justify-content:center;">
-        <img id="lightboxImg" src="" alt=""
-             style="display:none;max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;" />
-        <video id="lightboxVideo" src="" controls
-               style="display:none;max-width:90vw;max-height:90vh;border-radius:12px;"></video>
-    </div>
-</div>
-
-@section Scripts {
-    <script>
-        function openLightbox(src, type) {
-            const overlay = document.getElementById('lightboxOverlay');
-            const img = document.getElementById('lightboxImg');
-            const video = document.getElementById('lightboxVideo');
-
-            img.style.display = 'none';
-            video.style.display = 'none';
-            video.pause();
-
-            if (type === 'image') {
-                img.src = src;
-                img.style.display = 'block';
-            } else if (type === 'video') {
-                video.src = src;
-                video.style.display = 'block';
-            }
-
-            overlay.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeLightbox() {
-            const overlay = document.getElementById('lightboxOverlay');
-            const video = document.getElementById('lightboxVideo');
-            video.pause();
-            overlay.style.display = 'none';
-            document.body.style.overflow = '';
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeLightbox();
-        });
-    </script>
-}
+<div id="lightboxOverlay" class="lgu-lightbox" onclick="closeLightbox()"><button type="button" onclick="closeLightbox()" aria-label="Close attachment preview">×</button><div onclick="event.stopPropagation()"><img id="lightboxImg" src="" alt="" /><video id="lightboxVideo" src="" controls></video></div></div>
+@section Scripts { <script>
+function openLightbox(src, type) { const overlay = document.getElementById('lightboxOverlay'); const img = document.getElementById('lightboxImg'); const video = document.getElementById('lightboxVideo'); img.style.display = 'none'; video.style.display = 'none'; video.pause(); if (type === 'image') { img.src = src; img.style.display = 'block'; } else if (type === 'video') { video.src = src; video.style.display = 'block'; } overlay.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+function closeLightbox() { const overlay = document.getElementById('lightboxOverlay'); const video = document.getElementById('lightboxVideo'); video.pause(); overlay.classList.remove('is-open'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script> }

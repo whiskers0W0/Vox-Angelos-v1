@@ -17,57 +17,53 @@
 <body>
     <div class="bg"></div>
 
-    <div id="loadingModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,30,0.8); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:20px;">
-        <div style="position:relative; width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:#EAECF5; border-radius:50%; box-shadow: 10px 10px 20px rgba(163, 177, 198, 0.7), -10px -10px 20px rgba(255, 255, 255, 0.9);">
-            <div style="width:50px; height:50px; border:4px solid rgba(43, 69, 176, 0.1); border-top-color:#2B45B0; border-radius:50%; animation:spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;"></div>
-        </div>
-        <p style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; font-size:0.7rem; letter-spacing:0.25em; color:#2B45B0; text-transform:uppercase; font-weight:800; text-shadow: 0 0 15px rgba(43, 69, 176, 0.2);">
-            Authenticating Data
-        </p>
+    <div id="loadingModal" class="registration-loading-modal" role="status" aria-live="polite">
+        <div class="registration-loading-indicator"><div></div></div>
+        <p>Checking identity</p>
     </div>
 
-    <div id="resultModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,30,0.7); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:#EAECF5; border:1px solid rgba(255,255,255,0.7); border-radius:30px; padding:3rem 2rem; max-width:420px; width:92%; text-align:center; box-shadow: 20px 20px 60px rgba(0,0,0,0.4), inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030;">
-            <div id="resultIcon" style="display:inline-flex; align-items:center; justify-content:center; width:90px; height:90px; border-radius:50%; background:#EAECF5; box-shadow: inset 6px 6px 12px rgba(163, 177, 198, 0.7), inset -6px -6px 12px rgba(255, 255, 255, 0.9); margin-bottom:1.5rem; font-size:3rem;"></div>
-            <h3 id="resultTitle" style="font-family:'Oswald', sans-serif; letter-spacing:0.05em; text-transform:uppercase; color:#2B45B0; margin-bottom:0.75rem; font-size:1.8rem; font-weight:700;"></h3>
-            <p id="resultMessage" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; color:#718096; font-size:0.95rem; margin-bottom:2rem; line-height:1.7; font-weight:400; padding:0 10px;"></p>
-            <button onclick="closeResultModal()" class="cta" style="width:auto; padding:14px 50px; background:linear-gradient(135deg, #445ec9, #2B45B0); color:white; border:none; border-radius:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; box-shadow: inset 1px 2px 2px 0 #ffffff70, 6px 6px 20px rgba(43, 69, 176, 0.3); cursor:pointer;">
-                Acknowledge
-            </button>
+    <div id="resultModal" class="registration-result-modal" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+        <div class="registration-result-card">
+            <div id="resultIcon" class="registration-result-icon"></div>
+            <h3 id="resultTitle"></h3>
+            <p id="resultMessage"></p>
+            <button onclick="closeResultModal()" class="cta registration-result-button">Acknowledge</button>
         </div>
     </div>
 
     <div class="main-viewport d-flex align-items-center justify-content-center w-100">
         <div class="tech-wrapper">
             <div class="row g-0">
-                <div class="col-lg-5 panel-left d-none d-lg-flex">
+                <div class="col-lg-5 panel-left">
                     <div class="glass-inner w-100">
-                        <span class="sys-label">Vox Angelos</span>
-                        <h1 class="portal-title">Citizen<br />Registration</h1>
-                        <p class="tagline mb-4">
-                            Join the platform where <strong>Citizens</strong> meet <strong>Governance</strong>
-                        </p>
-                        <div class="step-indicator">
+                        <div class="portal-brand" aria-label="Vox Angelos">
+                            <img src="~/assets/VoxAngelosLogo.png" alt="" />
+                            <span><strong>Vox Angelos</strong><small>Citizen portal</small></span>
+                        </div>
+                        <span class="sys-label">Citizen enrollment</span>
+                        <h1 class="portal-title">A stronger voice<br />starts here.</h1>
+                        <p class="tagline">Create a verified citizen account to submit concerns, follow official updates, and take part in Angeles City recommendations.</p>
+                        <div class="step-indicator" aria-label="Registration progress">
                             <div class="step-indicator__item active" id="si-step1">
                                 <div class="step-indicator__dot">1</div>
-                                <div class="step-indicator__text">Personal Info</div>
+                                <div class="step-indicator__text">Your details</div>
                             </div>
                             <div class="step-indicator__line"></div>
                             <div class="step-indicator__item" id="si-step2">
                                 <div class="step-indicator__dot">2</div>
-                                <div class="step-indicator__text">Verification</div>
+                                <div class="step-indicator__text">Verify identity</div>
                             </div>
                             <div class="step-indicator__line"></div>
                             <div class="step-indicator__item" id="si-step3">
                                 <div class="step-indicator__dot">3</div>
-                                <div class="step-indicator__text">Security</div>
+                                <div class="step-indicator__text">Secure account</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-lg-7 panel-right">
-                    <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" enctype="multipart/form-data" autocomplete="off" novalidate>
+                    <form id="registerForm" class="registration-form-panel" asp-route-returnUrl="@Model.ReturnUrl" method="post" enctype="multipart/form-data" autocomplete="off" novalidate>
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
                         <input type="file" id="selfieHiddenInput" name="Input.SelfiePhoto" style="display:none;" accept="image/*" />

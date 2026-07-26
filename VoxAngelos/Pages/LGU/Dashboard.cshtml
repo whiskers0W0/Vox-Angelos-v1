@@ -1,263 +1,42 @@
 ﻿@page
 @model VoxAngelos.Pages.LGU.DashboardModel
-@{
-    Layout = "_LGULayout";
-    ViewData["Title"] = "Welcome, Department of " + Model.DepartmentName + "!";
-}
-
-@section Styles {
-    <link rel="stylesheet" href="~/css/dashboard_lgu.css" asp-append-version="true" />
-}
-
-<div class="content-header">
-    <h1 class="page-title">Dashboard</h1>
+@{ Layout = "_LGULayout"; ViewData["Title"] = "Welcome, Department of " + Model.DepartmentName + "!"; }
+@section Styles { <link rel="stylesheet" href="~/css/dashboard_lgu.css" asp-append-version="true" /> }
+<div class="lgu-operations-dashboard">
+    <header class="lgu-dashboard-header">
+        <div><span class="lgu-dashboard-eyebrow">Angeles City · @Model.DepartmentName operations</span><h1>Service delivery overview</h1><p>Monitor current concern volume, field response, recommendation intake, and location trends from one operational workspace.</p></div>
+        <div class="lgu-dashboard-context"><span>Reporting scope</span><strong>Platform-wide activity</strong></div>
+    </header>
+    <section class="lgu-stat-grid" aria-label="Concern operations summary">
+        <article class="lgu-stat-card"><span class="lgu-stat-label">Total concerns</span><strong>@Model.TotalConcerns.ToString("D2")</strong><span class="lgu-stat-note">All active records</span></article>
+        <article class="lgu-stat-card lgu-stat-card--alert"><span class="lgu-stat-label">Unresolved</span><strong>@Model.TotalUnresolved.ToString("D2")</strong><span class="lgu-stat-note">Awaiting next action</span></article>
+        <article class="lgu-stat-card"><span class="lgu-stat-label">Chosen</span><strong>@Model.TotalChosen.ToString("D2")</strong><span class="lgu-stat-note">Assigned for handling</span></article>
+        <article class="lgu-stat-card lgu-stat-card--progress"><span class="lgu-stat-label">In progress</span><strong>@Model.TotalInProgress.ToString("D2")</strong><span class="lgu-stat-note">Being addressed</span></article>
+        <article class="lgu-stat-card lgu-stat-card--positive"><span class="lgu-stat-label">Resolved</span><strong>@Model.TotalResolved.ToString("D2")</strong><span class="lgu-stat-note">Completed concerns</span></article>
+        <article class="lgu-stat-card"><span class="lgu-stat-label">Pending recommendations</span><strong>@Model.PendingRecommendations.ToString("D2")</strong><span class="lgu-stat-note">Awaiting review</span></article>
+        <article class="lgu-stat-card lgu-stat-card--positive"><span class="lgu-stat-label">Resolution rate</span><strong>@Model.ResolutionRate%</strong><span class="lgu-stat-note">Of all concerns</span></article>
+        <article class="lgu-stat-card"><span class="lgu-stat-label">Avg. response time</span><strong>@Model.AvgResponseDays <small>days</small></strong><span class="lgu-stat-note">Submission to resolution</span></article>
+        <article class="lgu-stat-card"><span class="lgu-stat-label">Today’s concerns</span><strong>@Model.TodayConcerns.ToString("D2")</strong><span class="lgu-stat-note">Submitted today</span></article>
+    </section>
+    <section class="lgu-dashboard-section" aria-labelledby="activityHeading">
+        <div class="lgu-section-heading"><div><span>Activity monitoring</span><h2 id="activityHeading">Service pulse</h2></div><p>Last seven days and latest updates</p></div>
+        <div class="lgu-dashboard-grid lgu-dashboard-grid--two">
+            <article class="lgu-panel"><header class="lgu-panel-header"><h3>Concern trend</h3><span>7 days</span></header><div class="lgu-chart-wrap"><canvas id="concernTrendChart"></canvas></div></article>
+            <article class="lgu-panel lgu-activity-panel"><header class="lgu-panel-header"><h3>Recent activity</h3><span>Live feed</span></header><div class="lgu-activity-feed">@foreach (var item in Model.RecentActivities) { <div class="lgu-activity-item @item.Type"><span class="lgu-activity-dot"></span><div><p>@Html.Raw(item.Text)</p><time>@item.TimeAgo</time></div></div> } @if (!Model.RecentActivities.Any()) { <p class="lgu-empty-state">No recent activity yet.</p> }</div></article>
+        </div>
+    </section>
+    <section class="lgu-dashboard-section" aria-labelledby="distributionHeading">
+        <div class="lgu-section-heading"><div><span>Location and category</span><h2 id="distributionHeading">Demand distribution</h2></div><p>Where attention is needed</p></div>
+        <div class="lgu-dashboard-grid lgu-dashboard-grid--two">
+            <article class="lgu-panel"><header class="lgu-panel-header"><h3>Concerns by category</h3><span>Breakdown</span></header><div class="lgu-chart-wrap"><canvas id="categoryChart"></canvas></div></article>
+            <article class="lgu-panel"><header class="lgu-panel-header"><h3>Top barangays by concern volume</h3><span>Top 5</span></header><div class="lgu-barangay-list">@if (!Model.TopBarangays.Any()) { <p class="lgu-empty-state">No data yet.</p> } @foreach (var b in Model.TopBarangays) { var pct = Model.TotalConcerns > 0 ? (int)((double)b.Count / Model.TotalConcerns * 100) : 0; <div class="lgu-barangay-row"><div><strong>@b.Barangay</strong><span>@b.Count concerns</span></div><div class="lgu-progress-track"><span style="width:@pct%"></span></div></div> }</div></article>
+        </div>
+    </section>
 </div>
-
-<div class="dashboard-grid">
-
-    <!-- Total Concerns -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <div class="stat-number">@Model.TotalConcerns.ToString("D2")</div>
-        <div class="stat-label">Concerns</div>
-    </div>
-
-    <!-- Total Unresolved -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-        </svg>
-        <div class="stat-number">@Model.TotalUnresolved.ToString("D2")</div>
-        <div class="stat-label">Unresolved</div>
-    </div>
-
-    <!-- Total Chosen -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 11l3 3L22 4" />
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-        </svg>
-        <div class="stat-number">@Model.TotalChosen.ToString("D2")</div>
-        <div class="stat-label">Chosen</div>
-    </div>
-
-    <!-- Total In Progress -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10" />
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-        </svg>
-        <div class="stat-number">@Model.TotalInProgress.ToString("D2")</div>
-        <div class="stat-label">In Progress</div>
-    </div>
-    <!-- Total Resolved -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-        <div class="stat-number">@Model.TotalResolved.ToString("D2")</div>
-        <div class="stat-label">Resolved</div>
-    </div>
-
-    <!-- Pending Recommendations -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14,2 14,8 20,8" />
-            <line x1="12" y1="18" x2="12" y2="12" />
-            <line x1="9" y1="15" x2="15" y2="15" />
-        </svg>
-        <div class="stat-number">@Model.PendingRecommendations.ToString("D2")</div>
-        <div class="stat-label">Pending Recommendations</div>
-    </div>
-
-    <!-- Resolution Rate -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10" />
-            <line x1="12" y1="20" x2="12" y2="4" />
-            <line x1="6" y1="20" x2="6" y2="14" />
-        </svg>
-        <div class="stat-number">@Model.ResolutionRate%</div>
-        <div class="stat-label">Resolution Rate</div>
-    </div>
-
-    <!-- Average Response Time -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-        </svg>
-        <div class="stat-number">@Model.AvgResponseDays <span style="font-size:14px;font-weight:400;">days</span></div>
-        <div class="stat-label">Avg. Response Time</div>
-    </div>
-
-    <!-- Today's Concerns -->
-    <div class="stat-card">
-        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-        <div class="stat-number">@Model.TodayConcerns.ToString("D2")</div>
-        <div class="stat-label">Today's Concerns</div>
-    </div>
-
-</div>
-
-<div class="visuals-container">
-    <div class="main-visual-row">
-
-        <div class="viz-card trend-chart">
-            <h3 class="viz-title">Concern Trends</h3>
-            <div class="chart-wrapper">
-                <canvas id="concernTrendChart"></canvas>
-            </div>
-        </div>
-
-        <div class="viz-card activity-card">
-            <div class="viz-header">
-                <h3 class="viz-title">Recent Activity</h3>
-                <span class="viz-subtitle">Live updates from the field</span>
-            </div>
-
-            <div class="activity-feed">
-                @foreach (var item in Model.RecentActivities)
-                {
-                    <div class="activity-item @item.Type">
-                        <div class="activity-status-dot"></div>
-                        <div class="activity-info">
-                            <p class="activity-text">@Html.Raw(item.Text)</p>
-                            <span class="activity-time">@item.TimeAgo</span>
-                        </div>
-                    </div>
-                }
-                @if (!Model.RecentActivities.Any())
-                {
-                    <p style="color:#999; font-size:13px; padding:12px 0;">No recent activity yet.</p>
-                }
-            </div>
-        </div>
-
-    </div>
-    @* category chart *@
-    <div class="main-visual-row" style="margin-top:24px;">
-        <div class="viz-card" style="flex:1;">
-            <h3 class="viz-title">Concerns by Category</h3>
-            <div class="chart-wrapper">
-                <canvas id="categoryChart"></canvas>
-            </div>
-        </div>
-        <div class="viz-card" style="flex:1;">
-            <h3 class="viz-title">Top Barangays by Concern Volume</h3>
-            <div style="margin-top:16px;">
-                @if (!Model.TopBarangays.Any())
-                {
-                    <p style="color:#999;font-size:13px;">No data yet.</p>
-                }
-                @foreach (var b in Model.TopBarangays)
-                {
-                    var pct = Model.TotalConcerns > 0
-                        ? (int)((double)b.Count / Model.TotalConcerns * 100)
-                        : 0;
-                    <div style="margin-bottom:16px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-                            <span style="font-size:13px;font-weight:500;color:#1a1a2e;">@b.Barangay</span>
-                            <span style="font-size:13px;color:#2D46B9;font-weight:600;">@b.Count concerns</span>
-                        </div>
-                        <div style="background:#eef1fb;border-radius:999px;height:8px;">
-                            <div style="background:#2D46B9;width:@pct%;height:8px;border-radius:999px;"></div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const trendCtx = document.getElementById('concernTrendChart').getContext('2d');
-        new Chart(trendCtx, {
-        type: 'line',
-        data: {
-        labels: @Html.Raw(Model.TrendLabels),
-        datasets: [{
-        label: 'New Reports',
-        data: @Html.Raw(Model.TrendData),
-        borderColor: '#2D46B9',
-        backgroundColor: 'rgba(45, 70, 185, 0.1)',
-        fill: true,
-        tension: 0.4
-        }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    min: 0,
-                    ticks: {
-                        stepSize: 1,
-                        callback: function(value) {
-                            if (value <= 10) return value;
-                            if (value % 5 === 0) return value;
-                            return null;
-                        }
-                    }
-                }
-            }
-        }
-        });
-
-        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        new Chart(categoryCtx, {
-            type: 'bar',
-            data: {
-                labels: @Html.Raw(Model.CategoryLabels),
-                datasets: [{
-                    label: 'Concerns',
-                    data: @Html.Raw(Model.CategoryData),
-                    backgroundColor: [
-                        'rgba(45, 70, 185, 0.7)',
-                        'rgba(45, 70, 185, 0.6)',
-                        'rgba(45, 70, 185, 0.5)',
-                        'rgba(45, 70, 185, 0.4)',
-                        'rgba(45, 70, 185, 0.3)',
-                    ],
-                    borderColor: '#2D46B9',
-                    borderWidth: 1,
-                    borderRadius: 6,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        min: 0,
-                        ticks: {
-                            stepSize: 1,
-                            callback: function(value) {
-                                if (value <= 10) return value;
-                                if (value % 5 === 0) return value;
-                                return null;
-                            }
-                        }
-                    }
-                }
-            }
-        });
+        const trendCtx = document.getElementById('concernTrendChart').getContext('2d'); new Chart(trendCtx, { type: 'line', data: { labels: @Html.Raw(Model.TrendLabels), datasets: [{ label: 'New Reports', data: @Html.Raw(Model.TrendData), borderColor: '#1646a0', backgroundColor: 'rgba(22, 70, 160, 0.08)', fill: true, tension: 0.35, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { min: 0, ticks: { stepSize: 1, callback: function(value) { if (value <= 10 || value % 5 === 0) return value; return null; } } } } } });
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d'); new Chart(categoryCtx, { type: 'bar', data: { labels: @Html.Raw(Model.CategoryLabels), datasets: [{ label: 'Concerns', data: @Html.Raw(Model.CategoryData), backgroundColor: ['rgba(22, 70, 160, .88)', 'rgba(22, 70, 160, .72)', 'rgba(22, 70, 160, .56)', 'rgba(22, 70, 160, .42)', 'rgba(22, 70, 160, .3)'], borderColor: '#1646a0', borderWidth: 1, borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { min: 0, ticks: { stepSize: 1, callback: function(value) { if (value <= 10 || value % 5 === 0) return value; return null; } } } } } });
     </script>
 }

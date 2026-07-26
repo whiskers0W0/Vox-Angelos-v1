@@ -5,81 +5,151 @@
     ViewData["Title"] = "Office Management";
 }
 @section Styles {
-    <link rel="stylesheet" href="~/css/admin-officemanagement.css" />
+    <link rel="stylesheet" href="/css/admin-officemanagement.css?v=office-management-v3" />
 }
 
-<div class="content-header">
-    <h1 class="page-title">Welcome, Admin</h1>
-    <button onclick="showCreateModal()" class="btn-create">+ Create</button>
-</div>
-
-@if (!string.IsNullOrEmpty(Model.ErrorMessage))
-{
-    <div class="alert-error">@Model.ErrorMessage</div>
-}
-@if (!string.IsNullOrEmpty(Model.SuccessMessage))
-{
-    <div class="alert-success">@Model.SuccessMessage</div>
+@{
+    var totalAccounts = Model.LguAccounts.Count;
+    var activeAccounts = Model.LguAccounts.Count(account => account.IsActive);
+    var disabledAccounts = totalAccounts - activeAccounts;
+    var officeCoverage = Model.LguAccounts.Select(account => account.Department).Distinct().Count();
 }
 
-<!-- LGU Accounts Table -->
-<div class="table-container">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Department/Office</th>
-                <th>Employee ID</th>
-                <th>Office Email</th>
-                <th>Created</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.LguAccounts.Any())
-            {
-                <tr>
-                    <td colspan="6" class="empty-row">No LGU accounts found.</td>
-                </tr>
-            }
-            @foreach (var account in Model.LguAccounts)
-            {
-                <tr>
-                    <td>
-                        @account.Department
-                        @if (account.IsSeeded)
-                        {
-                            <span class="seeded-badge">Seeded</span>
-                        }
-                    </td>
-                    <td>@account.EmployeeId</td>
-                    <td>@account.Email</td>
-                    <td>@account.CreatedAt.ToString("MM/dd/yyyy")</td>
-                    <td>
-                        <span class="status-badge @(account.IsActive ? "status-approved" : "status-rejected")">
-                            @(account.IsActive ? "Active" : "Disabled")
-                        </span>
-                    </td>
-                    <td>
-                        <button type="button"
-                                class="btn-edit"
-                                data-userid="@account.UserId"
-                                data-employeeid="@account.EmployeeId"
-                                data-email="@account.Email"
-                                data-department="@account.Department"
-                                onclick="showEditModalFromBtn(this)">Edit</button>
-                        <form method="post" asp-page-handler="ToggleStatus" style="display:inline">
-                            <input type="hidden" name="userId" value="@account.UserId" />
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn-review @(account.IsActive ? "btn-disable" : "btn-enable")">
-                                @(account.IsActive ? "Disable" : "Enable")
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+<style>
+    .admin-offices-workspace { width: 100% !important; max-width: 1280px !important; margin: 0 auto !important; }
+    .admin-offices-header { display: flex !important; align-items: flex-end !important; justify-content: space-between !important; gap: 28px !important; margin-bottom: 26px !important; }
+    .admin-offices-eyebrow, .admin-offices-panel-header > div > span { display: block !important; margin-bottom: 7px !important; color: #1646a0 !important; font-size: 10px !important; font-weight: 800 !important; letter-spacing: .12em !important; text-transform: uppercase !important; }
+    .admin-offices-header h1 { margin: 0 !important; color: #172033 !important; font-size: clamp(30px, 4vw, 43px) !important; font-weight: 760 !important; line-height: 1 !important; letter-spacing: -.045em !important; }
+    .admin-offices-header p { max-width: 690px !important; margin: 10px 0 0 !important; color: #5c687b !important; font-size: 13.5px !important; line-height: 1.55 !important; }
+    .btn-create.admin-offices-primary-action { display: inline-flex !important; min-height: 43px !important; flex: 0 0 auto !important; align-items: center !important; justify-content: center !important; gap: 8px !important; padding: 0 16px !important; border: 1px solid #1646a0 !important; border-radius: 8px !important; background: #1646a0 !important; color: #ffffff !important; font-size: 12px !important; font-weight: 750 !important; white-space: nowrap !important; box-shadow: 0 7px 16px rgba(22, 70, 160, .18) !important; }
+    .btn-create.admin-offices-primary-action > span { font-size: 18px !important; font-weight: 400 !important; line-height: 1 !important; }
+    .admin-offices-summary { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 14px !important; margin-bottom: 26px !important; }
+    .admin-offices-summary article { display: block !important; min-width: 0 !important; padding: 17px !important; border: 1px solid #dfe5ed !important; border-radius: 10px !important; background: #ffffff !important; }
+    .admin-offices-summary span { display: block !important; color: #8994a6 !important; font-size: 9px !important; font-weight: 800 !important; letter-spacing: .08em !important; text-transform: uppercase !important; }
+    .admin-offices-summary strong { display: block !important; margin: 9px 0 4px !important; color: #172033 !important; font-size: 29px !important; line-height: 1 !important; letter-spacing: -.04em !important; }
+    .admin-offices-summary small { display: block !important; color: #5c687b !important; font-size: 10.5px !important; line-height: 1.4 !important; }
+    .admin-offices-summary .admin-offices-success { color: #197153 !important; }
+    .admin-offices-summary .admin-offices-danger { color: #c43f4b !important; }
+    .admin-offices-panel { max-width: 1280px !important; margin: 0 auto !important; overflow: hidden !important; border: 1px solid #dfe5ed !important; border-radius: 10px !important; background: #ffffff !important; }
+    .admin-offices-panel-header { display: flex !important; align-items: flex-end !important; justify-content: space-between !important; gap: 20px !important; padding: 20px 20px 16px !important; border-bottom: 1px solid #dfe5ed !important; }
+    .admin-offices-panel-header h2 { margin: 0 !important; color: #172033 !important; font-size: 17px !important; font-weight: 750 !important; letter-spacing: -.025em !important; }
+    .admin-offices-panel-header p { margin: 0 !important; color: #5c687b !important; font-size: 11px !important; line-height: 1.45 !important; }
+    .admin-offices-table-wrap { width: 100% !important; overflow-x: auto !important; }
+    .admin-offices-table { width: 100% !important; min-width: 860px !important; border-collapse: collapse !important; color: #334057 !important; font-size: 12px !important; text-align: left !important; }
+    .admin-offices-table th { padding: 12px 20px !important; border-bottom: 1px solid #dfe5ed !important; color: #8994a6 !important; font-size: 9px !important; font-weight: 800 !important; letter-spacing: .08em !important; text-transform: uppercase !important; white-space: nowrap !important; }
+    .admin-offices-table td { padding: 14px 20px !important; border-bottom: 1px solid #edf0f5 !important; line-height: 1.35 !important; vertical-align: middle !important; }
+    .admin-offices-table tbody tr:last-child td { border-bottom: 0 !important; }
+    .admin-offices-table td:first-child strong { color: #172033 !important; font-weight: 750 !important; }
+    .admin-offices-email { color: #5c687b !important; }
+    .admin-offices-actions { min-width: 160px !important; text-align: right !important; white-space: nowrap !important; }
+    .admin-offices-inline-form { display: inline !important; }
+    .admin-offices-workspace .seeded-badge { display: inline-flex !important; min-height: 20px !important; align-items: center !important; margin-left: 6px !important; padding: 0 6px !important; border: 1px solid #bfd2f4 !important; border-radius: 4px !important; background: #eef4ff !important; color: #1646a0 !important; font-size: 8px !important; font-weight: 800 !important; letter-spacing: .05em !important; text-transform: uppercase !important; vertical-align: middle !important; }
+    .admin-offices-workspace .status-badge { display: inline-flex !important; min-height: 25px !important; align-items: center !important; padding: 0 8px !important; border-radius: 5px !important; font-size: 10px !important; font-weight: 800 !important; white-space: nowrap !important; }
+    .admin-offices-workspace .status-badge.status-approved { background: #e7f4ef !important; color: #197153 !important; }
+    .admin-offices-workspace .status-badge.status-rejected { background: #fbecef !important; color: #c43f4b !important; }
+    .admin-offices-workspace .btn-edit, .admin-offices-workspace .btn-review { display: inline-flex !important; min-height: 30px !important; align-items: center !important; justify-content: center !important; padding: 0 10px !important; border: 1px solid #cad9f3 !important; border-radius: 6px !important; background: #ffffff !important; color: #1646a0 !important; font-size: 10px !important; font-weight: 800 !important; cursor: pointer !important; }
+    .admin-offices-workspace .btn-edit { margin-right: 5px !important; }
+    .admin-offices-workspace .btn-review.btn-disable { border-color: #efbdc4 !important; background: #ffffff !important; color: #b03440 !important; }
+    .admin-offices-workspace .btn-review.btn-enable { border-color: #b9dfd1 !important; background: #ffffff !important; color: #197153 !important; }
+    @@media (max-width: 920px) { .admin-offices-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+    @@media (max-width: 700px) { .admin-offices-header, .admin-offices-panel-header { align-items: flex-start !important; flex-direction: column !important; gap: 14px !important; } .btn-create.admin-offices-primary-action { width: 100% !important; } }
+</style>
+
+<div class="admin-offices-workspace">
+    <header class="admin-offices-header">
+        <div>
+            <span class="admin-offices-eyebrow">Office access administration</span>
+            <h1>LGU office accounts</h1>
+            <p>Create and maintain department access while keeping account status and credential changes under controlled review.</p>
+        </div>
+        <button type="button" onclick="showCreateModal()" class="btn-create admin-offices-primary-action">
+            <span aria-hidden="true">+</span> Create office account
+        </button>
+    </header>
+
+    <section class="admin-offices-summary" aria-label="LGU account summary">
+        <article><span>Total accounts</span><strong>@totalAccounts</strong><small>LGU user records</small></article>
+        <article><span>Active access</span><strong class="admin-offices-success">@activeAccounts</strong><small>Enabled for sign-in</small></article>
+        <article><span>Disabled access</span><strong class="admin-offices-danger">@disabledAccounts</strong><small>Locked office accounts</small></article>
+        <article><span>Office coverage</span><strong>@officeCoverage</strong><small>Assigned departments</small></article>
+    </section>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert-error" role="alert">@Model.ErrorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert-success" role="status">@Model.SuccessMessage</div>
+    }
+
+    <section class="admin-offices-panel" aria-labelledby="officeAccountsHeading">
+        <header class="admin-offices-panel-header">
+            <div>
+                <span>Directory</span>
+                <h2 id="officeAccountsHeading">Office account register</h2>
+            </div>
+            <p>Manage credentials and enablement state for every LGU department account.</p>
+        </header>
+        <div class="admin-offices-table-wrap">
+            <table class="admin-offices-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Department / office</th>
+                        <th scope="col">Employee ID</th>
+                        <th scope="col">Office email</th>
+                        <th scope="col">Created</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Account actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.LguAccounts.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="empty-row">No LGU accounts found.</td>
+                        </tr>
+                    }
+                    @foreach (var account in Model.LguAccounts)
+                    {
+                        <tr>
+                            <td data-label="Department / office">
+                                <strong>@account.Department</strong>
+                                @if (account.IsSeeded)
+                                {
+                                    <span class="seeded-badge">Seeded</span>
+                                }
+                            </td>
+                            <td data-label="Employee ID">@account.EmployeeId</td>
+                            <td data-label="Office email"><span class="admin-offices-email">@account.Email</span></td>
+                            <td data-label="Created"><time datetime="@account.CreatedAt.ToString("yyyy-MM-dd")">@account.CreatedAt.ToString("MM/dd/yyyy")</time></td>
+                            <td data-label="Status">
+                                <span class="status-badge @(account.IsActive ? "status-approved" : "status-rejected")">
+                                    @(account.IsActive ? "Active" : "Disabled")
+                                </span>
+                            </td>
+                            <td class="admin-offices-actions" data-label="Actions">
+                                <button type="button"
+                                        class="btn-edit"
+                                        data-userid="@account.UserId"
+                                        data-employeeid="@account.EmployeeId"
+                                        data-email="@account.Email"
+                                        data-department="@account.Department"
+                                        onclick="showEditModalFromBtn(this)">Edit</button>
+                                <form method="post" asp-page-handler="ToggleStatus" class="admin-offices-inline-form">
+                                    <input type="hidden" name="userId" value="@account.UserId" />
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-review @(account.IsActive ? "btn-disable" : "btn-enable")">
+                                        @(account.IsActive ? "Disable" : "Enable")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 <!-- ═══════════════════ CREATE MODAL ═══════════════════ -->

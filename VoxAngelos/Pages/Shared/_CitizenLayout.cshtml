@@ -40,28 +40,34 @@
     @RenderSection("Styles", required: false)
 </head>
 
-<body>
-
-    @{
-        var path = Context.Request.Path.Value?.ToLower() ?? "";
-    }
+@{
+    var path = Context.Request.Path.Value?.ToLower() ?? "";
+}
+<body class="citizen-shell citizen-discover-shell">
 
     <div class="layout-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-brand">
-                <img src="~/assets/VoxAngelosLogo.png" class="brand-logo">
-                    <span class="brand-name">ox Angelos</span>
-                </div>
+            <a asp-page="/User/Index" class="sidebar-brand" aria-label="Vox Angelos citizen portal">
+                <img src="~/assets/VoxAngelosLogo.png" class="brand-logo" alt="" />
+                <span class="brand-copy">
+                    <strong class="brand-name">Vox Angelos</strong>
+                    <small>Citizen portal</small>
+                </span>
+            </a>
 
-                <nav class="sidebar-nav">
+            <nav class="sidebar-nav" aria-label="Citizen navigation">
 
-                    <div class="user-profile">
-                    <a asp-page="/User/Profile" class="nav-item @(path == "/user/profile" ? "active" : "")">
-                        <img src="~/assets/sd.png" class="sidebar-avatar" alt="Profile" />
-                        <span>@firstName</span>  <!-- however you access the user's first name -->
+                <div class="user-profile">
+                    <a asp-page="/User/Profile" class="profile-link @(path == "/user/profile" ? "active" : "")">
+                        <span class="sidebar-avatar-fallback" aria-hidden="true">@(firstName.Length > 0 ? firstName[0].ToString().ToUpperInvariant() : "U")</span>
+                        <span class="profile-copy">
+                            <strong>@firstName</strong>
+                            <small>View profile</small>
+                        </span>
+                        <span class="profile-arrow" aria-hidden="true">›</span>
                     </a>
-                    </div>
+                </div>
 
                     <hr class="sidebar-divider" />
 
@@ -70,7 +76,7 @@
                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                             <polyline points="9,22 9,12 15,12 15,22" />
                         </svg>
-                        <span>Home</span>
+                        <span>Discover</span>
                     </a>
                     <a asp-page="/User/Notifications" class="nav-item @(path == "/user/notifications" ? "active" : "")">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -134,9 +140,9 @@
                     <span></span><span></span><span></span>
                 </button>
                 <div class="mobile-brand">
-                    <img src="~/assets/VoxAngelosLogo.png" class="brand-v">
-                        <span>ox Angelos</span>
-                    </div>
+                    <img src="~/assets/VoxAngelosLogo.png" class="brand-v" alt="" />
+                    <span>Vox Angelos</span>
+                </div>
                 </div>
 
                 <!-- Sidebar overlay -->
@@ -238,20 +244,73 @@
               language-code="en"
               max-query-length="-1">
               <df-messenger-chat-bubble
-                chat-title="Vox Angelos Chatbot">
+                chat-title="Vox Angelos Help Desk">
               </df-messenger-chat-bubble>
             </df-messenger>
             <style>
+              /* Dialogflow Messenger uses documented CSS properties on the host
+                 element, retaining its existing agent and interaction flow. */
               df-messenger {
-                z-index: 999;
                 position: fixed;
-                --df-messenger-font-color: #000;
-                --df-messenger-font-family: Google Sans;
-                --df-messenger-chat-background: #f3f6fc;
-                --df-messenger-message-user-background: #d3e3fd;
-                --df-messenger-message-bot-background: #fff;
-                bottom: 16px;
-                right: 16px;
+                right: 24px;
+                bottom: 22px;
+                z-index: 999;
+                --df-messenger-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                --df-messenger-font-size: 13px;
+                --df-messenger-font-color: #172033;
+                --df-messenger-primary-color: #1646a0;
+                --df-messenger-focus-color: #1646a0;
+                --df-messenger-focus-color-contrast: #ffffff;
+                --df-messenger-chat-border: 1px solid #dfe5ed;
+                --df-messenger-chat-border-radius: 12px;
+                --df-messenger-chat-window-width: min(380px, calc(100vw - 32px));
+                --df-messenger-chat-window-height: min(560px, calc(100vh - 104px));
+                --df-messenger-chat-window-offset: 14px;
+                --df-messenger-chat-window-box-shadow: 0 18px 45px rgba(23, 32, 51, .18);
+                --df-messenger-chat-bubble-size: 54px;
+                --df-messenger-chat-bubble-background: #1646a0;
+                --df-messenger-chat-bubble-border: 1px solid #0b2e6f;
+                --df-messenger-chat-bubble-border-radius: 14px;
+                --df-messenger-chat-bubble-icon-color: #ffffff;
+                --df-messenger-titlebar-background: #0b2e6f;
+                --df-messenger-titlebar-padding: 0 18px;
+                --df-messenger-titlebar-border-bottom: 1px solid rgba(255, 255, 255, .16);
+                --df-messenger-titlebar-font-color: #ffffff;
+                --df-messenger-titlebar-title-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                --df-messenger-titlebar-title-font-size: 14px;
+                --df-messenger-titlebar-title-font-weight: 750;
+                --df-messenger-titlebar-title-letter-spacing: -.01em;
+                --df-messenger-chat-background: #f8fafc;
+                --df-messenger-chat-padding: 14px;
+                --df-messenger-message-spacing: 9px;
+                --df-messenger-message-border-radius: 9px;
+                --df-messenger-message-bot-background: #ffffff;
+                --df-messenger-message-bot-border: 1px solid #dfe5ed;
+                --df-messenger-message-bot-font-color: #253047;
+                --df-messenger-message-user-background: #1646a0;
+                --df-messenger-message-user-font-color: #ffffff;
+                --df-messenger-message-font-size: 12.5px;
+                --df-messenger-input-background: #ffffff;
+                --df-messenger-input-border-top: 1px solid #dfe5ed;
+                --df-messenger-input-box-border: 1px solid #d5deeb;
+                --df-messenger-input-box-focus-border: 1px solid #1646a0;
+                --df-messenger-input-box-border-radius: 8px;
+                --df-messenger-input-box-padding: 10px 14px;
+                --df-messenger-input-box-focus-padding: 10px 14px;
+                --df-messenger-input-font-color: #172033;
+                --df-messenger-input-font-size: 12.5px;
+                --df-messenger-send-icon-color: #8994a6;
+                --df-messenger-send-icon-color-hover: #1646a0;
+                --df-messenger-send-icon-color-active: #1646a0;
+              }
+
+              @@media (max-width: 640px) {
+                df-messenger {
+                  right: 14px;
+                  bottom: 14px;
+                  --df-messenger-chat-window-width: calc(100vw - 28px);
+                  --df-messenger-chat-window-height: min(520px, calc(100vh - 92px));
+                }
               }
             </style>
         </body>
