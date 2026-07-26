@@ -17,7 +17,6 @@
         <h1 class="page-title">Profile</h1>
         <p class="citizen-page-description">Review the verified identity information connected to your account.</p>
     </div>
-    <a asp-page="/User/AccountSecurity" class="citizen-secondary-action">Manage account security</a>
 </header>
 
 <div class="profile-container">
@@ -34,60 +33,64 @@
             <div class="profile-header-info">
                 <h2 class="user-display-name">@displayName</h2>
                 <span class="user-role-badge">Verified Citizen</span>
+                <p class="profile-verification-summary">@profile.VerificationSummary</p>
             </div>
 
             <p class="profile-security-note">Your identity information is protected and cannot be changed from this page.</p>
 
-            <div class="profile-fields-grid">
-                <div class="profile-field">
-                    <label>First Name</label>
-                    <div class="field-value-box">@(profile.FirstName ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>Middle Name</label>
-                    <div class="field-value-box">@(profile.MiddleName ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>Last Name</label>
-                    <div class="field-value-box">@(profile.LastName ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>Phone Number</label>
-                    <div class="field-value-box">@(profile.PhoneNumber ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>Barangay</label>
-                    <div class="field-value-box">@(profile.Barangay ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>City</label>
-                    <div class="field-value-box">@(profile.City ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>Email Address</label>
-                    <div class="field-value-box">@(profile.EmailAddress ?? "Not available")</div>
-                    <small class="profile-readonly-note">Change this securely from Account Security in the sidebar.</small>
-                </div>
-                <div class="profile-field">
-                    <label>Birth Date</label>
-                    <div class="field-value-box">@(profile.BirthDate?.ToString("MMMM dd, yyyy") ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>Identification Type</label>
-                    <div class="field-value-box">@(profile.IdType ?? "Not available")</div>
-                </div>
-                <div class="profile-field">
-                    <label>ID Document</label>
-                    @if (!string.IsNullOrWhiteSpace(profile.IdDocumentPath))
+            <section class="profile-details-section" aria-labelledby="personalInformationHeading">
+                <h3 id="personalInformationHeading" class="profile-section-heading">Personal information</h3>
+                <div class="profile-fields-grid">
+                    <div class="profile-field">
+                        <label>First Name</label>
+                        <div class="field-value-box">@(profile.FirstName ?? "Not available")</div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(profile.MiddleName))
                     {
-                        <a class="field-value-box link" href="@profile.IdDocumentPath" target="_blank" rel="noopener">View verified document</a>
+                        <div class="profile-field">
+                            <label>Middle Name</label>
+                            <div class="field-value-box">@profile.MiddleName</div>
+                        </div>
                     }
-                    else
-                    {
-                        <div class="field-value-box">Not available</div>
-                    }
+                    <div class="profile-field">
+                        <label>Last Name</label>
+                        <div class="field-value-box">@(profile.LastName ?? "Not available")</div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Birth Date</label>
+                        <div class="field-value-box">@(profile.BirthDate?.ToString("MMMM dd, yyyy") ?? "Not available")</div>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="profile-details-section" aria-labelledby="contactInformationHeading">
+                <h3 id="contactInformationHeading" class="profile-section-heading">Contact information</h3>
+                <div class="profile-fields-grid">
+                    <div class="profile-field">
+                        <label>Phone Number</label>
+                        <div class="field-value-box">@(profile.PhoneNumber ?? "Not available")</div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Email Address</label>
+                        <div class="field-value-box">@(profile.EmailAddress ?? "Not available")</div>
+                        <small class="profile-readonly-note">Change this securely from Account Security in the sidebar.</small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="profile-details-section" aria-labelledby="addressInformationHeading">
+                <h3 id="addressInformationHeading" class="profile-section-heading">Address information</h3>
+                <div class="profile-fields-grid">
+                    <div class="profile-field">
+                        <label>Barangay</label>
+                        <div class="field-value-box">@(profile.Barangay ?? "Not available")</div>
+                    </div>
+                    <div class="profile-field">
+                        <label>City</label>
+                        <div class="field-value-box">@(profile.City ?? "Not available")</div>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 </div>

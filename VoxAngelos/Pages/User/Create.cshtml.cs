@@ -116,8 +116,14 @@ namespace VoxAngelos.Pages.User
 
         public async Task<IActionResult> OnPostAsync()
         {
+            var isAjaxRequest = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
             var user = await _userManager.GetUserAsync(User);
-            if (user == null) return RedirectToPage("/Login");
+            if (user == null)
+            {
+                return isAjaxRequest
+                    ? new JsonResult(new { success = false, message = "Your session has expired. Please sign in again." }) { StatusCode = StatusCodes.Status401Unauthorized }
+                    : RedirectToPage("/Login");
+            }
 
             // This handler submits only a concern. Ignore validation generated for
             // the separate recommendation form that shares this Razor Page.
@@ -151,6 +157,15 @@ namespace VoxAngelos.Pages.User
 
             if (!ModelState.IsValid)
             {
+                if (isAjaxRequest)
+                {
+                    var message = ModelState.Values
+                        .SelectMany(value => value.Errors)
+                        .Select(error => error.ErrorMessage)
+                        .FirstOrDefault() ?? "Your concern could not be submitted. Please check the form and try again.";
+                    return BadRequest(new { success = false, message });
+                }
+
                 await OnGetAsync();
                 return Page();
             }
@@ -230,6 +245,9 @@ namespace VoxAngelos.Pages.User
                 : ConcernClassificationService.Departments;
             foreach (var dept in notifyDepartments)
                 await _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(dept)).SendAsync("ConcernFeedChanged");
+
+            if (isAjaxRequest)
+                return new JsonResult(new { success = true });
 
             TempData["ConcernSuccess"] = "Your concern has been submitted successfully!";
             return RedirectToPage();

@@ -121,13 +121,17 @@ def ocr_id():
         detected_locality = "Not detected"
         locality_matched = False
         
-        # Check if any Angeles Barangay exists in the full raw text
-        for bgy in ACTIVE_BARANGAYS:
-            pattern = r'\b' + re.escape(bgy.upper()) + r'\b'
-            if re.search(pattern, text_upper):
-                detected_locality = bgy.title()
-                locality_matched = True
-                break
+        # Only inspect the detected address.  Searching the whole ID creates
+        # false matches when a citizen's surname is also a barangay name (for
+        # example, "Gomez").
+        if detected_address != "Not detected":
+            address_upper = detected_address.upper()
+            for bgy in ACTIVE_BARANGAYS:
+                pattern = r'\b' + re.escape(bgy.upper()) + r'\b'
+                if re.search(pattern, address_upper):
+                    detected_locality = bgy.title()
+                    locality_matched = True
+                    break
 
         # ── 4. OCR Confidence ───────────────────────────────────
         data = pytesseract.image_to_data(thresh, output_type=pytesseract.Output.DICT)

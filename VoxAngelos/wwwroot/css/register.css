@@ -74,9 +74,11 @@ input.tech-input { padding:0 13px; }
 .file-input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none; }
 .file-drop-zone__icon { display:block; width:28px; height:28px; margin:0 auto 8px; color:var(--civic-blue); }
 .file-drop-zone__text { font-size:10px; font-weight:650; }
-.camera-container-neo { overflow:hidden; border:1px solid #d9e0e9; border-radius:8px; background:#172033; }
-#cameraFeed,#capturedCanvas { display:block; width:100%; max-height:260px; object-fit:cover; transform:scaleX(-1); }
+.camera-container-neo { display:grid; min-height:180px; place-items:center; overflow:hidden; border:1px solid #d9e0e9; border-radius:8px; background:#f7f9fc; }
+#capturedCanvas { display:block; width:100%; max-height:260px; object-fit:contain; transform:scaleX(-1); }
 #capturedCanvas { display:none; }
+.selfie-preview-placeholder { display:grid; gap:7px; place-items:center; padding:22px; color:#687488; font-size:10px; text-align:center; }
+.selfie-preview-icon { color:var(--civic-blue); font-size:27px; line-height:1; }
 .camera-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:9px; margin-top:11px; }
 .btn-camera-text { min-height:34px; padding:0 12px; border:1px solid #d9e0e9; border-radius:6px; background:#fff; color:var(--civic-blue); font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
 .btn-camera-text:hover { border-color:var(--civic-blue); background:var(--civic-blue-soft); }
@@ -99,6 +101,20 @@ input.tech-input { padding:0 13px; }
 .registration-result-card h3 { margin:0 0 8px; color:var(--civic-ink); font-size:18px; letter-spacing:-.02em; }
 .registration-result-card p { margin:0 0 19px; color:var(--civic-body); font-size:11px; line-height:1.55; }
 .registration-result-button { width:auto; min-width:130px; }
+.camera-capture-modal { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(15,23,42,.72); backdrop-filter:blur(4px); }
+.camera-capture-modal.is-open { display:flex; }
+.camera-capture-dialog { width:min(100%,560px); max-height:calc(100dvh - 48px); overflow-y:auto; padding:28px; border-radius:16px; background:#fff; box-shadow:0 28px 70px rgba(15,23,42,.34); }
+.camera-capture-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.camera-capture-header .eyebrow { margin-bottom:8px; }
+.camera-capture-header h2 { margin:0; color:var(--civic-ink); font-size:22px; font-weight:760; letter-spacing:-.035em; }
+.camera-close-button { display:grid; width:34px; min-width:34px; height:34px; place-items:center; border:1px solid #d9e0e9; border-radius:50%; background:#fff; color:#536075; font-size:24px; line-height:1; }
+.camera-close-button:hover { border-color:var(--civic-blue); color:var(--civic-blue); }
+.camera-capture-help { margin:10px 0 17px; color:var(--civic-body); font-size:11px; line-height:1.5; }
+.camera-capture-viewport { position:relative; display:grid; width:min(100%,420px); aspect-ratio:3 / 4; max-height:62dvh; margin:auto; place-items:center; overflow:hidden; border-radius:14px; background:#111827; }
+#cameraOverlayBackdrop { position:absolute; inset:-20px; width:calc(100% + 40px); height:calc(100% + 40px); object-fit:cover; opacity:.58; filter:blur(16px); transform:scaleX(-1); }
+#cameraOverlayFeed { position:relative; z-index:1; display:block; width:100%; height:100%; object-fit:contain; transform:scaleX(-1); }
+.face-guide { position:absolute; z-index:2; width:56%; height:70%; border:2px solid rgba(255,255,255,.92); border-radius:50%; box-shadow:0 0 0 999px rgba(15,23,42,.12); pointer-events:none; }
+.camera-capture-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 @media (max-width:860px) { .main-viewport { padding:28px 0; } .tech-wrapper { width:min(540px,calc(100% - 32px)); min-height:0; } .tech-wrapper .row { display:block !important; min-height:0; } .glass-inner { padding:32px; } .portal-brand { margin-bottom:29px; } .portal-title { max-width:none; font-size:34px; } .tagline { max-width:460px; } .step-indicator { display:none; } .panel-right { padding:34px 28px; max-height:none; overflow:visible; } }
-@media (max-width:480px) { .main-viewport { padding:0; } .tech-wrapper { width:100%; border-right:0; border-left:0; border-radius:0; } .glass-inner { padding:26px 20px; } .panel-right { padding:31px 20px; } .portal-brand { margin-bottom:25px; } .portal-title { font-size:31px; } .step-title { font-size:25px; } .privacy-agreement-card { padding:14px; } .privacy-terms { max-height:190px; } }
+@media (max-width:480px) { .main-viewport { padding:0; } .tech-wrapper { width:100%; border-right:0; border-left:0; border-radius:0; } .glass-inner { padding:26px 20px; } .panel-right { padding:31px 20px; } .portal-brand { margin-bottom:25px; } .portal-title { font-size:31px; } .step-title { font-size:25px; } .privacy-agreement-card { padding:14px; } .privacy-terms { max-height:190px; } .camera-capture-modal { padding:0; } .camera-capture-dialog { width:100%; min-height:100dvh; max-height:100dvh; padding:24px 20px; border-radius:0; } .camera-capture-viewport { width:min(100%,390px); max-height:59dvh; } .camera-capture-actions { position:sticky; bottom:-24px; padding:14px 0 3px; background:#fff; } .camera-capture-actions button { flex:1; } }
