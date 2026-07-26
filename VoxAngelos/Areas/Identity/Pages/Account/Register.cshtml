@@ -210,12 +210,14 @@
                                 <div class="mb-2">
                                     <label class="form-text-label">Live Selfie</label>
                                     <div id="cameraContainer" class="camera-container-neo">
-                                        <video id="cameraFeed" autoplay playsinline></video>
                                         <canvas id="capturedCanvas"></canvas>
+                                        <div id="selfiePreviewPlaceholder" class="selfie-preview-placeholder">
+                                            <span class="selfie-preview-icon">◉</span>
+                                            <span>Your captured selfie will appear here.</span>
+                                        </div>
                                     </div>
                                     <div class="camera-controls" id="cameraControls">
                                         <button type="button" id="btnStartCamera" onclick="startCamera()" class="btn-camera-text">▶ Open Camera</button>
-                                        <button type="button" id="btnCapture" onclick="capturePhoto()" class="btn-capture-round" style="display:none;"><div class="inner"></div></button>
                                         <button type="button" id="btnRetake" onclick="retakePhoto()" class="btn-camera-text" style="display:none;">↺ Retake</button>
                                     </div>
                                     <div id="selfieStatus" class="selfie-status"></div>
@@ -279,6 +281,28 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cameraCaptureModal" class="camera-capture-modal" role="dialog" aria-modal="true" aria-labelledby="cameraCaptureTitle" aria-hidden="true">
+        <div class="camera-capture-dialog">
+            <div class="camera-capture-header">
+                <div>
+                    <span class="eyebrow">Live Selfie</span>
+                    <h2 id="cameraCaptureTitle">Center your face in the guide</h2>
+                </div>
+                <button type="button" class="camera-close-button" onclick="closeCameraCapture()" aria-label="Close camera">×</button>
+            </div>
+            <p class="camera-capture-help">Keep your whole face visible, including your forehead and chin. Remove masks, hats, and sunglasses.</p>
+            <div class="camera-capture-viewport">
+                <video id="cameraOverlayBackdrop" autoplay playsinline muted aria-hidden="true"></video>
+                <video id="cameraOverlayFeed" autoplay playsinline></video>
+                <div class="face-guide" aria-hidden="true"></div>
+            </div>
+            <div class="camera-capture-actions">
+                <button type="button" class="cta-back" onclick="closeCameraCapture()">Cancel</button>
+                <button type="button" id="btnCapture" onclick="capturePhoto()" class="cta">Capture Selfie</button>
             </div>
         </div>
     </div>
@@ -567,17 +591,29 @@
         // ── Camera Implementation ──────────────────────────────────────
         async function startCamera() {
         try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640 } });
-        document.getElementById('cameraFeed').srcObject = cameraStream;
-        $('#btnStartCamera').hide(); $('#btnCapture').css('display', 'flex');
-        } catch(e) { setStatus('Cam Access Denied.', 'error'); }
+        stopCamera();
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: 'user' },
+                width: { ideal: 720 },
+                height: { ideal: 960 },
+                aspectRatio: { ideal: 0.75 }
+            },
+            audio: false
+        });
+        document.getElementById('cameraOverlayFeed').srcObject = cameraStream;
+        document.getElementById('cameraOverlayBackdrop').srcObject = cameraStream;
+        document.getElementById('cameraCaptureModal').classList.add('is-open');
+        document.getElementById('cameraCaptureModal').setAttribute('aria-hidden', 'false');
+        } catch(e) { setStatus('We could not open your camera. Please allow camera access and try again.', 'error'); }
         }
 
         function capturePhoto() {
-        const v = document.getElementById('cameraFeed'), c = document.getElementById('capturedCanvas');
+        const v = document.getElementById('cameraOverlayFeed'), c = document.getElementById('capturedCanvas');
         c.width = v.videoWidth; c.height = v.videoHeight;
         c.getContext('2d').drawImage(v, 0, 0);
-        $(v).hide(); $(c).show(); $('#btnCapture').hide(); $('#btnRetake').show();
+        closeCameraCapture();
+        $('#capturedCanvas').show(); $('#selfiePreviewPlaceholder').hide(); $('#btnStartCamera').hide(); $('#btnRetake').show();
         c.toBlob(blob => {
         const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
         const dt = new DataTransfer(); dt.items.add(file);
@@ -586,8 +622,23 @@
         }, 'image/jpeg', 0.9);
         }
 
-        function retakePhoto() { selfieCaptured = false; $('#capturedCanvas').hide(); $('#cameraFeed').show(); $('#btnRetake').hide(); $('#btnCapture').show(); setStatus('', ''); }
-        function stopCamera() { if (cameraStream) cameraStream.getTracks().forEach(t => t.stop()); }
+        function retakePhoto() {
+        selfieCaptured = false;
+        $('#capturedCanvas').hide(); $('#selfiePreviewPlaceholder').show(); $('#btnRetake').hide(); $('#btnStartCamera').show();
+        setStatus('', '');
+        startCamera();
+        }
+        function closeCameraCapture() {
+        document.getElementById('cameraCaptureModal').classList.remove('is-open');
+        document.getElementById('cameraCaptureModal').setAttribute('aria-hidden', 'true');
+        stopCamera();
+        }
+        function stopCamera() {
+        if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+        document.getElementById('cameraOverlayFeed').srcObject = null;
+        document.getElementById('cameraOverlayBackdrop').srcObject = null;
+        }
         function setStatus(m, t) { $('#selfieStatus').text(m).removeClass('success error').addClass(t); }
 
         // ── Security Validation ────────────────────────────────────────

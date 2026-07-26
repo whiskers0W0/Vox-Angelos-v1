@@ -356,6 +356,14 @@
     text-transform: uppercase;
 }
 
+.citizen-shell .profile-verification-summary {
+    flex-basis: 100%;
+    margin: -3px 0 0;
+    color: var(--va-muted);
+    font-size: 10px;
+    font-weight: 650;
+}
+
 .citizen-shell .profile-security-note {
     margin: 0 0 22px;
     padding: 10px 12px;
@@ -365,6 +373,20 @@
     color: #50627f;
     font-size: 10.5px;
     line-height: 1.5;
+}
+
+.citizen-shell .profile-details-section + .profile-details-section {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--va-line);
+}
+
+.citizen-shell .profile-section-heading {
+    margin: 0 0 12px;
+    color: var(--va-ink);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .01em;
 }
 
 .citizen-shell .profile-fields-grid {

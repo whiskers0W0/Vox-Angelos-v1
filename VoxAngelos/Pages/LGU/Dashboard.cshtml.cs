@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using VoxAngelos.Data;
 
 namespace VoxAngelos.Pages.LGU
@@ -89,20 +90,27 @@ namespace VoxAngelos.Pages.LGU
 
             
 
-            // Top Barangays
-            var barangayGroups = await concerns
-                .Where(c => c.LocationName != null)
-                .GroupBy(c => c.LocationName)
-                .Select(g => new { Barangay = g.Key, Count = g.Count() })
-                .OrderByDescending(g => g.Count)
-                .Take(5)
+            // Top Barangays — assign each mapped concern to the barangay boundary
+            // that contains its saved latitude and longitude.
+            var mappedConcernLocations = await concerns
+                .Where(c => c.Latitude.HasValue && c.Longitude.HasValue)
+                .Select(c => new { Latitude = c.Latitude!.Value, Longitude = c.Longitude!.Value })
                 .ToListAsync();
 
-            TopBarangays = barangayGroups.Select(g => new BarangayCount
-            {
-                Barangay = g.Barangay ?? "Unknown",
-                Count = g.Count
-            }).ToList();
+            var barangayBoundaries = await LoadBarangayBoundariesAsync();
+            TopBarangays = mappedConcernLocations
+                .Select(c => FindBarangay(c.Latitude, c.Longitude, barangayBoundaries))
+                .Where(barangay => !string.IsNullOrWhiteSpace(barangay))
+                .GroupBy(barangay => barangay!)
+                .Select(group => new BarangayCount
+                {
+                    Barangay = group.Key,
+                    Count = group.Count()
+                })
+                .OrderByDescending(item => item.Count)
+                .ThenBy(item => item.Barangay)
+                .Take(5)
+                .ToList();
 
             // Concern Trends — last 7 days
             var today = DateTime.UtcNow.Date;
@@ -123,12 +131,12 @@ namespace VoxAngelos.Pages.LGU
             TrendLabels = System.Text.Json.JsonSerializer.Serialize(labels);
             TrendData = System.Text.Json.JsonSerializer.Serialize(data);
 
-            // Recent Activity — last 10 concern events
+            // Recent Activity — latest 5 concern events
             var recent = await concerns
                 .Include(c => c.Citizen)
                 .ThenInclude(u => u.UserProfile)
                 .OrderByDescending(c => c.UpdatedAt ?? c.SubmittedAt)
-                .Take(10)
+                .Take(5)
                 .ToListAsync();
 
             foreach (var c in recent)
@@ -169,6 +177,94 @@ namespace VoxAngelos.Pages.LGU
                     });
                 }
             }
+        }
+
+        private sealed class BarangayBoundary
+        {
+            public string Name { get; init; } = string.Empty;
+            public string GeometryType { get; init; } = string.Empty;
+            public JsonElement Coordinates { get; init; }
+        }
+
+        private static async Task<List<BarangayBoundary>> LoadBarangayBoundariesAsync()
+        {
+            var geoJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "geojson", "angeles-city-barangays.geojson");
+            if (!System.IO.File.Exists(geoJsonPath))
+            {
+                return new List<BarangayBoundary>();
+            }
+
+            await using var stream = System.IO.File.OpenRead(geoJsonPath);
+            using var document = await JsonDocument.ParseAsync(stream);
+
+            return document.RootElement.GetProperty("features")
+                .EnumerateArray()
+                .Select(feature => new BarangayBoundary
+                {
+                    Name = feature.GetProperty("properties").GetProperty("name").GetString() ?? string.Empty,
+                    GeometryType = feature.GetProperty("geometry").GetProperty("type").GetString() ?? string.Empty,
+                    Coordinates = feature.GetProperty("geometry").GetProperty("coordinates").Clone()
+                })
+                .ToList();
+        }
+
+        private static string? FindBarangay(double latitude, double longitude, IEnumerable<BarangayBoundary> boundaries)
+        {
+            foreach (var boundary in boundaries)
+            {
+                var containsPoint = boundary.GeometryType switch
+                {
+                    "Polygon" => IsPointInPolygon(longitude, latitude, boundary.Coordinates),
+                    "MultiPolygon" => boundary.Coordinates.EnumerateArray()
+                        .Any(polygon => IsPointInPolygon(longitude, latitude, polygon)),
+                    _ => false
+                };
+
+                if (containsPoint)
+                {
+                    return boundary.Name;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsPointInPolygon(double longitude, double latitude, JsonElement polygon)
+        {
+            if (polygon.GetArrayLength() == 0 || !IsPointInRing(longitude, latitude, polygon[0]))
+            {
+                return false;
+            }
+
+            return !polygon.EnumerateArray().Skip(1)
+                .Any(hole => IsPointInRing(longitude, latitude, hole));
+        }
+
+        private static bool IsPointInRing(double longitude, double latitude, JsonElement ring)
+        {
+            var inside = false;
+            var pointCount = ring.GetArrayLength();
+            if (pointCount < 3)
+            {
+                return false;
+            }
+
+            for (int current = 0, previous = pointCount - 1; current < pointCount; previous = current++)
+            {
+                var currentLongitude = ring[current][0].GetDouble();
+                var currentLatitude = ring[current][1].GetDouble();
+                var previousLongitude = ring[previous][0].GetDouble();
+                var previousLatitude = ring[previous][1].GetDouble();
+
+                var crossesLatitude = (currentLatitude > latitude) != (previousLatitude > latitude);
+                if (crossesLatitude && longitude < (previousLongitude - currentLongitude) * (latitude - currentLatitude) /
+                    (previousLatitude - currentLatitude) + currentLongitude)
+                {
+                    inside = !inside;
+                }
+            }
+
+            return inside;
         }
     }
 }
