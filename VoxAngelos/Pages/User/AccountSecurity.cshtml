@@ -9,13 +9,14 @@
     <link rel="stylesheet" href="~/css/citizen-account-security.css" asp-append-version="true" />
 }
 
-<div class="content-header">
+<header class="content-header citizen-page-header">
     <div>
+        <span class="citizen-page-eyebrow">Citizen account</span>
         <h1 class="page-title">Account Security</h1>
-        <p class="security-subtitle">Protect your sign-in details and verify important changes.</p>
+        <p class="security-subtitle citizen-page-description">Protect your sign-in details and verify important changes.</p>
     </div>
-    <a asp-page="/User/Profile" class="security-back-link">Back to Profile</a>
-</div>
+    <a asp-page="/User/Profile" class="security-back-link citizen-secondary-action">Back to profile</a>
+</header>
 
 <div class="security-container">
     @if (TempData["SecuritySuccess"] != null)

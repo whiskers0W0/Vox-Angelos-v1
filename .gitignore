@@ -376,3 +376,7 @@ VoxAngelos/App_Data/identity-documents/
 
 # Data Protection key ring — machine-local, must never be committed/shared
 VoxAngelos/DataProtection-Keys/
+# Local headless browser profiles used for layout checks
+.edge-layout-check/
+.edge-*-check/
+.tmp_*.py

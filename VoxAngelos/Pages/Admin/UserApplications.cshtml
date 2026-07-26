@@ -3,80 +3,90 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "User Applications";
-
 }
 @section Styles {
-    <link rel="stylesheet" href="~/css/admin-userapplications.css" />
+    <link rel="stylesheet" href="~/css/admin-userapplications.css" asp-append-version="true" />
 }
 
-<div class="content-header">
-    <h1 class="page-title">User (Citizen) Applications</h1>
-</div>
+<div class="admin-applications-workspace">
+    <header class="admin-applications-header">
+        <div>
+            <span class="admin-applications-eyebrow">Citizen account intake</span>
+            <h1>User applications</h1>
+            <p>Review identity verification submissions and move qualified citizen accounts through the approval queue.</p>
+        </div>
+        <div class="admin-applications-queue-summary" aria-label="Current queue view">
+            <span>Current view</span>
+            <strong>@Model.FilterStatus</strong>
+            <small>@Model.Applications.Count application@(Model.Applications.Count == 1 ? "" : "s")</small>
+        </div>
+    </header>
 
-@if (TempData["AdminError"] != null)
-{
-    <div class="alert-error">@TempData["AdminError"]</div>
-}
+    @if (TempData["AdminError"] != null)
+    {
+        <div class="admin-applications-alert" role="alert">@TempData["AdminError"]</div>
+    }
 
-            <!-- Filter Bar -->
-            <div class="filter-bar">
-                <div class="filter-group">
-                    <a href="?filterStatus=All"
-                       class="filter-btn @(Model.FilterStatus == "All" ? "active" : "")">All</a>
-                    <a href="?filterStatus=Pending"
-                       class="filter-btn @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
-                    <a href="?filterStatus=Approved"
-                       class="filter-btn @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
-                    <a href="?filterStatus=Rejected"
-                       class="filter-btn @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
-                </div>
+    <section class="admin-applications-panel" aria-labelledby="applicationsQueueHeading">
+        <header class="admin-applications-panel-header">
+            <div>
+                <span>Verification queue</span>
+                <h2 id="applicationsQueueHeading">Citizen application records</h2>
             </div>
+            <p>Use a status filter to focus the review list.</p>
+        </header>
 
-            <!-- Applications Table -->
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
+        <nav class="admin-applications-filters" aria-label="Filter applications by status">
+            <a href="?filterStatus=All" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
+            <a href="?filterStatus=Pending" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
+            <a href="?filterStatus=Approved" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
+            <a href="?filterStatus=Rejected" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
+        </nav>
+
+        <div class="admin-applications-table-wrap">
+            <table class="admin-applications-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Applicant</th>
+                        <th scope="col">Email address</th>
+                        <th scope="col">Contact number</th>
+                        <th scope="col">Applied</th>
+                        <th scope="col">Face match</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Review application</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Applications.Any())
+                    {
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Contact No.</th>
-                            <th>Date Applied</th>
-                            <th>Face Match</th>
-                            <th>Status</th>
-                            <th>Action</th>
+                            <td colspan="7" class="admin-applications-empty">No applications found.</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.Applications.Any())
-                        {
-                            <tr>
-                                <td colspan="7" class="empty-row">No applications found.</td>
-                            </tr>
-                        }
-                        @foreach (var app in Model.Applications)
-                        {
-                            <tr>
-                                <td>@app.FullName</td>
-                                <td>@app.Email</td>
-                                <td>@app.ContactNumber</td>
-                                <td>@app.DateApplied.ToString("MM/dd/yyyy")</td>
-                                <td>
-                                    <span class="confidence @(app.FaceMatchConfidence >= 0.6m ? "high" : "low")">
-                                        @((app.FaceMatchConfidence * 100).ToString("F1"))%
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="status-badge status-@app.ApprovalStatus.ToLower()">
-                                        @app.ApprovalStatus
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="/Admin/ReviewApplication?userId=@app.UserId"
-                                       class="btn-review">Review</a>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-
+                    }
+                    @foreach (var app in Model.Applications)
+                    {
+                        <tr>
+                            <td data-label="Applicant"><strong>@app.FullName</strong></td>
+                            <td data-label="Email address"><span class="admin-applications-email">@app.Email</span></td>
+                            <td data-label="Contact number">@app.ContactNumber</td>
+                            <td data-label="Applied"><time datetime="@app.DateApplied.ToString("yyyy-MM-dd")">@app.DateApplied.ToString("MM/dd/yyyy")</time></td>
+                            <td data-label="Face match">
+                                <span class="admin-applications-confidence confidence @(app.FaceMatchConfidence >= 0.6m ? "high" : "low")">
+                                    @((app.FaceMatchConfidence * 100).ToString("F1"))%
+                                </span>
+                            </td>
+                            <td data-label="Status">
+                                <span class="admin-applications-status status-badge status-@app.ApprovalStatus.ToLower()">
+                                    @app.ApprovalStatus
+                                </span>
+                            </td>
+                            <td class="admin-applications-action" data-label="Action">
+                                <a href="/Admin/ReviewApplication?userId=@app.UserId" class="admin-applications-review" aria-label="Review application for @app.FullName">Review<span aria-hidden="true">→</span></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

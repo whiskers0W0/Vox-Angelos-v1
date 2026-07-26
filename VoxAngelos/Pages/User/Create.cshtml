@@ -7,25 +7,27 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/citizen-create.css" asp-append-version="true" />
-    <style>
-        .concern-attachment-preview { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; margin-top: 12px; }
-        .concern-attachment-item { position: relative; width: 150px; padding: 8px; border-radius: 10px; background: #eef2ff; box-shadow: inset 2px 2px 5px rgba(191,197,223,.6), inset -2px -2px 5px #fff; }
-        .concern-attachment-item img, .concern-attachment-item video { display: block; width: 100%; height: 96px; border-radius: 7px; object-fit: cover; background: #111827; }
-        .concern-attachment-name { display: block; margin-top: 7px; padding-right: 22px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .concern-attachment-remove { position: absolute; top: 3px; right: 3px; width: 23px; height: 23px; border: 0; border-radius: 50%; background: #b91c1c; color: #fff; cursor: pointer; font-size: 16px; line-height: 20px; }
-        .concern-file-placeholder { display: flex; align-items: center; justify-content: center; height: 96px; border-radius: 7px; background: #dbeafe; color: #1e40af; font-size: 13px; font-weight: 600; }
-    </style>
 }
-<div class="content-header">
-    <h1 class="page-title">Submit a Concern</h1>
-</div>
+<header class="content-header citizen-page-header create-page-header">
+    <div>
+        <span class="citizen-page-eyebrow">Citizen workspace</span>
+        <h1 class="page-title">Submit a Concern</h1>
+        <p class="citizen-page-description">Report a local issue or share a recommendation for Angeles City.</p>
+    </div>
+</header>
 
-<!-- Toggle Tabs -->
-<div class="tab-group">
-    <div class="tab-indicator"></div>
-    <button class="tab-btn active" data-view="concern">Concern</button>
-    <button class="tab-btn" data-view="project">Recommendation</button>
-</div>
+<div class="create-page">
+    <section class="create-mode-panel" aria-label="Choose what you want to submit">
+        <div class="create-mode-copy">
+            <span>New submission</span>
+            <p>Choose a concern for a current local issue, or a recommendation for a proposed city improvement.</p>
+        </div>
+        <div class="tab-group">
+            <div class="tab-indicator"></div>
+            <button class="tab-btn active" data-view="concern">Report a concern</button>
+            <button class="tab-btn" data-view="project">Propose an idea</button>
+        </div>
+    </section>
 
 @if (TempData["ConcernSuccess"] != null)
 {
@@ -38,7 +40,7 @@
             </div>
             <span class="alert-text">
                 @TempData["ConcernSuccess"]
-                <a asp-page="/User/Notifications" style="margin-left: 8px; color: #166534; text-decoration: underline;">View My Concerns</a>
+                <a asp-page="/User/Notifications" class="create-success-link">View My Concerns</a>
             </span>
             <button type="button" class="alert-close" onclick="this.parentElement.style.display='none';">
                 &times;
@@ -49,7 +51,7 @@
 
 <!-- Concern Form -->
 <div id="concernView" class="view-section active-view">
-    <div style="display:flex; justify-content:center; width:100%;">
+    <div class="submission-view-wrap">
         <div class="concern-card">
 
             <form id="concernForm" method="post" enctype="multipart/form-data">
@@ -58,9 +60,9 @@
                 @if (!ViewContext.ViewData.ModelState.IsValid)
                 {
                     <div class="custom-alert-container" role="alert">
-                        <div class="neomorphic-alert" style="border: 1px solid #fecaca;">
-                            <div class="alert-icon-circle" style="background: #fee2e2; color: #b91c1c;">!</div>
-                            <div class="alert-text" style="color: #b91c1c;">
+                        <div class="neomorphic-alert create-error-alert">
+                            <div class="alert-icon-circle create-error-icon">!</div>
+                            <div class="alert-text create-error-text">
                                 <strong>Your concern was not sent.</strong>
                                 <div asp-validation-summary="All"></div>
                             </div>
@@ -161,7 +163,7 @@
                         <span class="upload-hint">(.jpg .png .mp4 .pdf)</span>
                     </button>
                     <input type="file" id="concernFileInput" name="Attachments"
-                           style="display:none;" multiple accept="image/*,video/*,.pdf" />
+                           class="create-file-input" multiple accept="image/*,video/*,.pdf" />
                     <span class="concern-file-names" id="concernFileNames"></span>
                     <div id="concernAttachmentPreview" class="concern-attachment-preview" aria-live="polite"></div>
                 </div>
@@ -169,10 +171,10 @@
 
                 <!-- Submit -->
                 <div class="concern-submit-row">
-                    <button class="btn-submit" id="concernSaveDraftBtn" type="button" style="margin-right:8px;">Save Draft</button>
+                    <button class="btn-submit btn-draft" id="concernSaveDraftBtn" type="button">Save Draft</button>
                     <button class="btn-submit" id="concernSubmitBtn" type="button">Submit</button>
                 </div>
-                <p id="concernDraftStatus" aria-live="polite" style="margin:8px 0 0; font-size:13px;"></p>
+                <p id="concernDraftStatus" class="draft-status" aria-live="polite"></p>
 
             </form>
         </div>
@@ -181,7 +183,7 @@
 
 <!-- Project Proposal Multi-Step Form -->
 <div id="projectView" class="view-section">
-    <div style="display:flex; justify-content:center; width:100%;">
+    <div class="submission-view-wrap">
         <div class="proposal-card">
 
             <div class="proposal-card-header">
@@ -313,7 +315,7 @@
                         Upload Photo or Document
                     </button>
                     <input type="file" id="fileInput"
-                           style="display:none;"
+                           class="create-file-input"
                            multiple
                            accept="image/*,video/*,.pdf,.doc,.docx" />
                     <p class="file-name-label" id="fileLabel"></p>
@@ -333,7 +335,7 @@
                     <div><strong>Beneficiaries:</strong> <span id="r-beneficiaries"></span></div>
                     <div><strong>Est. people affected:</strong> <span id="r-people"></span></div>
                     <div><strong>Privacy:</strong> <span id="r-privacy"></span></div>
-                    <div><strong>Attachments:</strong> <div id="r-attachments" style="display:flex;flex-wrap:wrap;margin-top:6px;"></div></div>
+                    <div><strong>Attachments:</strong> <div id="r-attachments" class="review-attachments"></div></div>
                 </div>
             </div>
 
@@ -367,25 +369,24 @@
                         </svg>
                     </button>
                 </div>
-                <p id="recommendationStatus" aria-live="polite" style="margin:8px 0 0; font-size:13px;"></p>
+                <p id="recommendationStatus" class="draft-status" aria-live="polite"></p>
             </div>
 
         </div>
     </div>
 </div>
+</div>
 
 <!-- Map Modal -->
 <div class="map-modal-overlay" id="mapModalOverlay">
     <div class="map-modal">
-        <div style="padding: 8px 12px; display:flex; gap:6px;">
-            <input id="mapSearchBox" type="text" placeholder="Search location in Angeles City..."
-                   style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px;" />
-            <button id="mapSearchBtn" type="button"
-                    style="padding:8px 14px; background:#2B45B0; color:white; border:none; border-radius:6px; cursor:pointer;">
+        <div class="map-search-row">
+            <input id="mapSearchBox" class="map-search-input" type="text" placeholder="Search location in Angeles City..." />
+            <button id="mapSearchBtn" type="button" class="map-search-button">
                 Search
             </button>
         </div>
-        <div id="googleMap" style="width:100%; height:350px;"></div>
+        <div id="googleMap" class="google-map"></div>
         <div class="map-modal-footer">
             <span class="map-coord-label">Location/Coordinate:</span>
             <span class="map-coord-value" id="mapCoordDisplay"></span>
@@ -396,13 +397,13 @@
 
 <!-- AI Classification Error Modal -->
 <div class="map-modal-overlay" id="classificationErrorModal" role="dialog" aria-modal="true" aria-labelledby="classificationErrorTitle">
-    <div class="map-modal" style="max-width:420px; padding: 26px; text-align:center;">
-        <div style="width:52px;height:52px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fee2e2;color:#b91c1c;font-size:28px;font-weight:700;">!</div>
-        <h3 id="classificationErrorTitle" style="margin:0 0 10px;font-size:19px;font-weight:700;color:#1a1a2e;">We couldn't categorize your concern</h3>
-        <p id="classificationErrorMessage" style="margin:0 0 10px;color:#4b5563;line-height:1.5;">The AI service could not analyze your concern right now.</p>
-        <p style="margin:0 0 20px;color:#6b7280;font-size:13px;line-height:1.45;">Your concern was not sent. Your description, location, and attachments are still saved on this form. You can edit the details and submit again later.</p>
-        <div style="display:flex;gap:10px;justify-content:center;">
-            <button id="classificationErrorBackBtn" type="button" class="btn-submit" style="padding:10px 24px;">Back to Form</button>
+    <div class="map-modal classification-error-modal">
+        <div class="classification-error-icon">!</div>
+        <h3 id="classificationErrorTitle" class="classification-error-title">We couldn't categorize your concern</h3>
+        <p id="classificationErrorMessage" class="classification-error-message">The AI service could not analyze your concern right now.</p>
+        <p class="classification-error-help">Your concern was not sent. Your description, location, and attachments are still saved on this form. You can edit the details and submit again later.</p>
+        <div class="classification-error-actions">
+            <button id="classificationErrorBackBtn" type="button" class="btn-submit classification-back-btn">Back to Form</button>
         </div>
     </div>
 </div>

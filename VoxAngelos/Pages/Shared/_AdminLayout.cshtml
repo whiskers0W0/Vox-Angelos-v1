@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] | Vox Angelos</title>
-    <link rel="stylesheet" href="~/css/admin-layout.css" />
+    <link rel="stylesheet" href="~/css/admin-layout.css" asp-append-version="true" />
     @RenderSection("Styles", required: false)
 </head>
 
@@ -21,10 +21,10 @@
     <div class="layout-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-brand">
-                <img src="~/assets/VoxAngelosLogo.png" class="brand-logo">
-                    <span class="brand-name">ox Angelos</span>
-                </div>
+            <div class="sidebar-brand" aria-label="Vox Angelos Administration">
+                <img src="~/assets/VoxAngelosLogo.png" class="brand-logo" alt="" />
+                <span class="brand-name">Vox Angelos</span>
+            </div>
 
                 <nav class="sidebar-nav">
 
@@ -92,9 +92,9 @@
                     <span></span><span></span><span></span>
                 </button>
                 <div class="mobile-brand">
-                    <img src="~/assets/VoxAngelosLogo.png" class="brand-v">
-                        <span>ox Angelos</span>
-                    </div>
+                    <img src="~/assets/VoxAngelosLogo.png" class="brand-v" alt="" />
+                    <span>Vox Angelos</span>
+                </div>
                 </div>
 
                 <!-- Sidebar overlay -->

@@ -3,51 +3,101 @@
 @{
     Layout = "_CitizenLayout";
     ViewData["Title"] = "Discover";
+
+    var totalRatings = Model.Recommendations.Sum(r => r.RatingCount);
+    var spotlight = Model.TopRated.FirstOrDefault() ?? Model.Recommendations.FirstOrDefault();
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/citizen-discover.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/citizen-dashboard.css" asp-append-version="true" />
 }
 
-<div class="content-header">
-    <h1 class="page-title">Discover</h1>
+<div class="discover-page civic-dashboard">
 
-    <div class="header-right">
-
-        <select class="filter-select" id="officeFilter" aria-label="Filter by LGU office">
-            <option value="">All Offices</option>
-
-            @foreach (var office in VoxAngelos.Pages.User.IndexModel.Offices)
-            {
-                <option value="@office.Code">@office.Name</option>
-            }
-        </select>
-
-        <select class="filter-select" id="periodFilter" aria-label="Filter by publication date">
-            <option value="">All Dates</option>
-            <option value="day">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="year">This Year</option>
-        </select>
-
-        <select class="filter-select" id="dateSort" aria-label="Sort by date">
-            <option value="desc">Newest First</option>
-            <option value="asc">Oldest First</option>
-        </select>
-
-        <div class="search-box">
-            <input type="text" placeholder="Search" class="search-input" id="searchInput" />
-            <button class="search-btn" aria-label="Search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-            </button>
+    <header class="page-heading">
+        <div>
+            <span class="page-eyebrow">Angeles City · Citizen participation</span>
+            <h1 class="page-title">Discover</h1>
+            <p>Read community proposals, understand their potential impact, and help city offices prioritize what matters.</p>
         </div>
+        <a asp-page="/User/Create" class="primary-page-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+            </svg>
+            Share a recommendation
+        </a>
+    </header>
 
-    </div>
-</div>
+    <section class="concept-stage dashboard-stage" aria-label="Community activity overview">
+        <div class="dashboard-intro">
+            <span class="stage-label"><span></span> Live community pulse</span>
+            <h2>What Angeles City is talking about.</h2>
+            <p>A decision-focused overview of citizen ideas, participation, and emerging priorities.</p>
+        </div>
+        <div class="dashboard-metrics">
+            <article><span class="metric-icon blue">▤</span><div><strong>@Model.Recommendations.Count</strong><small>Published proposals</small></div><em>Public</em></article>
+            <article><span class="metric-icon red">↑</span><div><strong>@Model.TopRated.Count</strong><small>Priority proposals</small></div><em>Ranked</em></article>
+            <article><span class="metric-icon green">✓</span><div><strong>@totalRatings</strong><small>Citizen ratings</small></div><em>Community</em></article>
+        </div>
+        @if (spotlight != null)
+        {
+            <button type="button" class="priority-callout js-open-recommendation" data-rec-id="@spotlight.Id">
+                <span class="priority-rank">#1</span>
+                <span><small>Highest community score</small><strong>@spotlight.Title</strong></span>
+                <b>@spotlight.CompositeScore.ToString("0.0") <small>/ 5</small></b>
+                <i>View →</i>
+            </button>
+        }
+    </section>
+
+    <section class="content-header" aria-label="Recommendation tools">
+        <div class="toolbar-heading">
+            <span>Browse recommendations</span>
+            <small id="resultCount">@Model.Recommendations.Count result@(Model.Recommendations.Count == 1 ? "" : "s")</small>
+        </div>
+        <div class="header-right">
+            <label class="search-box">
+                <span class="control-label">Search</span>
+                <span class="search-field">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                    <input type="search" placeholder="Keywords or topics" class="search-input" id="searchInput" />
+                </span>
+            </label>
+
+            <label class="filter-field">
+                <span class="control-label">City office</span>
+                <select class="filter-select" id="officeFilter">
+                    <option value="">All offices</option>
+                    @foreach (var office in VoxAngelos.Pages.User.IndexModel.Offices)
+                    {
+                        <option value="@office.Code">@office.Name</option>
+                    }
+                </select>
+            </label>
+
+            <label class="filter-field">
+                <span class="control-label">Published</span>
+                <select class="filter-select" id="periodFilter">
+                    <option value="">Any time</option>
+                    <option value="day">Today</option>
+                    <option value="week">This week</option>
+                    <option value="month">This month</option>
+                    <option value="year">This year</option>
+                </select>
+            </label>
+
+            <label class="filter-field sort-field">
+                <span class="control-label">Sort by</span>
+                <select class="filter-select" id="dateSort">
+                    <option value="desc">Newest first</option>
+                    <option value="asc">Oldest first</option>
+                </select>
+            </label>
+            <button type="button" id="clearFiltersBtn" class="clear-filters" hidden>Clear filters</button>
+        </div>
+    </section>
+
 @* to prove the request is coming from your own page and not from a malicious site *@
 @Html.AntiForgeryToken()
 
@@ -74,26 +124,33 @@
             <div class="proposal-card" data-rec-id="@rec.Id" data-title="@rec.Title.ToLower()" data-description="@rec.Description.ToLower()" data-category="@rec.Category.ToLowerInvariant()" data-office="@rec.AssignedOffice" data-date="@rec.ApprovedAt.ToString("yyyy-MM-dd")">
                 <div class="card-header">
                     <div class="author-info">
-                        <div class="avatar">
+                        <div class="avatar" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="currentColor">
                                 <circle cx="12" cy="8" r="4" />
                                 <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                             </svg>
                         </div>
-                        <div class="author-name">@rec.CitizenName</div>
+                        <div class="author-details">
+                            <div class="author-name">@rec.CitizenName</div>
+                            <span>Verified citizen proposal</span>
+                        </div>
                     </div>
-                    <div class="card-date">@rec.ApprovedAt.ToString("MM/dd/yy")</div>
+                    <time class="card-date" datetime="@rec.ApprovedAt.ToString("yyyy-MM-dd")">@rec.ApprovedAt.ToString("MMM d, yyyy")</time>
                 </div>
 
                 <div class="card-meta">
+                    @if (!string.IsNullOrEmpty(rec.Category))
+                    {
+                        <span class="category-badge">@rec.Category</span>
+                    }
                     @if (!string.IsNullOrEmpty(rec.AssignedOffice))
                     {
-                        <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
+                        <span class="office-badge"><small>Assigned to</small> @rec.AssignedOffice</span>
                     }
                 </div>
 
                 <div class="card-body">
-                    <h3 class="proposal-title">Citizen Recommendation: @rec.Title</h3>
+                    <h3 class="proposal-title">@rec.Title</h3>
                     <p class="proposal-excerpt">@rec.Description</p>
                 </div>
 
@@ -145,8 +202,10 @@
             </div>
         }
 
-        <div id="noFilterResults" hidden style="text-align:center;padding:60px;color:#888;">
-            <p>No recommendations match your filters.</p>
+        <div id="noFilterResults" class="empty-results" hidden>
+            <span aria-hidden="true">⌕</span>
+            <strong>No matching recommendations</strong>
+            <p>Try changing your keywords, office, or publication date.</p>
         </div>
     </div>
 </div>
@@ -174,24 +233,31 @@
                     <div class="proposal-card leaderboard-card">
                         <div class="card-header">
                             <div class="author-info">
-                                <div class="avatar">
+                                <div class="avatar" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="currentColor">
                                         <circle cx="12" cy="8" r="4" />
                                         <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                                     </svg>
                                 </div>
-                                <div class="author-name">@rec.CitizenName</div>
+                                <div class="author-details">
+                                    <div class="author-name">@rec.CitizenName</div>
+                                    <span>Verified citizen proposal</span>
+                                </div>
                             </div>
-                            <div class="card-date">@rec.ApprovedAt.ToString("MM/dd/yy")</div>
+                            <time class="card-date" datetime="@rec.ApprovedAt.ToString("yyyy-MM-dd")">@rec.ApprovedAt.ToString("MMM d, yyyy")</time>
                         </div>
                         <div class="card-meta">
+                            @if (!string.IsNullOrEmpty(rec.Category))
+                            {
+                                <span class="category-badge">@rec.Category</span>
+                            }
                             @if (!string.IsNullOrEmpty(rec.AssignedOffice))
                             {
-                                <span class="meta-label">Office: <span class="meta-value">@rec.AssignedOffice</span></span>
+                                <span class="office-badge"><small>Assigned to</small> @rec.AssignedOffice</span>
                             }
                         </div>
                         <div class="card-body">
-                            <h3 class="proposal-title">Citizen Recommendation: @rec.Title</h3>
+                            <h3 class="proposal-title">@rec.Title</h3>
                             <p class="proposal-excerpt">@rec.Description</p>
                         </div>
 
@@ -267,7 +333,7 @@
                 <div class="leaderboard-insights">
                     <section class="insight-section">
                         <span class="insight-label">How ranking works</span>
-                        <p>Each score combines citizen ratings for urgency, relevance, and feasibility.</p>
+                        <p>Scores combine three citizen-rated signals: urgency, relevance, and feasibility.</p>
                     </section>
                     <section class="insight-section">
                         <span class="insight-label">Top recommendation</span>
@@ -309,6 +375,7 @@
     <span aria-hidden="true">↑</span>
     <span class="back-to-top-label">Top</span>
 </button>
+</div>
 
 @section Scripts {
     <script>
@@ -317,6 +384,8 @@
         const proposalsView = document.getElementById('proposalsView');
         const leaderboardView = document.getElementById('leaderboardView');
         const pageTitle = document.querySelector('.page-title');
+        const contentHeader = document.querySelector('.content-header');
+        const conceptStage = document.querySelector('.concept-stage');
         const headerRight = document.querySelector('.header-right');
         const tabIndicator = document.querySelector('.tab-indicator');
         const backToTopBtn = document.getElementById('backToTopBtn');
@@ -339,11 +408,15 @@
                     proposalsView.classList.add("active-view");
                     leaderboardView.classList.remove("active-view");
                     headerRight.style.display = "flex";
+                    contentHeader.hidden = false;
+                    conceptStage.hidden = false;
                     pageTitle.textContent = "Discover";
                 } else {
                     proposalsView.classList.remove("active-view");
                     leaderboardView.classList.add("active-view");
                     headerRight.style.display = "none";
+                    contentHeader.hidden = true;
+                    conceptStage.hidden = true;
                     pageTitle.textContent = "Leaderboard";
                 }
             });
@@ -356,6 +429,8 @@
         const dateSort = document.getElementById('dateSort');
         const proposalsFeed = document.getElementById('proposalsFeed');
         const noFilterResults = document.getElementById('noFilterResults');
+        const resultCount = document.getElementById('resultCount');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
         function escapeHtml(str) {
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -438,7 +513,18 @@
             });
             sorted.forEach(card => proposalsFeed.appendChild(card));
             noFilterResults.hidden = visibleCount !== 0;
+            resultCount.textContent = `${visibleCount} result${visibleCount === 1 ? '' : 's'}`;
+            clearFiltersBtn.hidden = !query && !office && !period && dateSort.value === 'desc';
         }
+
+        clearFiltersBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            officeFilter.value = '';
+            periodFilter.value = '';
+            dateSort.value = 'desc';
+            applyFilters();
+            searchInput.focus();
+        });
 
         searchInput.addEventListener('input', applyFilters);
         officeFilter.addEventListener('change', applyFilters);

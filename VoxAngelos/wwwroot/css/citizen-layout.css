@@ -435,3 +435,393 @@ body {
         width: min(340px, calc(100vw - 32px));
     }
 }
+
+
+/* ── Citizen Discover redesign shell ──────────────────────────────────── */
+.citizen-discover-shell {
+    --sidebar-width: 248px;
+    --sidebar-bg: #ffffff;
+    --page-bg: #f4f6fa;
+    --card-bg: #ffffff;
+    --text-primary: #172033;
+    --text-secondary: #5f6b7d;
+    --text-muted: #8792a5;
+    --border: #dde3ec;
+    --city-blue: #1646a0;
+    --city-blue-dark: #0c2f74;
+    background: var(--page-bg);
+    color: var(--text-primary);
+}
+
+.citizen-discover-shell .sidebar {
+    width: var(--sidebar-width);
+    padding: 24px 16px 18px;
+    border-right: 1px solid #e2e7ef;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+}
+
+.citizen-discover-shell .sidebar-brand {
+    justify-content: flex-start;
+    gap: 11px;
+    margin: 0 4px 28px;
+    padding: 0 8px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.citizen-discover-shell .brand-logo {
+    width: 34px;
+    max-width: 34px;
+    height: 42px;
+    object-fit: contain;
+}
+
+.citizen-discover-shell .brand-copy,
+.citizen-discover-shell .brand-copy strong,
+.citizen-discover-shell .brand-copy small {
+    display: block;
+}
+
+.citizen-discover-shell .brand-name {
+    margin: 0;
+    transform: none;
+    color: var(--city-blue-dark);
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: -.02em;
+}
+
+.citizen-discover-shell .brand-copy small {
+    margin-top: 2px;
+    color: #8a95a6;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.citizen-discover-shell .sidebar-nav {
+    gap: 5px;
+    padding: 0;
+}
+
+.citizen-discover-shell .user-profile {
+    margin: 0 0 18px;
+    padding: 0;
+    border: 1px solid #e4e9f1;
+    border-radius: 12px;
+    background: #f8f9fc;
+    box-shadow: none;
+    text-align: left;
+}
+
+.citizen-discover-shell .profile-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.citizen-discover-shell .sidebar-avatar-fallback {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 10px;
+    background: var(--city-blue);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.citizen-discover-shell .profile-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.citizen-discover-shell .profile-copy strong,
+.citizen-discover-shell .profile-copy small {
+    display: block;
+}
+
+.citizen-discover-shell .profile-copy strong {
+    overflow: hidden;
+    color: #253047;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.citizen-discover-shell .profile-copy small {
+    margin-top: 2px;
+    color: #8a95a6;
+    font-size: 10.5px;
+}
+
+.citizen-discover-shell .profile-arrow {
+    color: #9aa4b4;
+    font-size: 20px;
+}
+
+.citizen-discover-shell .sidebar-divider {
+    display: none;
+}
+
+.citizen-discover-shell .nav-item,
+.citizen-discover-shell .logout-btn {
+    gap: 12px;
+    min-height: 44px;
+    padding: 11px 12px;
+    border-radius: 9px;
+    color: #5a6679;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.citizen-discover-shell .nav-item svg,
+.citizen-discover-shell .logout-btn svg {
+    width: 19px;
+    height: 19px;
+}
+
+.citizen-discover-shell .nav-item:hover,
+.citizen-discover-shell .logout-btn:hover {
+    background: #f1f4f9;
+    color: var(--city-blue);
+    box-shadow: none;
+}
+
+.citizen-discover-shell .nav-item.active {
+    position: relative;
+    background: #eaf0fc;
+    color: var(--city-blue);
+    box-shadow: none;
+}
+
+.citizen-discover-shell .nav-item.active::before {
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: -16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--city-blue);
+    content: "";
+}
+
+.citizen-discover-shell .sidebar-footer {
+    padding: 12px 0 0;
+    border-top: 1px solid #e7ebf1;
+}
+
+.citizen-discover-shell .logout-btn {
+    color: #a63b41;
+}
+
+.citizen-discover-shell .main-content {
+    align-items: stretch;
+    margin-left: var(--sidebar-width);
+    padding: 22px 36px 64px;
+}
+
+.citizen-discover-shell .citizen-topbar-actions {
+    min-height: 36px;
+    margin-bottom: 2px;
+}
+
+.citizen-discover-shell .notification-bell summary {
+    width: 36px;
+    height: 36px;
+    border-color: #e0e5ed;
+    color: var(--city-blue);
+    box-shadow: 0 2px 8px rgba(23, 32, 51, .06);
+}
+
+/* Mobile navigation retains the white Civic Dashboard shell while providing
+   sufficient contrast for the menu control and brand lockup. */
+.citizen-discover-shell .mobile-topbar {
+    border-bottom: 1px solid #e1e7f0;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(23, 32, 51, .05);
+}
+
+.citizen-discover-shell .hamburger {
+    width: 38px;
+    height: 38px;
+    margin-right: 2px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cbd9f0;
+    border-radius: 7px;
+    background: #eaf0fc;
+    box-shadow: none;
+}
+
+.citizen-discover-shell .hamburger:hover {
+    border-color: #9eb4dc;
+    background: #dfe9fb;
+}
+
+.citizen-discover-shell .hamburger span {
+    width: 18px;
+    background: var(--city-blue);
+}
+
+.citizen-discover-shell .mobile-brand,
+.citizen-discover-shell .mobile-brand span {
+    color: var(--city-blue-dark);
+}
+
+.citizen-discover-shell .mobile-brand .brand-v {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .citizen-discover-shell .main-content {
+        margin-left: 0;
+        padding: calc(var(--topbar-height) + 16px) 16px 48px;
+    }
+
+    .citizen-discover-shell .sidebar {
+        box-shadow: 18px 0 40px rgba(15, 23, 42, .18);
+    }
+}
+
+/* ── Shared Civic Dashboard system ─────────────────────────────── */
+.citizen-shell {
+    --va-blue: #1646a0;
+    --va-blue-dark: #0b2e6f;
+    --va-blue-soft: #eaf0fc;
+    --va-red: #c43f4b;
+    --va-red-soft: #fbecef;
+    --va-green: #197153;
+    --va-green-soft: #e7f4ef;
+    --va-amber: #9a6509;
+    --va-amber-soft: #fff4da;
+    --va-ink: #172033;
+    --va-body: #5c687b;
+    --va-muted: #8994a6;
+    --va-line: #dfe5ed;
+    --va-surface: #ffffff;
+    --va-surface-subtle: #f8fafc;
+    --va-radius: 11px;
+    --va-shadow: 0 8px 24px rgba(25, 37, 58, .07);
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.citizen-shell button,
+.citizen-shell input,
+.citizen-shell select,
+.citizen-shell textarea {
+    font: inherit;
+}
+
+.citizen-shell :focus-visible {
+    outline: 3px solid rgba(22, 70, 160, .2);
+    outline-offset: 2px;
+}
+
+.citizen-shell .content-header.citizen-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 28px;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto 25px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.citizen-page-eyebrow {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--va-blue);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.citizen-shell .citizen-page-header .page-title {
+    margin: 0;
+    color: var(--va-ink);
+    font-size: clamp(30px, 4vw, 43px);
+    font-weight: 760;
+    line-height: 1;
+    letter-spacing: -.045em;
+}
+
+.citizen-page-description,
+.citizen-shell .citizen-page-header .citizen-page-description {
+    max-width: 660px;
+    margin: 10px 0 0;
+    color: var(--va-body);
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+
+.citizen-primary-action,
+.citizen-secondary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 17px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 750;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease;
+}
+
+.citizen-primary-action {
+    border: 1px solid var(--va-blue);
+    background: var(--va-blue);
+    color: #fff;
+    box-shadow: 0 7px 16px rgba(22, 70, 160, .18);
+}
+
+.citizen-primary-action:hover {
+    border-color: var(--va-blue-dark);
+    background: var(--va-blue-dark);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.citizen-secondary-action {
+    border: 1px solid #ccd6e4;
+    background: #fff;
+    color: var(--va-blue);
+}
+
+.citizen-secondary-action:hover {
+    border-color: #9eb2d2;
+    background: var(--va-blue-soft);
+    color: var(--va-blue-dark);
+}
+
+@media (max-width: 720px) {
+    .citizen-shell .content-header.citizen-page-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .citizen-primary-action,
+    .citizen-secondary-action {
+        width: 100%;
+    }
+}

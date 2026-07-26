@@ -7,61 +7,12 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/lgu_heatmap.css" asp-append-version="true" />
-    <style>
-        .info-window {
-            font-family: sans-serif;
-            font-size: 13px;
-            max-width: 220px;
-            line-height: 1.5;
-        }
-        .info-window .iw-name {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-        .info-window .iw-status {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            margin-bottom: 6px;
-            background: #e0e0e0;
-            color: #333;
-        }
-        .info-window .iw-status.unresolved { background:#fff3cd; color:#856404; }
-        .info-window .iw-status.chosen { background:#cfe2ff; color:#084298; }
-        .info-window .iw-status.in-progress { background:#d1ecf1; color:#0c5460; }
-        .info-window .iw-status.resolved { background:#d4edda; color:#155724; }
-        .info-window .iw-label { color: #666; font-size: 11px; }
-        .info-window .iw-value { color: #222; margin-bottom: 4px; }
-
-        #choropleth-map {
-            width: 100%;
-            height: 100%;
-        }
-
-    </style>
 }
-
-<div class="content-header">
-    <h1 class="page-title">Concern Locations</h1>
-</div>
-
-<!-- Toggle Tabs -->
-<div class="tab-group">
-    <div class="tab-indicator"></div>
-    <button class="tab-btn active" data-view="locations">Locations</button>
-    <button class="tab-btn" data-view="heatmap">Heatmap</button>
-</div>
-
-<!-- Concern Locations View -->
-<div class="locations-wrapper">
-    <div id="map"></div>
-</div>
-
-<!-- Heatmap View -->
-<div class="heatmap-wrapper" style="display:none;">
-    <div id="choropleth-map"></div>
+<div class="lgu-heatmap-workspace">
+    <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Location intelligence</span><h1>Concern location map</h1><p>Inspect mapped reports and barangay-level concentration patterns to prioritize field response across Angeles City.</p></div><div class="lgu-page-context"><span>Map scope</span><strong>All mapped concerns</strong></div></header>
+    <section class="lgu-map-controls" aria-label="Map view selector"><div class="lgu-map-control-label"><span>Display mode</span><strong>Explore reports or concentration</strong></div><div class="tab-group"><div class="tab-indicator"></div><button class="tab-btn active" data-view="locations">Concern locations</button><button class="tab-btn" data-view="heatmap">Barangay concentration</button></div></section>
+    <section class="lgu-map-panel locations-wrapper" aria-label="Concern locations map"><div class="lgu-map-panel-header"><span>Point view</span><p>Marker colors reflect the current concern status.</p></div><div id="map"></div></section>
+    <section class="lgu-map-panel heatmap-wrapper" aria-label="Barangay concern concentration map"><div class="lgu-map-panel-header"><span>Concentration view</span><p>Hover a barangay boundary to view its mapped concern count.</p></div><div id="choropleth-map"></div></section>
 </div>
 
 @section Scripts {
