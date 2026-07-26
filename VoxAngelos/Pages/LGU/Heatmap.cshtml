@@ -166,18 +166,42 @@
                 styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
             });
 
-            function normalizeStr(str) {
-                return str.toLowerCase()
-                    .replace(/\./g, '')
-                    .replace(/\(.*?\)/g, '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
+            function isPointInRing(point, ring) {
+                const [longitude, latitude] = point;
+                let inside = false;
+
+                for (let current = 0, previous = ring.length - 1; current < ring.length; previous = current++) {
+                    const [currentLongitude, currentLatitude] = ring[current];
+                    const [previousLongitude, previousLatitude] = ring[previous];
+                    const crossesLatitude = (currentLatitude > latitude) !== (previousLatitude > latitude);
+
+                    if (crossesLatitude && longitude < (previousLongitude - currentLongitude) *
+                        (latitude - currentLatitude) / (previousLatitude - currentLatitude) + currentLongitude) {
+                        inside = !inside;
+                    }
+                }
+
+                return inside;
             }
 
-            function matchBarangay(locationName, featureName) {
-                const loc = normalizeStr(locationName);
-                const feat = normalizeStr(featureName);
-                return loc.includes(feat);
+            function isPointInPolygon(point, polygon) {
+                if (!polygon.length || !isPointInRing(point, polygon[0])) {
+                    return false;
+                }
+
+                return !polygon.slice(1).some(hole => isPointInRing(point, hole));
+            }
+
+            function geometryContainsPoint(geometry, point) {
+                if (geometry.type === 'Polygon') {
+                    return isPointInPolygon(point, geometry.coordinates);
+                }
+
+                if (geometry.type === 'MultiPolygon') {
+                    return geometry.coordinates.some(polygon => isPointInPolygon(point, polygon));
+                }
+
+                return false;
             }
 
             function getChoroColor(count) {
@@ -197,7 +221,8 @@
             const barangayName = feature.properties.name;
             let count = 0;
             concerns.forEach(concern => {
-                if (concern.location && matchBarangay(concern.location, barangayName)) {
+                if (typeof concern.lat === 'number' && typeof concern.lng === 'number' &&
+                    geometryContainsPoint(feature.geometry, [concern.lng, concern.lat])) {
                     count++;
                 }
             });

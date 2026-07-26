@@ -86,6 +86,12 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             return "+63" + digits;
         }
 
+        private static bool IsPlausibleBirthDate(DateOnly value)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            return value >= new DateOnly(1900, 1, 1) && value <= today;
+        }
+
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
         public class InputModel
@@ -408,6 +414,22 @@ if (savedFileName != null)
         ProcessedAt = DateTime.UtcNow
     };
     _context.UserOcrVerifications.Add(ocrVerification);
+
+    // Keep the citizen profile limited to verified values.  The OCR service only
+    // marks LocalityMatched when it identifies a supported Angeles City barangay,
+    // so we never infer an address from unverified free text.
+    if (DateOnly.TryParse(ocrResult.DetectedBirthDate, out var detectedBirthDate)
+        && IsPlausibleBirthDate(detectedBirthDate))
+    {
+        profile.BirthDate = detectedBirthDate;
+    }
+
+    if (ocrResult.LocalityMatched && !string.IsNullOrWhiteSpace(ocrResult.DetectedLocality))
+    {
+        profile.Barangay = ocrResult.DetectedLocality;
+        profile.City = "Angeles City";
+    }
+
     await _context.SaveChangesAsync();
 
     _logger.LogInformation("OCR completed for user {UserId}. LocalityMatched: {Match}",

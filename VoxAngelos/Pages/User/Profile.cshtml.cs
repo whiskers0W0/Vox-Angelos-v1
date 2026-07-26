@@ -28,10 +28,31 @@ namespace VoxAngelos.Pages.User
 
             var profile = await _db.UserProfiles.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.UserId == user.Id);
-            var document = await _db.UserIdentityDocuments.AsNoTracking()
+            var idType = await _db.UserIdentityDocuments.AsNoTracking()
                 .Where(d => d.UserId == user.Id)
                 .OrderByDescending(d => d.UploadedAt)
+                .Select(d => d.IdType)
                 .FirstOrDefaultAsync();
+            var ocrVerification = await _db.UserOcrVerifications.AsNoTracking()
+                .Where(verification => verification.UserId == user.Id)
+                .OrderByDescending(verification => verification.ProcessedAt)
+                .FirstOrDefaultAsync();
+
+            DateOnly? detectedBirthDate = null;
+            if (DateOnly.TryParse(ocrVerification?.DetectedBirthDate, out var parsedBirthDate)
+                && IsPlausibleBirthDate(parsedBirthDate))
+                detectedBirthDate = parsedBirthDate;
+
+            var storedBirthDate = IsPlausibleBirthDate(profile?.BirthDate)
+                ? profile!.BirthDate
+                : null;
+
+            var verifiedBarangay = ocrVerification?.LocalityMatched == true
+                ? ocrVerification.DetectedLocality
+                : null;
+            var verifiedCity = ocrVerification?.LocalityMatched == true
+                ? "Angeles City"
+                : null;
 
             Profile = new CitizenProfileViewModel
             {
@@ -39,15 +60,22 @@ namespace VoxAngelos.Pages.User
                 MiddleName = profile?.MiddleName,
                 LastName = profile?.LastName,
                 PhoneNumber = user.PhoneNumber,
-                Barangay = profile?.Barangay,
-                City = profile?.City,
+                Barangay = profile?.Barangay ?? verifiedBarangay,
+                City = profile?.City ?? verifiedCity,
                 EmailAddress = user.Email,
-                BirthDate = profile?.BirthDate,
-                IdType = document?.IdType,
-                IdDocumentPath = document?.IdPhotoPath
+                BirthDate = storedBirthDate ?? detectedBirthDate,
+                IdType = idType
             };
 
             return Page();
+        }
+
+        private static bool IsPlausibleBirthDate(DateOnly? value)
+        {
+            if (value == null) return false;
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            return value.Value >= new DateOnly(1900, 1, 1) && value.Value <= today;
         }
 
         public class CitizenProfileViewModel
@@ -61,10 +89,12 @@ namespace VoxAngelos.Pages.User
             public string? EmailAddress { get; set; }
             public DateOnly? BirthDate { get; set; }
             public string? IdType { get; set; }
-            public string? IdDocumentPath { get; set; }
 
             public string DisplayName => string.Join(" ", new[] { FirstName, MiddleName, LastName }
                 .Where(value => !string.IsNullOrWhiteSpace(value)));
+            public string VerificationSummary => string.IsNullOrWhiteSpace(IdType)
+                ? "Identity verified"
+                : $"Verified using {IdType}";
         }
     }
 }

@@ -177,6 +177,17 @@
                 <p id="concernDraftStatus" class="draft-status" aria-live="polite"></p>
 
             </form>
+
+            <div class="success-state" id="concernSuccessState">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                </div>
+                <h3>Concern Submitted!</h3>
+                <p>Your concern has been received.<br>We’ll review it and keep you updated.</p>
+                <button class="btn-new" id="btnNewConcern" type="button">Submit Another</button>
+            </div>
         </div>
     </div>
 </div>
@@ -319,6 +330,7 @@
                            multiple
                            accept="image/*,video/*,.pdf,.doc,.docx" />
                     <p class="file-name-label" id="fileLabel"></p>
+                    <div id="recAttachmentPreview" class="rec-attachment-preview" aria-live="polite"></div>
                 </div>
             </div>
 
@@ -381,10 +393,7 @@
 <div class="map-modal-overlay" id="mapModalOverlay">
     <div class="map-modal">
         <div class="map-search-row">
-            <input id="mapSearchBox" class="map-search-input" type="text" placeholder="Search location in Angeles City..." />
-            <button id="mapSearchBtn" type="button" class="map-search-button">
-                Search
-            </button>
+            <div id="mapAutocompleteHost" style="flex: 1; min-width: 0;"></div>
         </div>
         <div id="googleMap" class="google-map"></div>
         <div class="map-modal-footer">
@@ -486,12 +495,101 @@
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
         const fileLabel = document.getElementById('fileLabel');
+        const recAttachmentPreview = document.getElementById('recAttachmentPreview');
+        let selectedRecommendationFiles = [];
+        let recommendationPreviewUrls = [];
+        let reviewAttachmentPreviewUrls = [];
 
         uploadBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', () => {
-            const files = Array.from(fileInput.files);
-            fileLabel.textContent = files.length ? files.map(f => f.name).join(', ') : '';
+            Array.from(fileInput.files).forEach(file => {
+                const alreadySelected = selectedRecommendationFiles.some(selected =>
+                    selected.name === file.name && selected.size === file.size && selected.lastModified === file.lastModified);
+                if (!alreadySelected) selectedRecommendationFiles.push(file);
+            });
+            syncRecommendationFileInput();
+            renderRecommendationAttachmentPreview();
         });
+
+        function syncRecommendationFileInput() {
+            const transfer = new DataTransfer();
+            selectedRecommendationFiles.forEach(file => transfer.items.add(file));
+            fileInput.files = transfer.files;
+        }
+
+        function getDocumentLabel(file) {
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            if (extension === 'pdf') return 'PDF document';
+            if (extension === 'doc' || extension === 'docx') return 'Word document';
+            return 'Document';
+        }
+
+        function appendRecommendationAttachmentPreview(container, file, previewUrls, canRemove, index) {
+            const item = document.createElement('div');
+            item.className = canRemove ? 'rec-attachment-item' : 'rec-attachment-item review-attachment-item';
+
+            if (file.type.startsWith('image/')) {
+                const image = document.createElement('img');
+                const url = URL.createObjectURL(file);
+                previewUrls.push(url);
+                image.src = url;
+                image.alt = `Preview of ${file.name}`;
+                item.appendChild(image);
+            } else if (file.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                const url = URL.createObjectURL(file);
+                previewUrls.push(url);
+                video.src = url;
+                video.controls = true;
+                video.preload = 'metadata';
+                video.setAttribute('aria-label', `Preview of ${file.name}`);
+                item.appendChild(video);
+            } else {
+                const documentCard = document.createElement('div');
+                documentCard.className = 'rec-document-preview';
+                const documentType = document.createElement('strong');
+                documentType.textContent = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+                const documentLabel = document.createElement('span');
+                documentLabel.textContent = getDocumentLabel(file);
+                documentCard.append(documentType, documentLabel);
+                item.appendChild(documentCard);
+            }
+
+            const name = document.createElement('span');
+            name.className = 'rec-attachment-name';
+            name.title = file.name;
+            name.textContent = file.name;
+            item.appendChild(name);
+
+            if (canRemove) {
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'rec-attachment-remove';
+                removeButton.textContent = '×';
+                removeButton.title = `Remove ${file.name}`;
+                removeButton.setAttribute('aria-label', `Remove ${file.name}`);
+                removeButton.addEventListener('click', () => {
+                    selectedRecommendationFiles.splice(index, 1);
+                    syncRecommendationFileInput();
+                    renderRecommendationAttachmentPreview();
+                });
+                item.appendChild(removeButton);
+            }
+
+            container.appendChild(item);
+        }
+
+        function renderRecommendationAttachmentPreview() {
+            recommendationPreviewUrls.forEach(URL.revokeObjectURL);
+            recommendationPreviewUrls = [];
+            recAttachmentPreview.innerHTML = '';
+            fileLabel.textContent = selectedRecommendationFiles.length
+                ? `${selectedRecommendationFiles.length} file${selectedRecommendationFiles.length === 1 ? '' : 's'} selected`
+                : '';
+
+            selectedRecommendationFiles.forEach((file, index) =>
+                appendRecommendationAttachmentPreview(recAttachmentPreview, file, recommendationPreviewUrls, true, index));
+        }
 
         function renderReview() {
             document.getElementById('r-justification').textContent = document.getElementById('projectJustification').value || '—';
@@ -509,26 +607,16 @@
                 ? 'Anonymous on Discover'
                 : 'Show my name on Discover';
     
-            const files = Array.from(fileInput.files);
             const attachmentContainer = document.getElementById('r-attachments');
+            reviewAttachmentPreviewUrls.forEach(URL.revokeObjectURL);
+            reviewAttachmentPreviewUrls = [];
             attachmentContainer.innerHTML = '';
 
-            if (files.length === 0) {
+            if (selectedRecommendationFiles.length === 0) {
                 attachmentContainer.textContent = 'None';
             } else {
-                files.forEach(file => {
-                    if (file.type.startsWith('image/')) {
-                        const img = document.createElement('img');
-                        img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;margin:4px;';
-                        img.src = URL.createObjectURL(file);
-                        attachmentContainer.appendChild(img);
-                    } else {
-                        const span = document.createElement('span');
-                        span.style.cssText = 'display:inline-block;padding:4px 8px;background:#f0f0f0;border-radius:6px;font-size:12px;margin:4px;';
-                        span.textContent = file.name;
-                        attachmentContainer.appendChild(span);
-                    }
-                });
+                selectedRecommendationFiles.forEach(file =>
+                    appendRecommendationAttachmentPreview(attachmentContainer, file, reviewAttachmentPreviewUrls, false));
             }
         }
 
@@ -715,7 +803,9 @@
             document.querySelectorAll('input[name="beneficiary"]').forEach(c => c.checked = false);
             document.getElementById('peopleAffected').value = '';
             document.getElementById('recIsAnonymous').checked = false;
-            fileLabel.textContent = '';
+            selectedRecommendationFiles = [];
+            syncRecommendationFileInput();
+            renderRecommendationAttachmentPreview();
             successState.classList.remove('active');
             stepFooter.style.display = 'flex';
             goToStep(1);
@@ -834,48 +924,51 @@
                 mapCoordDisplay.textContent = selectedAddress;
             }
 
-            // Search restricted to Angeles City
-            const searchInput = document.getElementById('mapSearchBox');
-            const searchBtn = document.getElementById('mapSearchBtn');
+            function applySelectedLocation(latLng, address) {
+                if (!angelsesBounds.contains(latLng)) {
+                    alert('Location is outside Angeles City. Please pin a location within Angeles City, Pampanga.');
+                    return false;
+                }
 
-            function searchLocation() {
-                const query = searchInput.value.trim();
-                if (!query) return;
+                map.panTo(latLng);
+                map.setZoom(16);
+                marker.setPosition(latLng);
+                selectedLat = latLng.lat();
+                selectedLng = latLng.lng();
+                selectedAddress = address;
+                mapCoordDisplay.textContent = selectedAddress;
+                return true;
+            }
 
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({
-                    address: query + ', Angeles City, Pampanga, Philippines',
-                    bounds: angelsesBounds
-                }, (results, status) => {
-                    if (status === 'OK' && results[0]) {
-                        const latLng = results[0].geometry.location;
+            // Use the current Places API (New) autocomplete widget. The older
+            // google.maps.places.Autocomplete widget is unavailable to new customers.
+            async function setupPlaceAutocomplete() {
+                const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
+                const autocompleteHost = document.getElementById('mapAutocompleteHost');
 
-                        // Validate result is within Angeles City bounds
-                        if (!angelsesBounds.contains(latLng)) {
-                            alert('Location is outside Angeles City. Please pin a location within Angeles City, Pampanga.');
-                            return;
-                        }
+                autocompleteEl = new PlaceAutocompleteElement();
+                autocompleteEl.placeholder = 'Start typing a street, barangay, landmark, or establishment...';
+                autocompleteEl.includedRegionCodes = ['ph'];
+                autocompleteEl.locationRestriction = angelsesBounds;
+                autocompleteEl.style.width = '100%';
 
-                        map.panTo(latLng);
-                        map.setZoom(16);
-                        marker.setPosition(latLng);
+                autocompleteHost.replaceChildren(autocompleteEl);
 
-                        selectedLat = latLng.lat();
-                        selectedLng = latLng.lng();
-                        selectedAddress = results[0].formatted_address;
-                        mapCoordDisplay.textContent = selectedAddress;
-                    } else {
-                        alert('Location not found. Try a more specific address in Angeles City.');
+                autocompleteEl.addEventListener('gmp-select', async ({ placePrediction }) => {
+                    const place = placePrediction.toPlace();
+                    await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
+
+                    if (!place.location) {
+                        return;
                     }
+
+                    const address = place.formattedAddress || place.displayName || 'Selected location';
+                    applySelectedLocation(place.location, address);
                 });
             }
 
-            searchBtn.addEventListener('click', searchLocation);
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    searchLocation();
-                }
+            setupPlaceAutocomplete().catch(() => {
+                mapCoordDisplay.textContent = 'Location search is currently unavailable. You can still place the pin manually.';
             });
         }
 
@@ -1080,6 +1173,8 @@
         let confirmedCategory = '';
         const classificationErrorModal = document.getElementById('classificationErrorModal');
         const classificationErrorMessage = document.getElementById('classificationErrorMessage');
+        const concernForm = document.getElementById('concernForm');
+        const concernSuccessState = document.getElementById('concernSuccessState');
 
         document.querySelectorAll('.concern-category-btn').forEach(button => {
             button.addEventListener('click', () => {
@@ -1145,7 +1240,7 @@
                     confirmedCategory = result.category;
 
                     submitBtn.textContent = 'Submitting...';
-                    submitConfirmedConcern();
+                    await submitConfirmedConcern();
                 } else {
                     showClassificationError('The AI service could not categorize your concern right now. Please try again in a moment.');
                 }
@@ -1158,8 +1253,8 @@
         });
 
         // Submit with the AI-determined routing category.
-        function submitConfirmedConcern() {
-            const form = document.getElementById('concernForm');
+        async function submitConfirmedConcern() {
+            const form = concernForm;
 
             // Add hidden fields for confirmed category/office
             let catField = document.getElementById('ConfirmedCategory');
@@ -1172,8 +1267,49 @@
             }
             catField.value = confirmedCategory;
 
-            form.submit();
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const response = await fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': token,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new FormData(form)
+            });
+
+            const result = await response.json().catch(() => ({
+                success: false,
+                message: 'The server returned an unexpected response. Please try again.'
+            }));
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Your concern could not be submitted. Please try again.');
+            }
+
+            form.style.display = 'none';
+            concernSuccessState.classList.add('active');
         }
+
+        document.getElementById('btnNewConcern').addEventListener('click', () => {
+            concernForm.reset();
+            selectedConcernFiles = [];
+            syncConcernFileInput();
+            renderConcernAttachmentPreview();
+            selectedConcernCategory = '';
+            confirmedCategory = '';
+            document.querySelectorAll('.concern-category-btn').forEach(button => button.classList.remove('selected'));
+            concernLocationText.textContent = 'No location selected';
+            selectedAddress = '';
+            selectedLat = null;
+            selectedLng = null;
+            concernDraftStatus.textContent = '';
+            document.getElementById('err-description').textContent = '';
+            document.getElementById('err-location').textContent = '';
+            document.getElementById('err-attachment').textContent = '';
+            concernSuccessState.classList.remove('active');
+            concernForm.style.display = '';
+            document.getElementById('concernDescription').focus();
+        });
 
         document.getElementById('classificationErrorBackBtn').addEventListener('click', () => {
             classificationErrorModal.classList.remove('active');

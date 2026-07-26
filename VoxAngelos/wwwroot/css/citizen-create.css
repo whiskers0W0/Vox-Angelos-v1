@@ -333,6 +333,18 @@
 .concern-attachment-remove { position: absolute; top: 3px; right: 3px; width: 21px; height: 21px; border: 0; border-radius: 50%; background: var(--va-red); color: #fff; font-size: 15px; line-height: 1; }
 .concern-file-placeholder { display: grid; height: 96px; place-items: center; border-radius: 5px; background: var(--va-blue-soft); color: var(--va-blue); font-size: 10px; font-weight: 750; }
 
+.rec-attachment-preview { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
+.rec-attachment-item { position: relative; width: 145px; padding: 7px; border: 1px solid var(--va-line); border-radius: 8px; background: #fff; }
+.rec-attachment-item img,
+.rec-attachment-item video { display: block; width: 100%; height: 96px; border-radius: 5px; object-fit: cover; background: #101827; }
+.rec-document-preview { display: grid; height: 96px; place-items: center; align-content: center; gap: 4px; border-radius: 5px; background: linear-gradient(135deg, #edf3ff, #f8faff); color: var(--va-blue); text-align: center; }
+.rec-document-preview strong { font-size: 20px; font-weight: 800; letter-spacing: .04em; }
+.rec-document-preview span { color: var(--va-muted); font-size: 9px; font-weight: 650; }
+.rec-attachment-name { display: block; overflow: hidden; margin-top: 6px; padding-right: 18px; color: #536075; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.rec-attachment-remove { position: absolute; top: 3px; right: 3px; width: 21px; height: 21px; border: 0; border-radius: 50%; background: var(--va-red); color: #fff; font-size: 15px; line-height: 1; }
+.review-attachment-item { width: 135px; background: #fff; }
+.review-attachment-item .rec-attachment-name { padding-right: 0; }
+
 /* ── Concern actions ───────────────────────────────────────────── */
 .concern-submit-row {
     display: flex;
@@ -541,6 +553,7 @@
     .use-map-link { width: 100%; }
     .concern-attachment-row { align-items: flex-start; flex-direction: column; }
     .concern-upload-btn { width: 100%; }
+    .rec-attachment-item { width: min(145px, calc(50vw - 42px)); }
     .concern-submit-row { flex-direction: column-reverse; }
     .concern-submit-row .btn-submit { width: 100%; }
     .step-footer { align-items: flex-start; flex-direction: column; }
