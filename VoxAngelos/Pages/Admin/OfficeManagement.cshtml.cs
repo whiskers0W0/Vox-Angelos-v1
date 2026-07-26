@@ -13,17 +13,6 @@ namespace VoxAngelos.Pages.Admin
 
         public const string DefaultLguPassword = "Lgu@123456";
 
-        private static readonly HashSet<string> SeededEmails = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "pptro@voxangelos.gov.ph",
-            "osca@voxangelos.gov.ph",
-            "pwdao@voxangelos.gov.ph",
-            "mikaellagomez102004@gmail.com",
-            "adrndgaming@gmail.com",
-            "carlostannnn29+lgu@gmail.com",
-            "alcuizargiogio+lgu@gmail.com"
-        };
-
         public OfficeManagementModel(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
@@ -34,11 +23,16 @@ namespace VoxAngelos.Pages.Admin
         [BindProperty] public string NewEmployeeId { get; set; } = string.Empty;
         [BindProperty] public string NewEmail { get; set; } = string.Empty;
         [BindProperty] public string NewDepartment { get; set; } = string.Empty;
+        [BindProperty] public string NewDepartmentFullName { get; set; } = string.Empty;
+        [BindProperty] public string NewTags { get; set; } = string.Empty;
 
         [BindProperty] public string EditUserId { get; set; } = string.Empty;
         [BindProperty] public string EditEmployeeId { get; set; } = string.Empty;
         [BindProperty] public string EditEmail { get; set; } = string.Empty;
         [BindProperty] public string EditPassword { get; set; } = string.Empty;
+        [BindProperty] public string EditDepartment { get; set; } = string.Empty;
+        [BindProperty] public string EditDepartmentFullName { get; set; } = string.Empty;
+        [BindProperty] public string EditTags { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
@@ -52,9 +46,21 @@ namespace VoxAngelos.Pages.Admin
         {
             if (string.IsNullOrWhiteSpace(NewEmployeeId) ||
                 string.IsNullOrWhiteSpace(NewEmail) ||
-                string.IsNullOrWhiteSpace(NewDepartment))
+                string.IsNullOrWhiteSpace(NewDepartment) ||
+                string.IsNullOrWhiteSpace(NewDepartmentFullName))
             {
                 ErrorMessage = "All fields are required.";
+                await LoadAccountsAsync();
+                return Page();
+            }
+
+            NewDepartment = NewDepartment.Trim().ToUpperInvariant();
+
+            var existingDept = _userManager.Users
+                .FirstOrDefault(u => u.Department != null && u.Department.ToUpper() == NewDepartment);
+            if (existingDept != null)
+            {
+                ErrorMessage = $"An LGU account already exists for {NewDepartment}. Each department can only have one account.";
                 await LoadAccountsAsync();
                 return Page();
             }
@@ -82,6 +88,8 @@ namespace VoxAngelos.Pages.Admin
                 EmailConfirmed = true,
                 EmployeeId = NewEmployeeId,
                 Department = NewDepartment,
+                DepartmentFullName = string.IsNullOrWhiteSpace(NewDepartmentFullName) ? null : NewDepartmentFullName.Trim(),
+                Tags = ParseTags(NewTags),
                 ApprovalStatus = "Approved",
                 CreatedAt = DateTime.UtcNow,
                 TwoFactorEnabled = false
@@ -172,6 +180,30 @@ namespace VoxAngelos.Pages.Admin
                 user.EmployeeId = EditEmployeeId;
             }
 
+            if (!string.IsNullOrWhiteSpace(EditDepartment))
+            {
+                var normalizedDept = EditDepartment.Trim().ToUpperInvariant();
+                if (!string.Equals(normalizedDept, user.Department, StringComparison.OrdinalIgnoreCase))
+                {
+                    var deptTaken = _userManager.Users
+                        .FirstOrDefault(u => u.Department != null && u.Department.ToUpper() == normalizedDept && u.Id != EditUserId);
+                    if (deptTaken != null)
+                    {
+                        ErrorMessage = $"An LGU account already exists for {normalizedDept}. Each department can only have one account.";
+                        await LoadAccountsAsync();
+                        return Page();
+                    }
+                }
+                user.Department = normalizedDept;
+            }
+
+            if (!string.IsNullOrWhiteSpace(EditDepartmentFullName))
+            {
+                user.DepartmentFullName = EditDepartmentFullName.Trim();
+            }
+
+            user.Tags = ParseTags(EditTags);
+
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {
@@ -239,6 +271,17 @@ namespace VoxAngelos.Pages.Admin
             return Page();
         }
 
+        private static List<string> ParseTags(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return new List<string>();
+
+            return raw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(30)
+                .ToList();
+        }
+
         private async Task LoadAccountsAsync()
         {
             var lguUsers = await _userManager.GetUsersInRoleAsync("LGU");
@@ -250,9 +293,10 @@ namespace VoxAngelos.Pages.Admin
                     EmployeeId = user.EmployeeId ?? "N/A",
                     Email = user.Email ?? "N/A",
                     Department = user.Department ?? "N/A",
+                    DepartmentFullName = user.DepartmentFullName ?? string.Empty,
+                    Tags = user.Tags ?? new List<string>(),
                     IsActive = user.LockoutEnd == null || user.LockoutEnd < DateTimeOffset.UtcNow,
-                    CreatedAt = user.CreatedAt,
-                    IsSeeded = SeededEmails.Contains(user.Email ?? "")
+                    CreatedAt = user.CreatedAt
                 });
             }
         }
@@ -264,8 +308,9 @@ namespace VoxAngelos.Pages.Admin
         public string EmployeeId { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
+        public string DepartmentFullName { get; set; } = string.Empty;
+        public List<string> Tags { get; set; } = new();
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
-        public bool IsSeeded { get; set; }
     }
 }

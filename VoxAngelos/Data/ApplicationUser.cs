@@ -13,8 +13,14 @@ namespace VoxAngelos.Data
         // Used by LGU and Admin accounts
         public string? EmployeeId { get; set; }
 
-        // "SWDO", "CEO", "CENRO", "ACDO", "PPTRO", "OSCA", "PWDAO"
+        // "SWDO", "CEO", "CENRO", "ACDO", "PTRO", "OSCA", "PWDAO"
         public string? Department { get; set; }
+
+        // Full office name shown alongside the abbreviation, e.g. "Social Welfare and Development Office"
+        public string? DepartmentFullName { get; set; }
+
+        // Admin-curated keywords used to steer NLP concern routing toward this LGU's department
+        public List<string> Tags { get; set; } = new();
 
         // Navigation properties
         public UserProfile? UserProfile { get; set; }

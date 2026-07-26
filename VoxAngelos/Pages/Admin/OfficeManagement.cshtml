@@ -5,7 +5,7 @@
     ViewData["Title"] = "Office Management";
 }
 @section Styles {
-    <link rel="stylesheet" href="/css/admin-officemanagement.css?v=office-management-v3" />
+    <link rel="stylesheet" href="/css/admin-officemanagement.css?v=office-management-v5" />
 }
 
 @{
@@ -43,7 +43,6 @@
     .admin-offices-email { color: #5c687b !important; }
     .admin-offices-actions { min-width: 160px !important; text-align: right !important; white-space: nowrap !important; }
     .admin-offices-inline-form { display: inline !important; }
-    .admin-offices-workspace .seeded-badge { display: inline-flex !important; min-height: 20px !important; align-items: center !important; margin-left: 6px !important; padding: 0 6px !important; border: 1px solid #bfd2f4 !important; border-radius: 4px !important; background: #eef4ff !important; color: #1646a0 !important; font-size: 8px !important; font-weight: 800 !important; letter-spacing: .05em !important; text-transform: uppercase !important; vertical-align: middle !important; }
     .admin-offices-workspace .status-badge { display: inline-flex !important; min-height: 25px !important; align-items: center !important; padding: 0 8px !important; border-radius: 5px !important; font-size: 10px !important; font-weight: 800 !important; white-space: nowrap !important; }
     .admin-offices-workspace .status-badge.status-approved { background: #e7f4ef !important; color: #197153 !important; }
     .admin-offices-workspace .status-badge.status-rejected { background: #fbecef !important; color: #c43f4b !important; }
@@ -115,9 +114,9 @@
                         <tr>
                             <td data-label="Department / office">
                                 <strong>@account.Department</strong>
-                                @if (account.IsSeeded)
+                                @if (!string.IsNullOrWhiteSpace(account.DepartmentFullName))
                                 {
-                                    <span class="seeded-badge">Seeded</span>
+                                    <br /><span class="admin-offices-fullname">@account.DepartmentFullName</span>
                                 }
                             </td>
                             <td data-label="Employee ID">@account.EmployeeId</td>
@@ -135,6 +134,8 @@
                                         data-employeeid="@account.EmployeeId"
                                         data-email="@account.Email"
                                         data-department="@account.Department"
+                                        data-fullname="@account.DepartmentFullName"
+                                        data-tags="@string.Join(",", account.Tags)"
                                         onclick="showEditModalFromBtn(this)">Edit</button>
                                 <form method="post" asp-page-handler="ToggleStatus" class="admin-offices-inline-form">
                                     <input type="hidden" name="userId" value="@account.UserId" />
@@ -162,17 +163,12 @@
         <form method="post" asp-page-handler="Create">
             @Html.AntiForgeryToken()
             <div class="form-group">
-                <label>Department/Office</label>
-                <select name="NewDepartment" class="form-control" required>
-                    <option value="">-- Select Department --</option>
-                    <option value="SWDO">SWDO</option>
-                    <option value="CEO">CEO</option>
-                    <option value="CENRO">CENRO</option>
-                    <option value="ACDO">ACDO</option>
-                    <option value="PPTRO">PPTRO</option>
-                    <option value="OSCA">OSCA</option>
-                    <option value="PWDAO">PWDAO</option>
-                </select>
+                <label>Full Department/Office Name</label>
+                <input type="text" name="NewDepartmentFullName" class="form-control" placeholder="e.g. Social Welfare and Development Office" required />
+            </div>
+            <div class="form-group">
+                <label>Abbreviated Department/Office Name</label>
+                <input type="text" name="NewDepartment" class="form-control" placeholder="e.g. SWDO" required />
             </div>
             <div class="form-group">
                 <label>Employee ID</label>
@@ -181,6 +177,16 @@
             <div class="form-group">
                 <label>Office Email</label>
                 <input type="email" name="NewEmail" class="form-control" placeholder="e.g. swdo@voxangelos.gov.ph" required />
+            </div>
+            <div class="form-group">
+                <label>Tags <span class="form-hint-inline">(used for NLP concern routing)</span></label>
+                <div class="tag-input-wrap" id="newTagsWrap" onclick="document.getElementById('newTagsEntry').focus()">
+                    <div class="tag-pills" id="newTagsPills"></div>
+                    <input type="text" id="newTagsEntry" class="tag-entry-input"
+                           placeholder="Type a tag and press Enter"
+                           onkeydown="handleTagEntryKeydown('new', event)" />
+                </div>
+                <input type="hidden" id="newTags" name="NewTags" />
             </div>
             <p class="default-pass-note">Account will be created with the default password: <strong>Lgu@123456</strong></p>
             <div class="modal-actions">
@@ -202,12 +208,30 @@
             @Html.AntiForgeryToken()
             <input type="hidden" id="editUserId" name="EditUserId" />
             <div class="form-group">
+                <label>Full Department/Office Name</label>
+                <input type="text" id="editDepartmentFullName" name="EditDepartmentFullName" class="form-control" placeholder="e.g. Social Welfare and Development Office" required />
+            </div>
+            <div class="form-group">
+                <label>Abbreviated Department/Office Name</label>
+                <input type="text" id="editDepartment" name="EditDepartment" class="form-control" placeholder="e.g. SWDO" required />
+            </div>
+            <div class="form-group">
                 <label>Employee ID</label>
                 <input type="text" id="editEmployeeId" name="EditEmployeeId" class="form-control" required />
             </div>
             <div class="form-group">
                 <label>Office Email</label>
                 <input type="email" id="editEmail" name="EditEmail" class="form-control" required />
+            </div>
+            <div class="form-group">
+                <label>Tags <span class="form-hint-inline">(used for NLP concern routing)</span></label>
+                <div class="tag-input-wrap" id="editTagsWrap" onclick="document.getElementById('editTagsEntry').focus()">
+                    <div class="tag-pills" id="editTagsPills"></div>
+                    <input type="text" id="editTagsEntry" class="tag-entry-input"
+                           placeholder="Type a tag and press Enter"
+                           onkeydown="handleTagEntryKeydown('edit', event)" />
+                </div>
+                <input type="hidden" id="editTags" name="EditTags" />
             </div>
             <div class="form-group">
                 <label>New Password <span class="form-hint-inline">(leave blank to keep current)</span></label>
@@ -246,6 +270,22 @@
         <div class="modal-actions">
             <button type="button" onclick="closeSaveWarning()" class="btn-cancel">Cancel</button>
             <button type="button" onclick="confirmSave()" class="btn-approve" id="confirmSaveBtn" disabled>Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ WARNING: REMOVE TAG ═══════════════════ -->
+<div id="removeTagWarningModal" class="modal-overlay" style="display:none;z-index:1010">
+    <div class="modal-box warning-modal">
+        <div class="modal-header">
+            <h3 class="warning-title">Remove Tag</h3>
+        </div>
+        <div class="warning-body">
+            <p>Remove the tag <strong id="removeTagName"></strong>?</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeRemoveTagWarning()" class="btn-cancel">Cancel</button>
+            <button type="button" onclick="confirmRemoveTag()" class="btn-danger">Remove Tag</button>
         </div>
     </div>
 </div>
@@ -311,17 +351,91 @@
     let currentUserId = '';
     let currentDepartment = '';
 
+    // ── Tag pill input ──
+    const tagState = { new: [], edit: [] };
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function renderTags(key) {
+        const pillsEl = document.getElementById(key + 'TagsPills');
+        const hiddenEl = document.getElementById(key + 'Tags');
+        pillsEl.innerHTML = tagState[key].map((tag, idx) => `
+            <span class="tag-pill">
+                <span>${escapeHtml(tag)}</span>
+                <button type="button" class="tag-pill-remove" aria-label="Remove tag ${escapeHtml(tag)}" onclick="removeTag('${key}', ${idx}); event.stopPropagation();">×</button>
+            </span>
+        `).join('');
+        hiddenEl.value = tagState[key].join(',');
+    }
+
+    function addTag(key, raw) {
+        const value = raw.trim();
+        if (!value) return;
+        if (!tagState[key].some(t => t.toLowerCase() === value.toLowerCase())) {
+            tagState[key].push(value);
+            renderTags(key);
+        }
+    }
+
+    let pendingTagRemoval = null;
+
+    function removeTag(key, idx) {
+        const tag = tagState[key][idx];
+        if (tag === undefined) return;
+        pendingTagRemoval = { key, idx };
+        document.getElementById('removeTagName').textContent = tag;
+        document.getElementById('removeTagWarningModal').style.display = 'flex';
+    }
+
+    function closeRemoveTagWarning() {
+        pendingTagRemoval = null;
+        document.getElementById('removeTagWarningModal').style.display = 'none';
+    }
+
+    function confirmRemoveTag() {
+        if (!pendingTagRemoval) return;
+        const { key, idx } = pendingTagRemoval;
+        tagState[key].splice(idx, 1);
+        renderTags(key);
+        closeRemoveTagWarning();
+    }
+
+    function setTags(key, tags) {
+        tagState[key] = tags.filter(t => t.length > 0);
+        renderTags(key);
+    }
+
+    function handleTagEntryKeydown(key, event) {
+        if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            addTag(key, event.target.value);
+            event.target.value = '';
+        } else if (event.key === 'Backspace' && event.target.value === '' && tagState[key].length > 0) {
+            removeTag(key, tagState[key].length - 1);
+        }
+    }
+
     function showEditModalFromBtn(btn) {
         currentUserId = btn.dataset.userid;
         currentDepartment = btn.dataset.department;
         document.getElementById('editUserId').value = currentUserId;
         document.getElementById('editEmployeeId').value = btn.dataset.employeeid;
         document.getElementById('editEmail').value = btn.dataset.email;
+        document.getElementById('editDepartment').value = btn.dataset.department;
+        document.getElementById('editDepartmentFullName').value = btn.dataset.fullname || '';
         document.getElementById('editPassword').value = '';
+        document.getElementById('editTagsEntry').value = '';
+        setTags('edit', btn.dataset.tags ? btn.dataset.tags.split(',') : []);
         document.getElementById('editModal').style.display = 'flex';
     }
 
     function showCreateModal() {
+        document.getElementById('newTagsEntry').value = '';
+        setTags('new', []);
         document.getElementById('createModal').style.display = 'flex';
     }
 

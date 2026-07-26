@@ -43,6 +43,18 @@ namespace VoxAngelos.Data
                 .HasIndex(u => u.PhoneNumber)
                 .IsUnique();
 
+            // Admin-curated NLP tags — default to an empty array so existing rows
+            // (and the ADD COLUMN NOT NULL migration) don't need a null check everywhere.
+            builder.Entity<ApplicationUser>()
+                .Property(u => u.Tags)
+                .HasDefaultValueSql("ARRAY[]::text[]");
+
+            // Each department may have at most one LGU account.
+            builder.Entity<ApplicationUser>()
+                .HasIndex(u => u.Department)
+                .IsUnique()
+                .HasFilter("\"Department\" IS NOT NULL");
+
             // One-to-one: ApplicationUser <-> UserProfile
             builder.Entity<UserProfile>()
                 .HasOne(up => up.User)

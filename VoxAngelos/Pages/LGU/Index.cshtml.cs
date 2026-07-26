@@ -24,7 +24,7 @@ namespace VoxAngelos.Pages.LGU
                 ["CEO"] = "City Engineer's Office",
                 ["CENRO"] = "City Environment and Natural Resources Office",
                 ["ACDO"] = "City Development / Urban Planning Office",
-                ["PPTRO"] = "Public Safety, Traffic and Transport Regulation Office",
+                ["PTRO"] = "Public Safety, Traffic and Transport Regulation Office",
                 ["OSCA"] = "Office of Senior Citizens Affairs",
                 ["PWDAO"] = "Persons With Disability Affairs Office"
             };

@@ -24,7 +24,12 @@ namespace VoxAngelos.Services
 
         // Departments this classifier can route to — used to validate corrections.
         public static readonly string[] Departments =
-            ["SWDO", "CEO", "CENRO", "ACDO", "PPTRO", "OSCA", "PWDAO"];
+            ["SWDO", "CEO", "CENRO", "ACDO", "PTRO", "OSCA", "PWDAO"];
+
+        // Read-only view of the built-in keyword lists, keyed by department — used to
+        // seed an office's admin-editable NLP tags (Office Management) with a sensible
+        // starting point instead of an empty list.
+        public static IReadOnlyDictionary<string, string[]> DefaultKeywordsByDepartment => DepartmentKeywords;
 
         private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -64,12 +69,12 @@ namespace VoxAngelos.Services
             ("Urban",        "ACDO"),
             ("Economic",     "ACDO"),
             ("Land Use",     "ACDO"),
-            // PPTRO
-            ("Traffic",         "PPTRO"),
-            ("Transportation",  "PPTRO"),
-            ("Parking",         "PPTRO"),
-            ("Vehicle",         "PPTRO"),
-            ("Transit",         "PPTRO"),
+            // PTRO
+            ("Traffic",         "PTRO"),
+            ("Transportation",  "PTRO"),
+            ("Parking",         "PTRO"),
+            ("Vehicle",         "PTRO"),
+            ("Transit",         "PTRO"),
             // OSCA
             ("Senior",      "OSCA"),
             ("Elderly",     "OSCA"),
@@ -195,7 +200,7 @@ namespace VoxAngelos.Services
                 "pamintuan", "kalungsoran", "planu"
             ],
 
-            ["PPTRO"] =
+            ["PTRO"] =
             [
                 // English
                 "traffic", "traffic flow", "traffic congestion", "traffic jam",
@@ -301,7 +306,8 @@ namespace VoxAngelos.Services
                     return googleResult;
             }
 
-            return Classify(description, learned);
+            var departmentTags = await LoadDepartmentTagsAsync();
+            return Classify(description, learned, departmentTags);
         }
 
         /// <summary>
@@ -339,9 +345,13 @@ namespace VoxAngelos.Services
 
         /// <summary>
         /// Local keyword-only classifier — no network call, always available.
-        /// Scores the static keyword lists plus any learned weights from LGU feedback.
+        /// Scores the static keyword lists plus any learned weights from LGU feedback,
+        /// plus admin-curated tags entered per office in Office Management.
         /// </summary>
-        public string? Classify(string description, IReadOnlyDictionary<string, Dictionary<string, int>>? learnedWeights = null)
+        public string? Classify(
+            string description,
+            IReadOnlyDictionary<string, Dictionary<string, int>>? learnedWeights = null,
+            IReadOnlyDictionary<string, List<string>>? departmentTags = null)
         {
             if (string.IsNullOrWhiteSpace(description))
                 return null;
@@ -370,9 +380,41 @@ namespace VoxAngelos.Services
                 }
             }
 
+            if (departmentTags != null)
+            {
+                foreach (var (department, tags) in departmentTags)
+                {
+                    // Admin-curated tags are a deliberate routing signal, so they outweigh
+                    // a single incidental hit from the static keyword list.
+                    int score = tags.Count(t => !string.IsNullOrWhiteSpace(t) && lower.Contains(t.ToLowerInvariant())) * 2;
+                    if (score == 0) continue;
+                    scores[department] = scores.GetValueOrDefault(department) + score;
+                }
+            }
+
             return scores.Count == 0
                 ? null
                 : scores.MaxBy(s => s.Value).Key;
+        }
+
+        /// <summary>
+        /// Loads admin-curated NLP tags per department from LGU office accounts
+        /// (set in Admin → Office Management), merging tags across accounts that
+        /// share a department.
+        /// </summary>
+        private async Task<Dictionary<string, List<string>>> LoadDepartmentTagsAsync()
+        {
+            var rows = await _db.Users
+                .Where(u => u.Department != null)
+                .Select(u => new { u.Department, u.Tags })
+                .ToListAsync();
+
+            return rows
+                .Where(r => r.Tags.Count > 0)
+                .GroupBy(r => r.Department!)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.SelectMany(r => r.Tags).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
         }
 
         private async Task<Dictionary<string, Dictionary<string, int>>> LoadLearnedWeightsAsync()

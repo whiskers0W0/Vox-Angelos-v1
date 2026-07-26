@@ -3,7 +3,7 @@
 ## Why this exists
 
 Vox Angelos routes every submitted concern to one of 7 LGU departments (`SWDO`,
-`CEO`, `CENRO`, `ACDO`, `PPTRO`, `OSCA`, `PWDAO`) using `ConcernClassificationService`
+`CEO`, `CENRO`, `ACDO`, `PTRO`, `OSCA`, `PWDAO`) using `ConcernClassificationService`
 (`VoxAngelos/Services/ConcernClassificationService.cs`). Classification comes from two
 layers, tried in order:
 

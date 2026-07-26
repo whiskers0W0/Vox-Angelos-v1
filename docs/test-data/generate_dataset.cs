@@ -197,42 +197,42 @@ Add("ACDO", "Taglish", "Low",
     "Inquiry about zoning certificate process.");
 
 // ============================================================
-// PPTRO — Public Safety, Traffic and Transport Regulation Office
+// PTRO — Public Safety, Traffic and Transport Regulation Office
 // ============================================================
-Add("PPTRO", "English", "High",
+Add("PTRO", "English", "High",
     "There was a serious vehicular accident {landmark} in Barangay {brgy} because the traffic light has been broken for days, several vehicles collided at the intersection.",
     "Accident caused by broken traffic light, urgent.");
-Add("PPTRO", "English", "Medium",
+Add("PTRO", "English", "Medium",
     "Tricycles are illegally parked all along the road {landmark} in Barangay {brgy}, causing heavy traffic congestion every afternoon.",
     "Illegal tricycle parking causing congestion.");
-Add("PPTRO", "English", "Low",
+Add("PTRO", "English", "Low",
     "Could a traffic enforcer be assigned during rush hour {landmark} in Barangay {brgy} to help manage the pedestrian crossing?",
     "Request for traffic enforcer at pedestrian crossing.");
-Add("PPTRO", "Tagalog", "High",
+Add("PTRO", "Tagalog", "High",
     "Nagkaroon po ng malubhang aksidente {landmark} sa Barangay {brgy} dahil ilang araw nang sira ang traffic light, nagbanggaan ang ilang sasakyan sa interseksyon.",
     "Accident caused by broken traffic light, urgent.");
-Add("PPTRO", "Tagalog", "Medium",
+Add("PTRO", "Tagalog", "Medium",
     "Iligal na nakaparada ang mga tricycle sa tabi ng kalsada {landmark} sa Barangay {brgy}, nagdudulot ito ng matinding trapiko tuwing hapon.",
     "Illegal tricycle parking causing congestion.");
-Add("PPTRO", "Tagalog", "Low",
+Add("PTRO", "Tagalog", "Low",
     "Pwede po bang magtalaga ng traffic enforcer tuwing rush hour {landmark} sa Barangay {brgy} para matulungan ang mga tumatawid?",
     "Request for traffic enforcer at pedestrian crossing.");
-Add("PPTRO", "Kapampangan", "High",
+Add("PTRO", "Kapampangan", "High",
     "Mika-aksidenteng maragul {landmark} king Barangay {brgy} uling pilan alang aldo neng masira ing traffic light, mika-bunggan deng dakal a sasakyan king interseksyon.",
     "Accident caused by broken traffic light, urgent.");
-Add("PPTRO", "Kapampangan", "Medium",
+Add("PTRO", "Kapampangan", "Medium",
     "Iligal a mikaparada deng tricycle king gilid ning kalsada {landmark} king Barangay {brgy}, mika-trapiku maragul kada gatpanapon.",
     "Illegal tricycle parking causing congestion.");
-Add("PPTRO", "Kapampangan", "Low",
+Add("PTRO", "Kapampangan", "Low",
     "Malyari wari pong magtalaga metung a traffic enforcer kada rush hour {landmark} king Barangay {brgy} bang matulungan deng tau a manabuk?",
     "Request for traffic enforcer at pedestrian crossing.");
-Add("PPTRO", "Taglish", "High",
+Add("PTRO", "Taglish", "High",
     "May nangyaring serious accident po {landmark} sa Barangay {brgy} kasi ilang araw na pong sira yung traffic light, nagbanggaan yung several vehicles sa intersection.",
     "Accident caused by broken traffic light, urgent.");
-Add("PPTRO", "Taglish", "Medium",
+Add("PTRO", "Taglish", "Medium",
     "Illegally parked po yung mga tricycle sa tabi ng road {landmark} sa Barangay {brgy}, nagiging cause ito ng heavy traffic every afternoon.",
     "Illegal tricycle parking causing congestion.");
-Add("PPTRO", "Taglish", "Low",
+Add("PTRO", "Taglish", "Low",
     "Pwede po ba mag-assign ng traffic enforcer during rush hour {landmark} sa Barangay {brgy} to help manage yung pedestrian crossing?",
     "Request for traffic enforcer at pedestrian crossing.");
 

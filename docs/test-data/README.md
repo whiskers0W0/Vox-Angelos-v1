@@ -13,7 +13,7 @@ manually verify before feeding back into the classifier's learning loop
 | `id` | Sequential row ID (1–500). |
 | `text` | The concern text, ready to paste into the citizen concern-submission form. |
 | `language` | One of `English`, `Tagalog`, `Kapampangan`, `Taglish` (English/Tagalog code-switched). |
-| `expected_category` | The department this concern *should* route to: one of `SWDO`, `CEO`, `CENRO`, `ACDO`, `PPTRO`, `OSCA`, `PWDAO` (see `ConcernClassificationService.Departments`). |
+| `expected_category` | The department this concern *should* route to: one of `SWDO`, `CEO`, `CENRO`, `ACDO`, `PTRO`, `OSCA`, `PWDAO` (see `ConcernClassificationService.Departments`). |
 | `expected_urgency` | `Low`, `Medium`, or `High` — the author's intended urgency tier, independent of the app's Location Density Score (see `docs/urgency-algorithm-location-density-score.md`); useful for manually judging whether triage/response prioritization looks reasonable. |
 | `lgu_verified` | **Left blank on purpose.** An LGU reviewer fills this in (`Correct` / `Incorrect — should be <dept>`) after checking what the live classifier actually assigned, per row. This is the human verification step described below. |
 | `notes` | A short English gloss of the scenario, so a reviewer who isn't fluent in Kapampangan/Tagalog can still judge intent quickly. |
@@ -24,7 +24,7 @@ manually verify before feeding back into the classifier's learning loop
 variations (with `PWDAO` trimmed slightly to land on exactly 500). Distribution:
 
 ```
-SWDO: 72   CEO: 72   CENRO: 72   ACDO: 72   PPTRO: 72   OSCA: 72   PWDAO: 68
+SWDO: 72   CEO: 72   CENRO: 72   ACDO: 72   PTRO: 72   OSCA: 72   PWDAO: 68
 ```
 
 Barangay names, street landmarks, and scenario framing are drawn from real Angeles

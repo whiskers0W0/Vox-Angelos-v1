@@ -265,7 +265,7 @@ using (var scope = app.Services.CreateScope())
         new { Email = "adrndgaming@gmail.com",           EmployeeId = "LGU-EXT-002",   Department = "CEO" },
         new { Email = "carlostannnn29+lgu@gmail.com",    EmployeeId = "LGU-EXT-003",   Department = "ACDO" },
         new { Email = "alcuizargiogio+lgu@gmail.com",    EmployeeId = "LGU-ENV-001",   Department = "CENRO" },
-        new { Email = "pptro@voxangelos.gov.ph",         EmployeeId = "LGU-PPT-001",   Department = "PPTRO" },
+        new { Email = "ptro@voxangelos.gov.ph",          EmployeeId = "LGU-PTR-001",   Department = "PTRO" },
         new { Email = "osca@voxangelos.gov.ph",          EmployeeId = "LGU-OSCA-001",  Department = "OSCA" },
         new { Email = "pwdao@voxangelos.gov.ph",         EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
     };
@@ -274,6 +274,12 @@ using (var scope = app.Services.CreateScope())
     {
         var existingLgu = await userManager.FindByEmailAsync(lgu.Email);
         if (existingLgu != null)
+            continue;
+
+        // Each department can only have one LGU account (unique DB index) — if another
+        // account already covers this department, skip rather than crash the seeder.
+        var departmentTaken = userManager.Users.Any(u => u.Department == lgu.Department);
+        if (departmentTaken)
             continue;
 
         var lguUser = new ApplicationUser
