@@ -285,11 +285,48 @@ body {
     transition: background .16s ease, border-color .16s ease, transform .16s ease;
 }
 
-.cta:hover {
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 0 18px;
+    border: 1px solid var(--login-blue);
+    border-radius: 7px;
+    background: var(--login-blue);
+    color: #ffffff !important;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+.back-link:hover {
     border-color: var(--login-blue-dark);
     background: var(--login-blue-dark);
+    color: #ffffff !important;
     transform: translateY(-1px);
 }
+
+.back-link:focus-visible {
+    outline: 3px solid rgba(22, 70, 160, .22);
+    outline-offset: 3px;
+}
+
+.back-link-arrow {
+    font-size: 16px;
+    line-height: 1;
+    transition: transform .16s ease;
+}
+
+.back-link:hover .back-link-arrow { transform: translateX(-2px); }
 
 .tech-link {
     color: var(--login-blue);
@@ -381,3 +418,10 @@ body {
         padding: 0;
     }
 }
+
+
+/* Recovery pages reuse the Login theme; these aliases keep their existing form markup on the same system. */
+.recovery-form-panel { width: min(100%, 390px); flex: 0 0 auto; }
+.recovery-form-panel h2 { margin: 0; color: var(--login-ink); font-size: 29px; font-weight: 760; letter-spacing: -.04em; }
+.recovery-form-intro { margin: 9px 0 29px; color: var(--login-body); font-size: 12.5px; line-height: 1.55; }
+.email-display-pill { display: flex; align-items: center; }

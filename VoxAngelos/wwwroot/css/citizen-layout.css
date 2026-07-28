@@ -472,10 +472,21 @@ body {
 }
 
 .citizen-discover-shell .brand-logo {
-    width: 34px;
-    max-width: 34px;
-    height: 42px;
-    object-fit: contain;
+    display: none;
+}
+
+.citizen-discover-shell .sidebar-brand::before {
+    display: block;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 50%;
+    background-color: #2862cd;
+    background-image: url("/assets/VoxAngelosLogo.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 74%;
+    content: "";
 }
 
 .citizen-discover-shell .brand-copy,
@@ -679,6 +690,29 @@ body {
     color: var(--city-blue-dark);
 }
 
+.citizen-discover-shell .mobile-brand {
+    gap: 8px;
+    margin-left: 0;
+}
+
+.citizen-discover-shell .mobile-brand::before {
+    display: block;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 50%;
+    background-color: #2862cd;
+    background-image: url("/assets/VoxAngelosLogo.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 74%;
+    content: "";
+}
+
+.citizen-discover-shell .mobile-brand > span {
+    margin: 0;
+}
+
 .citizen-discover-shell .mobile-brand .brand-v {
     display: none;
 }
@@ -734,7 +768,7 @@ body {
     justify-content: space-between;
     gap: 28px;
     width: 100%;
-    max-width: 1280px;
+    max-width: 1180px;
     margin: 0 auto 25px;
     padding: 0;
     border: 0;

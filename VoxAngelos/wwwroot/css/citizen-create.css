@@ -1,12 +1,19 @@
 ﻿﻿/* Civic Dashboard — Create workspace */
 .create-page {
     width: 100%;
-    max-width: 1060px;
+    max-width: 1180px;
     margin: 0 auto;
     color: var(--va-ink);
 }
 
-.create-page-header { max-width: 1060px !important; }
+.create-page-header {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 25px !important;
+    padding: 0 !important;
+    align-self: stretch;
+}
+
 .create-page button,
 .create-page input,
 .create-page textarea { font: inherit; }
@@ -16,12 +23,21 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     gap: 24px;
     margin-bottom: 18px;
     padding: 13px 15px;
     border: 1px solid var(--va-line);
     border-radius: 10px;
     background: #fff;
+}
+
+.create-mode-copy {
+    min-width: 0;
+    flex: 1 1 0;
+    overflow-wrap: anywhere;
 }
 
 .create-mode-copy > span {
@@ -610,4 +626,66 @@
     .create-page .concern-category-hint { font-size: 11.5px !important; }
     .create-page .category-name { font-size: 12px !important; }
     .create-page .category-example { font-size: 11px !important; }
+}
+
+
+/* Final readability balance: supporting descriptions lead the hierarchy, while fields stay compact. */
+.create-page .concern-textarea,
+.create-page .form-input,
+.create-page .form-textarea {
+    font-size: 10.5px !important;
+}
+
+.create-page .concern-description-guide {
+    font-size: 14px !important;
+    line-height: 1.65;
+}
+
+.create-page .concern-category-question {
+    font-size: 14px !important;
+}
+
+.create-page .concern-category-hint {
+    font-size: 13px !important;
+    line-height: 1.6;
+}
+
+.create-page .category-name {
+    font-size: 13.5px !important;
+}
+
+.create-page .category-example {
+    font-size: 12px !important;
+    line-height: 1.55;
+}
+
+.create-page .concern-location-value,
+.create-page .concern-file-names,
+.create-page .file-name-label,
+.create-page .draft-status {
+    font-size: 11.5px !important;
+}
+
+@media (max-width: 420px) {
+    .create-page .concern-textarea,
+    .create-page .form-input,
+    .create-page .form-textarea {
+        font-size: 10.5px !important;
+    }
+
+    .create-page .concern-description-guide {
+        font-size: 12.5px !important;
+    }
+
+    .create-page .concern-category-hint {
+        font-size: 12px !important;
+    }
+
+    .create-page .category-name {
+        font-size: 12.5px !important;
+    }
+
+    .create-page .category-example {
+        font-size: 11.5px !important;
+    }
 }

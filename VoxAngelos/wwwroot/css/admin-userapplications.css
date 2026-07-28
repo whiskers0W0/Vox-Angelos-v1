@@ -373,3 +373,26 @@
         display: none;
     }
 }
+
+
+.admin-applications-mock-row {
+    background: #fffdf4;
+}
+
+.admin-applications-mock-row:hover {
+    background: #fff9e5 !important;
+}
+
+.admin-applications-mock-label {
+    display: inline-flex;
+    margin-left: 7px;
+    padding: 3px 5px;
+    border-radius: 4px;
+    background: #fff4da;
+    color: #8b5c09;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}

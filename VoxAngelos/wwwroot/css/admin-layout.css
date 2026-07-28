@@ -5,8 +5,10 @@
 body { min-height:100vh; margin:0; background:var(--page-bg); color:var(--text-main); font-family:var(--font); }
 .layout-wrapper { min-height:100vh; }
 .sidebar { position:fixed; inset:0 auto 0 0; z-index:100; display:flex; width:var(--sidebar-width); height:100vh; flex-direction:column; padding:24px 16px 18px; border-right:1px solid #e2e7ef; background:#fff; transition:transform .25s ease; }
-.sidebar-brand { display:flex; align-items:center; min-height:46px; margin:0 4px 28px; padding:0 8px; color:#0b2e6f; text-decoration:none; }
+.sidebar-brand { display:flex; align-items:center; gap:10px; min-height:46px; margin:0 4px 28px; padding:0 8px; color:#0b2e6f; text-decoration:none; }
 .brand-logo,.brand-v { display:none; }
+.sidebar-brand::before,
+.mobile-brand::before { display:block; flex:0 0 32px; width:32px; height:32px; border-radius:50%; background-color:#2862cd; background-image:url("/assets/VoxAngelosLogo.png"); background-position:center; background-repeat:no-repeat; background-size:74%; content:""; }
 .brand-name { color:#0b2e6f; font-size:17px; font-weight:750; letter-spacing:-.02em; }
 .sidebar-nav { display:flex; flex:1; flex-direction:column; gap:5px; padding:0; }
 .nav-item { display:flex; align-items:center; gap:12px; min-height:44px; padding:11px 12px; border-radius:9px; color:#5a6679; font-size:12.5px; font-weight:600; text-decoration:none; transition:background .16s ease,color .16s ease; }
@@ -18,7 +20,7 @@ body { min-height:100vh; margin:0; background:var(--page-bg); color:var(--text-m
 .logout-btn { border:0; background:transparent!important; color:#a63b41; cursor:pointer; text-align:left; }
 .logout-btn:hover { background:#fdf0f1!important; color:#a63b41; }
 .mobile-topbar { display:none; position:fixed; inset:0 0 auto; z-index:90; height:var(--topbar-height); align-items:center; gap:12px; padding:0 16px; border-bottom:1px solid #e1e7f0; background:#fff; box-shadow:0 2px 10px rgba(23,32,51,.05); }
-.mobile-brand { color:#0b2e6f; font-size:16px; font-weight:750; letter-spacing:-.02em; }
+.mobile-brand { display:flex; align-items:center; gap:8px; color:#0b2e6f; font-size:16px; font-weight:750; letter-spacing:-.02em; }
 .hamburger { display:flex; width:38px; height:38px; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0; border:1px solid #cbd9f0; border-radius:7px; background:#eaf0fc; cursor:pointer; }
 .hamburger span { display:block; width:18px; height:2px; border-radius:2px; background:var(--primary-blue); }
 .sidebar-overlay { display:none; position:fixed; inset:0; z-index:95; background:rgba(15,23,42,.45); opacity:0; pointer-events:none; transition:opacity .25s ease; }

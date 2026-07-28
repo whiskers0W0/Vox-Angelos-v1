@@ -12,13 +12,16 @@ namespace VoxAngelos.Pages.Admin
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IWebHostEnvironment _environment;
 
         public UserApplicationsModel(
             ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IWebHostEnvironment environment)
         {
             _context = context;
             _userManager = userManager;
+            _environment = environment;
         }
 
         public List<CitizenApplicationViewModel> Applications { get; set; } = new();
@@ -64,6 +67,22 @@ namespace VoxAngelos.Pages.Admin
                     FaceMatchConfidence = face?.MatchConfidence ?? 0
                 });
             }
+
+            if (_environment.IsDevelopment()
+                && (filterStatus == "All" || filterStatus == "Pending"))
+            {
+                Applications.Add(new CitizenApplicationViewModel
+                {
+                    UserId = ReviewApplicationModel.DevelopmentMockCitizenId,
+                    FullName = "Mock Citizen (Development)",
+                    Email = "mock.citizen@example.test",
+                    ContactNumber = "(000) 000-0000",
+                    DateApplied = DateTime.UtcNow.AddDays(-1),
+                    ApprovalStatus = "Pending",
+                    FaceMatchConfidence = 0.87m,
+                    IsMock = true
+                });
+            }
         }
 
         public async Task<IActionResult> OnPostApproveAsync(string userId)
@@ -102,5 +121,6 @@ namespace VoxAngelos.Pages.Admin
         public DateTime DateApplied { get; set; }
         public string ApprovalStatus { get; set; } = string.Empty;
         public decimal FaceMatchConfidence { get; set; }
+        public bool IsMock { get; set; }
     }
 }
