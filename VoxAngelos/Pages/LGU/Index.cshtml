@@ -8,16 +8,23 @@
     @if (TempData["ConcernError"] != null) { <div class="alert-error" role="alert">@TempData["ConcernError"]</div> }
     @if (TempData["ConcernSuccess"] != null) { <div class="alert-success" role="alert">@TempData["ConcernSuccess"]</div> }
     <section class="lgu-queue-controls" aria-label="Concern status filters"><div class="lgu-filter-label"><span>Queue status</span><strong>Select a work stage</strong></div><div class="feed-filter-group">@{ var filters = new[] { "Unresolved", "Chosen", "In Progress", "Resolved", "All" }; } @foreach (var f in filters) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" href="?filter=@f">@f</a> }</div></section>
+    <div class="selection-bar"><button type="button" id="select-all-btn" class="btn-va-secondary">Select all</button><span class="selection-hint">Long-press a card to select it</span></div>
+    <form method="post" asp-page="/LGU/Index" asp-page-handler="BulkConfirmCategory" id="bulk-confirm-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="filter" value="@Model.CurrentFilter" />
+    </form>
     <form method="post" asp-page="/LGU/Index" asp-page-handler="BulkReassignCategory" id="bulk-reassign-form">
         @Html.AntiForgeryToken()
         <input type="hidden" name="filter" value="@Model.CurrentFilter" />
         <div class="bulk-toolbar" id="bulk-toolbar" style="display:none;">
             <span id="bulk-count">0 selected</span>
-            <select name="newCategory" id="bulk-category-select" class="form-select" required>
-                <option value="" disabled selected>Assign to department...</option>
+            <button type="submit" form="bulk-confirm-form" class="btn-feedback-correct">Correct</button>
+            <button type="button" class="btn-feedback-wrong" id="bulk-wrong-btn">Wrong</button>
+            <select name="newCategory" id="bulk-category-select" class="form-select" style="display:none;">
+                <option value="" disabled selected>Select department...</option>
                 @foreach (var dept in Model.Departments) { <option value="@dept">@dept</option> }
             </select>
-            <button type="submit" class="btn-va-primary">Reassign selected</button>
+            <button type="submit" class="btn-va-primary" id="bulk-reassign-submit" style="display:none;">Reassign</button>
             <button type="button" class="btn-va-secondary" id="bulk-clear-btn">Clear selection</button>
         </div>
     </form>
@@ -25,8 +32,10 @@
         @foreach (var concern in Model.Concerns)
         {
             var statusCss = concern.Status.ToLower().Replace(" ", "-"); var timeAgo = GetTimeAgo(concern.SubmittedAt);
-            <article class="concern-card" data-id="@concern.Id">
-                <header class="card-header"><div class="author-info">@if (concern.Status == "Unresolved") { <input type="checkbox" class="concern-select" data-id="@concern.Id" aria-label="Select concern for bulk reassignment" /> }<div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg></div><div><span class="lgu-record-label">Resident report</span><strong class="author-name">@concern.CitizenName</strong></div></div><div class="lgu-card-status"><span class="card-date">@timeAgo</span><span class="concern-status @statusCss">@concern.Status</span></div></header>
+            var selectableAttr = concern.Status == "Unresolved" ? "true" : "false";
+            <article class="concern-card" data-id="@concern.Id" data-selectable="@selectableAttr">
+                @if (concern.Status == "Unresolved") { <input type="checkbox" class="concern-select" data-id="@concern.Id" hidden /> }
+                <header class="card-header"><div class="author-info"><div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg></div><div><span class="lgu-record-label">Resident report</span><strong class="author-name">@concern.CitizenName</strong></div></div><div class="lgu-card-status"><span class="card-date">@timeAgo</span><span class="concern-status @statusCss">@concern.Status</span></div></header>
                 <div class="lgu-card-body"><div class="lgu-concern-summary"><div class="card-meta"><span class="meta-label">Classified category</span><span class="meta-value">@concern.Category</span></div><p class="concern-excerpt">@concern.Description</p></div>
                 @if (concern.FirstAttachmentPath != null) { <button class="concern-photo" type="button" aria-label="Open concern photo" onclick="openLightbox('@concern.FirstAttachmentPath', 'image')"><img src="@concern.FirstAttachmentPath" alt="Concern photo" /></button> }</div>
                 @if (concern.RawCategory != null) { <div class="classification-feedback"><span class="lgu-feedback-label">Routing review</span>@if (concern.HasFeedback) { <span class="feedback-logged">Classification reviewed</span> } else { <form method="post" asp-page="/LGU/Index" asp-page-handler="ConfirmCategory">@Html.AntiForgeryToken()<input type="hidden" name="concernId" value="@concern.Id" /><button type="submit" class="btn-feedback-correct">Category correct</button></form>@if (concern.Status == "Unresolved") { <button type="button" class="btn-feedback-wrong" data-bs-toggle="modal" data-bs-target="#reassignModal" onclick="openReassignModal(@concern.Id)">Wrong department</button> } }</div> } else if (concern.Status == "Unresolved") { <div class="classification-feedback"><span class="lgu-feedback-label">Routing review</span><span class="feedback-uncategorized">Not auto-classified</span><button type="button" class="btn-feedback-assign" data-bs-toggle="modal" data-bs-target="#reassignModal" onclick="openReassignModal(@concern.Id)">Assign department</button></div> }
@@ -42,26 +51,97 @@
 </div>
 @section Scripts { <script>
 function openReassignModal(concernId) { document.getElementById('reassign-concern-id').value = concernId; }
+
+// --- Bulk selection: long-press a card to toggle it, no visible checkbox ---
+const concernFeed = document.getElementById('concern-feed');
+const bulkToolbar = document.getElementById('bulk-toolbar');
+const bulkWrongBtn = document.getElementById('bulk-wrong-btn');
+const bulkCategorySelect = document.getElementById('bulk-category-select');
+const bulkReassignSubmit = document.getElementById('bulk-reassign-submit');
+const LONG_PRESS_MS = 500;
+let pressTimer = null;
+let pressStartX = 0, pressStartY = 0;
+
+function isInteractiveTarget(el) {
+    return el.closest('button, a, input, select, textarea, label');
+}
+
+function setCardSelected(card, selected) {
+    const checkbox = card.querySelector('.concern-select');
+    if (!checkbox) return;
+    checkbox.checked = selected;
+    card.classList.toggle('card-selected', selected);
+}
+
+function toggleCardSelection(card) {
+    const checkbox = card.querySelector('.concern-select');
+    if (!checkbox) return;
+    setCardSelected(card, !checkbox.checked);
+    updateBulkToolbar();
+    if (navigator.vibrate) navigator.vibrate(15);
+}
+
 function updateBulkToolbar() {
     const checked = document.querySelectorAll('.concern-select:checked');
     document.getElementById('bulk-count').textContent = checked.length + ' selected';
-    document.getElementById('bulk-toolbar').style.display = checked.length > 0 ? 'flex' : 'none';
+    bulkToolbar.style.display = checked.length > 0 ? 'flex' : 'none';
+    if (checked.length === 0) resetWrongPanel();
 }
-document.getElementById('concern-feed').addEventListener('change', e => { if (e.target.classList.contains('concern-select')) updateBulkToolbar(); });
-document.getElementById('bulk-clear-btn').addEventListener('click', () => {
-    document.querySelectorAll('.concern-select:checked').forEach(cb => cb.checked = false);
+
+function resetWrongPanel() {
+    bulkCategorySelect.style.display = 'none';
+    bulkReassignSubmit.style.display = 'none';
+    bulkCategorySelect.value = '';
+}
+
+bulkWrongBtn.addEventListener('click', () => {
+    const showing = bulkCategorySelect.style.display !== 'none';
+    bulkCategorySelect.style.display = showing ? 'none' : 'inline-block';
+    bulkReassignSubmit.style.display = showing ? 'none' : 'inline-block';
+});
+
+document.getElementById('select-all-btn').addEventListener('click', () => {
+    document.querySelectorAll('.concern-card[data-selectable="true"]').forEach(card => setCardSelected(card, true));
     updateBulkToolbar();
 });
-document.getElementById('bulk-reassign-form').addEventListener('submit', function () {
-    this.querySelectorAll('input[name="concernIds"]').forEach(el => el.remove());
+
+document.getElementById('bulk-clear-btn').addEventListener('click', () => {
+    document.querySelectorAll('.concern-card.card-selected').forEach(card => setCardSelected(card, false));
+    updateBulkToolbar();
+});
+
+concernFeed.addEventListener('pointerdown', e => {
+    const card = e.target.closest('.concern-card');
+    if (!card || card.dataset.selectable !== 'true' || isInteractiveTarget(e.target)) return;
+    pressStartX = e.clientX; pressStartY = e.clientY;
+    pressTimer = setTimeout(() => { toggleCardSelection(card); pressTimer = null; }, LONG_PRESS_MS);
+});
+concernFeed.addEventListener('pointermove', e => {
+    if (pressTimer && (Math.abs(e.clientX - pressStartX) > 10 || Math.abs(e.clientY - pressStartY) > 10)) {
+        clearTimeout(pressTimer); pressTimer = null;
+    }
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+    concernFeed.addEventListener(evt, () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+});
+concernFeed.addEventListener('contextmenu', e => {
+    const card = e.target.closest('.concern-card');
+    if (card && card.dataset.selectable === 'true' && !isInteractiveTarget(e.target)) e.preventDefault();
+});
+
+function syncSelectedIdsIntoForm(form) {
+    form.querySelectorAll('input[name="concernIds"]').forEach(el => el.remove());
     document.querySelectorAll('.concern-select:checked').forEach(cb => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'concernIds';
         input.value = cb.dataset.id;
-        this.appendChild(input);
+        form.appendChild(input);
     });
-});
+}
+document.getElementById('bulk-confirm-form').addEventListener('submit', function () { syncSelectedIdsIntoForm(this); });
+document.getElementById('bulk-reassign-form').addEventListener('submit', function () { syncSelectedIdsIntoForm(this); });
+
 function openStatusModal(concernId, citizenName) { document.getElementById('modal-citizen-name').textContent = citizenName; document.getElementById('modal-concern-id').value = concernId; document.getElementById('modal-status-select').value = ''; document.getElementById('modal-notes').value = ''; }
 function refreshConcernFeed() { fetch(window.location.href).then(res => res.text()).then(html => { const doc = new DOMParser().parseFromString(html, 'text/html'); const newFeed = doc.getElementById('concern-feed'); const currentFeed = document.getElementById('concern-feed'); if (newFeed && currentFeed) currentFeed.innerHTML = newFeed.innerHTML; }).catch(() => { }); }
 window.VoxAngelosRealtime = { onConcernFeedChanged: refreshConcernFeed }; setInterval(refreshConcernFeed, 45000);

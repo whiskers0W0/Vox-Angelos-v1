@@ -7,6 +7,7 @@
     @if (TempData["RecError"] != null) { <div class="alert-error" role="alert">@TempData["RecError"]</div> }
     @if (TempData["RecSuccess"] != null) { <div class="alert-success" role="alert">@TempData["RecSuccess"]</div> }
     <section class="lgu-queue-controls" aria-label="Recommendation status filters"><div class="lgu-filter-label"><span>Review status</span><strong>Select a decision stage</strong></div><div class="feed-filter-group">@foreach (var f in new[] { "Pending", "Published", "Rejected", "All" }) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" href="?filter=@f">@f</a> }</div></section>
+    <div class="selection-bar"><button type="button" id="select-all-rec-btn" class="btn-va-secondary">Select all</button><span class="selection-hint">Long-press a card to select it</span></div>
     <form method="post" asp-page="/LGU/ReviewRecommendations" asp-page-handler="BulkReassignOffice" id="bulk-reassign-rec-form">
         @Html.AntiForgeryToken()
         <div class="bulk-toolbar" id="bulk-rec-toolbar" style="display:none;">
@@ -20,7 +21,7 @@
         </div>
     </form>
     @if (!Model.Recommendations.Any()) { <div class="empty-state"><strong>No recommendations in this queue.</strong><p>Choose another review status to inspect a different decision stage.</p></div> }
-    else { <div class="recommendations-list" id="recommendations-list">@foreach (var rec in Model.Recommendations) { <article class="rec-card"><header class="rec-card-header"><div class="rec-heading">@if (rec.Status == "Pending") { <input type="checkbox" class="rec-select" data-id="@rec.Id" aria-label="Select recommendation for bulk reassignment" /> }<div class="rec-routing"><span class="rec-category">@rec.Category</span><span class="rec-office" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span></div><h2 class="rec-title">@rec.Title</h2><span class="rec-meta">Submitted by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span></div><span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span></header>
+    else { <div class="recommendations-list" id="recommendations-list">@foreach (var rec in Model.Recommendations) { var selectableAttr = rec.Status == "Pending" ? "true" : "false"; <article class="rec-card" data-selectable="@selectableAttr">@if (rec.Status == "Pending") { <input type="checkbox" class="rec-select" data-id="@rec.Id" hidden /> }<header class="rec-card-header"><div class="rec-heading"><div class="rec-routing"><span class="rec-category">@rec.Category</span><span class="rec-office" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span></div><h2 class="rec-title">@rec.Title</h2><span class="rec-meta">Submitted by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span></div><span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span></header>
         <div class="rec-body"><div class="rec-narrative"><div><span>Justification</span><p>@rec.Justification</p></div><div><span>Proposal description</span><p>@rec.Description</p></div></div><dl class="rec-facts"><div><dt>Location</dt><dd>@rec.Location</dd></div><div><dt>Beneficiaries</dt><dd>@rec.Beneficiaries</dd></div><div><dt>Estimated people affected</dt><dd>@rec.EstimatedPeopleAffected</dd></div></dl>
         <div class="rec-attachments"><span>Attachments</span>@if (rec.AttachmentPaths.Any()) { <div class="rec-attachment-list">@for (int i = 0; i < rec.AttachmentPaths.Count; i++) { var path = rec.AttachmentPaths[i]; var type = rec.AttachmentTypes[i]; if (type == "image" || type.StartsWith("image/")) { <button type="button" class="rec-attachment-preview" aria-label="Open attached image" onclick="openLightbox('@path', 'image')"><img src="@path" alt="Recommendation attachment" /></button> } else if (type == "video" || type.StartsWith("video/")) { <button type="button" class="rec-attachment-preview" aria-label="Open attached video" onclick="openLightbox('@path', 'video')"><video src="@path"></video></button> } else { <a href="@path" target="_blank" rel="noopener" class="rec-document-link">Document</a> } }</div> } else { <p>None attached.</p> }</div></div>
         @if (rec.Status == "Pending") { <div class="rec-actions"><form method="post">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" value="@rec.Id" /><label for="notes-@rec.Id">Decision note <span>Optional</span></label><textarea name="lguNotes" id="notes-@rec.Id" class="rec-notes-input" placeholder="Add notes (optional)..."></textarea><div class="rec-action-btns"><button type="submit" asp-page-handler="Approve" class="btn-approve">Publish recommendation</button><button type="submit" asp-page-handler="Reject" class="btn-reject">Reject</button><button type="button" class="btn-va-secondary" data-bs-toggle="modal" data-bs-target="#reassignRecModal" onclick="openReassignRecModal(@rec.Id)">Reassign office</button></div></form></div> } else { <div class="rec-reviewed"><span class="rec-review-label">LGU review record</span><p><strong>Notes:</strong> @(rec.LguNotes ?? "—")</p><p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p></div> }</article> }</div> }
@@ -29,17 +30,70 @@
 </div>
 @section Scripts { <script>
 function openReassignRecModal(recommendationId) { document.getElementById('reassign-rec-id').value = recommendationId; }
+
+// --- Bulk selection: long-press a card to toggle it, no visible checkbox ---
+const recommendationsListEl = document.getElementById('recommendations-list');
+const bulkRecToolbar = document.getElementById('bulk-rec-toolbar');
+const REC_LONG_PRESS_MS = 500;
+let recPressTimer = null;
+let recPressStartX = 0, recPressStartY = 0;
+
+function isRecInteractiveTarget(el) {
+    return el.closest('button, a, input, select, textarea, label');
+}
+
+function setRecCardSelected(card, selected) {
+    const checkbox = card.querySelector('.rec-select');
+    if (!checkbox) return;
+    checkbox.checked = selected;
+    card.classList.toggle('card-selected', selected);
+}
+
+function toggleRecCardSelection(card) {
+    const checkbox = card.querySelector('.rec-select');
+    if (!checkbox) return;
+    setRecCardSelected(card, !checkbox.checked);
+    updateBulkRecToolbar();
+    if (navigator.vibrate) navigator.vibrate(15);
+}
+
 function updateBulkRecToolbar() {
     const checked = document.querySelectorAll('.rec-select:checked');
     document.getElementById('bulk-rec-count').textContent = checked.length + ' selected';
-    document.getElementById('bulk-rec-toolbar').style.display = checked.length > 0 ? 'flex' : 'none';
+    bulkRecToolbar.style.display = checked.length > 0 ? 'flex' : 'none';
 }
-const recommendationsListEl = document.getElementById('recommendations-list');
-if (recommendationsListEl) recommendationsListEl.addEventListener('change', e => { if (e.target.classList.contains('rec-select')) updateBulkRecToolbar(); });
-document.getElementById('bulk-rec-clear-btn')?.addEventListener('click', () => {
-    document.querySelectorAll('.rec-select:checked').forEach(cb => cb.checked = false);
+
+document.getElementById('select-all-rec-btn')?.addEventListener('click', () => {
+    document.querySelectorAll('.rec-card[data-selectable="true"]').forEach(card => setRecCardSelected(card, true));
     updateBulkRecToolbar();
 });
+
+document.getElementById('bulk-rec-clear-btn')?.addEventListener('click', () => {
+    document.querySelectorAll('.rec-card.card-selected').forEach(card => setRecCardSelected(card, false));
+    updateBulkRecToolbar();
+});
+
+if (recommendationsListEl) {
+    recommendationsListEl.addEventListener('pointerdown', e => {
+        const card = e.target.closest('.rec-card');
+        if (!card || card.dataset.selectable !== 'true' || isRecInteractiveTarget(e.target)) return;
+        recPressStartX = e.clientX; recPressStartY = e.clientY;
+        recPressTimer = setTimeout(() => { toggleRecCardSelection(card); recPressTimer = null; }, REC_LONG_PRESS_MS);
+    });
+    recommendationsListEl.addEventListener('pointermove', e => {
+        if (recPressTimer && (Math.abs(e.clientX - recPressStartX) > 10 || Math.abs(e.clientY - recPressStartY) > 10)) {
+            clearTimeout(recPressTimer); recPressTimer = null;
+        }
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+        recommendationsListEl.addEventListener(evt, () => { if (recPressTimer) { clearTimeout(recPressTimer); recPressTimer = null; } });
+    });
+    recommendationsListEl.addEventListener('contextmenu', e => {
+        const card = e.target.closest('.rec-card');
+        if (card && card.dataset.selectable === 'true' && !isRecInteractiveTarget(e.target)) e.preventDefault();
+    });
+}
+
 document.getElementById('bulk-reassign-rec-form').addEventListener('submit', function () {
     this.querySelectorAll('input[name="recommendationIds"]').forEach(el => el.remove());
     document.querySelectorAll('.rec-select:checked').forEach(cb => {

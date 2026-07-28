@@ -120,20 +120,60 @@ namespace VoxAngelos.Pages.LGU
                 concern.HasFeedback = reviewedConcernIds.Contains(concern.Id);
         }
 
-        public async Task<IActionResult> OnPostConfirmCategoryAsync(int concernId)
+        // Shared by the single-concern confirm handler and the bulk one below.
+        private async Task<bool> TryConfirmConcernCategoryAsync(int concernId, ApplicationUser user)
         {
             var concern = await _db.Concerns.FindAsync(concernId);
-            if (concern == null || string.IsNullOrEmpty(concern.Category)) return NotFound();
+            if (concern == null || string.IsNullOrEmpty(concern.Category)) return false;
+            if (concern.Category != user.Department) return false;
 
-            var user = await _userManager.GetUserAsync(User);
             try
             {
-                await _classifier.RecordCorrectionAsync(concernId, concern.Category, wasCorrect: true, user!.Id);
+                await _classifier.RecordCorrectionAsync(concernId, concern.Category, wasCorrect: true, user.Id);
+                return true;
             }
             catch (ConcernAlreadyReviewedException)
             {
-                TempData["ConcernError"] = "This concern was already reviewed by another staff member.";
+                return false;
             }
+        }
+
+        public async Task<IActionResult> OnPostConfirmCategoryAsync(int concernId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+
+            if (!await TryConfirmConcernCategoryAsync(concernId, user))
+                TempData["ConcernError"] = "This concern could not be confirmed — it may already be reviewed by another staff member.";
+
+            return RedirectToPage(new { filter = CurrentFilter });
+        }
+
+        // Bulk version — confirms the NLP-assigned category is correct for many
+        // concerns at once instead of clicking "Category correct" on each card.
+        public async Task<IActionResult> OnPostBulkConfirmCategoryAsync(int[] concernIds, string? filter)
+        {
+            CurrentFilter = filter ?? "Unresolved";
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+
+            if (concernIds == null || concernIds.Length == 0)
+            {
+                TempData["ConcernError"] = "No concerns were selected.";
+                return RedirectToPage(new { filter = CurrentFilter });
+            }
+
+            int succeeded = 0, skipped = 0;
+            foreach (var concernId in concernIds.Distinct())
+            {
+                if (await TryConfirmConcernCategoryAsync(concernId, user)) succeeded++;
+                else skipped++;
+            }
+
+            TempData["ConcernSuccess"] = skipped == 0
+                ? $"Confirmed {succeeded} concern(s) as correctly classified."
+                : $"Confirmed {succeeded} concern(s) as correctly classified. {skipped} were skipped (uncategorized or already reviewed).";
 
             return RedirectToPage(new { filter = CurrentFilter });
         }
