@@ -1,4 +1,4 @@
-# Sensitive Media Retention (3-Day Auto-Delete)
+# Sensitive Media Retention (Auto-Delete After Admin Review)
 
 ## What
 
@@ -7,8 +7,8 @@ the app collects (biometric + government-ID images). `SensitiveMediaRetentionSer
 (`VoxAngelos/Services/SensitiveMediaRetentionService.cs`) is a `BackgroundService`
 that runs on a timer (default: every 60 minutes, `MediaRetention:PollIntervalMinutes`
 in `appsettings.json`) and, for any `UserIdentityDocument`/`UserFaceVerification` row
-older than the retention window (default: **3 days**,
-`MediaRetention:SensitiveDataRetentionDays`):
+belonging to an account an admin has already reviewed (`ApplicationUser.ApprovalStatus`
+is `Approved` or `Rejected` — i.e. no longer `Pending`):
 
 1. Deletes the physical file from `wwwroot/uploads/ids/` or `wwwroot/uploads/selfies/`.
 2. Nulls out the DB path column (`IdPhotoPath` / `LiveSelfiePath`).

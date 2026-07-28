@@ -4,10 +4,13 @@ using VoxAngelos.Data;
 namespace VoxAngelos.Services
 {
     // Periodically purges the physical ID-photo and selfie files (and their DB path
-    // references) once they are older than the configured retention window. The
-    // verification outcome (status, confidence, OCR fields) is kept for audit purposes —
-    // only the raw biometric/ID images themselves are deleted, per Data Privacy Act
-    // (RA 10173) minimization requirements for sensitive personal information.
+    // references) once an admin has reviewed the owning account (Approved or Rejected).
+    // Purging is tied to review completion rather than a fixed time window because
+    // account review can take longer than any fixed window, and purging on a timer
+    // risked deleting the images an admin still needed mid-review. The verification
+    // outcome (status, confidence, OCR fields) is kept for audit purposes — only the
+    // raw biometric/ID images themselves are deleted, per Data Privacy Act (RA 10173)
+    // minimization requirements for sensitive personal information.
     public class SensitiveMediaRetentionService : BackgroundService
     {
         private readonly IServiceProvider _services;
@@ -24,7 +27,6 @@ namespace VoxAngelos.Services
             _logger = logger;
         }
 
-        private int RetentionDays => _configuration.GetValue<int?>("MediaRetention:SensitiveDataRetentionDays") ?? 3;
         private int PollIntervalMinutes => _configuration.GetValue<int?>("MediaRetention:PollIntervalMinutes") ?? 60;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -50,25 +52,24 @@ namespace VoxAngelos.Services
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
 
-            var cutoff = DateTime.UtcNow.AddDays(-RetentionDays);
             var purgedCount = 0;
 
-            var expiredIds = await db.UserIdentityDocuments
-                .Where(d => d.IdPhotoPath != null && d.UploadedAt < cutoff)
+            var reviewedIds = await db.UserIdentityDocuments
+                .Where(d => d.IdPhotoPath != null && d.User != null && d.User.ApprovalStatus != "Pending")
                 .ToListAsync(ct);
 
-            foreach (var doc in expiredIds)
+            foreach (var doc in reviewedIds)
             {
                 DeleteFileIfExists(IdentityDocumentStorage.IdsFolder(env), doc.IdPhotoPath);
                 doc.IdPhotoPath = null;
                 purgedCount++;
             }
 
-            var expiredSelfies = await db.UserFaceVerifications
-                .Where(f => f.LiveSelfiePath != null && f.VerifiedAt < cutoff)
+            var reviewedSelfies = await db.UserFaceVerifications
+                .Where(f => f.LiveSelfiePath != null && f.User != null && f.User.ApprovalStatus != "Pending")
                 .ToListAsync(ct);
 
-            foreach (var selfie in expiredSelfies)
+            foreach (var selfie in reviewedSelfies)
             {
                 DeleteFileIfExists(IdentityDocumentStorage.SelfiesFolder(env), selfie.LiveSelfiePath);
                 selfie.LiveSelfiePath = null;
@@ -79,8 +80,8 @@ namespace VoxAngelos.Services
             {
                 await db.SaveChangesAsync(ct);
                 _logger.LogInformation(
-                    "Sensitive media retention sweep purged {Count} file(s) older than {Days} day(s).",
-                    purgedCount, RetentionDays);
+                    "Sensitive media retention sweep purged {Count} file(s) for reviewed accounts.",
+                    purgedCount);
             }
         }
 
