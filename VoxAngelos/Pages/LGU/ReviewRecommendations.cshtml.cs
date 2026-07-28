@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
 using VoxAngelos.Hubs;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.LGU
 {
@@ -22,6 +23,8 @@ namespace VoxAngelos.Pages.LGU
             _userManager = userManager;
             _feedHub = feedHub;
         }
+
+        public string[] Departments => ConcernClassificationService.Departments;
 
         public List<RecommendationViewModel> Recommendations { get; set; } = new();
         public string CurrentFilter { get; set; } = "Pending";
@@ -181,6 +184,96 @@ namespace VoxAngelos.Pages.LGU
                 });
                 await _db.SaveChangesAsync();
             }
+
+            return RedirectToPage(new { filter = "Pending" });
+        }
+
+        private enum ReassignOutcome { Success, NotFound, Forbidden, NotEligible, AlreadyReviewed }
+
+        // Shared by the single-recommendation reassign handler and the bulk one below, so
+        // both go through the exact same eligibility check and update — a bulk reassign is
+        // just this run in a loop, not a separate code path.
+        private async Task<ReassignOutcome> TryReassignRecommendationAsync(int recommendationId, string newOffice, ApplicationUser user)
+        {
+            var recommendation = await _db.Recommendations
+                .Where(r => r.Id == recommendationId)
+                .Select(r => new { r.AssignedOffice, r.Status })
+                .FirstOrDefaultAsync();
+            if (recommendation == null) return ReassignOutcome.NotFound;
+
+            // Unassigned recommendations (AssignedOffice == null) are open to any LGU
+            // office to claim and route — only block hijacking one another office already owns.
+            if (recommendation.AssignedOffice != null && user.Department != recommendation.AssignedOffice)
+                return ReassignOutcome.Forbidden;
+
+            if (recommendation.Status != "Pending") return ReassignOutcome.NotEligible;
+
+            var updated = await _db.Recommendations
+                .Where(r => r.Id == recommendationId && r.Status == "Pending")
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.AssignedOffice, newOffice));
+
+            return updated == 0 ? ReassignOutcome.AlreadyReviewed : ReassignOutcome.Success;
+        }
+
+        // Lets an LGU office correct a recommendation the NLP classifier routed to the
+        // wrong office, or claim an unassigned one — same pattern as the concern-side
+        // reassign feature in Pages/LGU/Index.cshtml.cs.
+        public async Task<IActionResult> OnPostReassignOfficeAsync(int recommendationId, string newOffice)
+        {
+            if (!ConcernClassificationService.Departments.Contains(newOffice))
+                return BadRequest("Unknown department.");
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+
+            var outcome = await TryReassignRecommendationAsync(recommendationId, newOffice, user);
+
+            switch (outcome)
+            {
+                case ReassignOutcome.NotFound:
+                    return NotFound();
+                case ReassignOutcome.Forbidden:
+                    return Forbid();
+                case ReassignOutcome.NotEligible:
+                    TempData["RecError"] = "Only pending recommendations can be reassigned.";
+                    break;
+                case ReassignOutcome.AlreadyReviewed:
+                    TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
+                    break;
+            }
+
+            return RedirectToPage(new { filter = "Pending" });
+        }
+
+        // Bulk version of the reassign feature above — lets an LGU staffer route many
+        // unassigned/misrouted recommendations to the correct office in one submit instead
+        // of clicking through the single-item modal for each one.
+        public async Task<IActionResult> OnPostBulkReassignOfficeAsync(int[] recommendationIds, string newOffice)
+        {
+            if (!ConcernClassificationService.Departments.Contains(newOffice))
+                return BadRequest("Unknown department.");
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+
+            if (recommendationIds == null || recommendationIds.Length == 0)
+            {
+                TempData["RecError"] = "No recommendations were selected.";
+                return RedirectToPage(new { filter = "Pending" });
+            }
+
+            int succeeded = 0, skipped = 0;
+
+            foreach (var recommendationId in recommendationIds.Distinct())
+            {
+                var outcome = await TryReassignRecommendationAsync(recommendationId, newOffice, user);
+                if (outcome == ReassignOutcome.Success) succeeded++;
+                else skipped++;
+            }
+
+            TempData["RecSuccess"] = skipped == 0
+                ? $"Reassigned {succeeded} recommendation(s) to {newOffice}."
+                : $"Reassigned {succeeded} recommendation(s) to {newOffice}. {skipped} were skipped (already reviewed or owned by another office).";
 
             return RedirectToPage(new { filter = "Pending" });
         }

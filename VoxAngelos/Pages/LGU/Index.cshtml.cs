@@ -138,34 +138,29 @@ namespace VoxAngelos.Pages.LGU
             return RedirectToPage(new { filter = CurrentFilter });
         }
 
-        // Manual Override Feature: lets an LGU admin correct a concern that the Google
-        // NLP classifier (or the local keyword fallback) routed to the wrong department,
-        // re-routing it to the correct one. See docs/manual-override-feature.md for the
-        // full write-up (why it exists, how the audit trail works, how it feeds the NLP
-        // feedback loop in ConcernClassificationService.RecordCorrectionAsync).
-        public async Task<IActionResult> OnPostReassignCategoryAsync(int concernId, string newCategory)
-        {
-            if (!ConcernClassificationService.Departments.Contains(newCategory))
-                return BadRequest("Unknown department.");
+        private enum ReassignOutcome { Success, NotFound, Forbidden, NotEligible, AlreadyReviewed }
 
+        // Shared by the single-concern reassign handler and the bulk one below, so both
+        // go through the exact same audit-trail write (ClassificationCorrection + learned
+        // weights via RecordCorrectionAsync), citizen notification, and timeline event —
+        // a bulk reassign is just this run in a loop, not a separate code path.
+        private async Task<ReassignOutcome> TryReassignConcernAsync(int concernId, string newCategory, ApplicationUser user)
+        {
             var concern = await _db.Concerns
                 .Where(c => c.Id == concernId)
                 .Select(c => new { c.Category, c.CitizenId, c.Status })
                 .FirstOrDefaultAsync();
-            if (concern == null) return NotFound();
+            if (concern == null) return ReassignOutcome.NotFound;
 
-            var user = await _userManager.GetUserAsync(User);
-            if (user?.Department != concern.Category) return Forbid();
+            // Uncategorized concerns (Category == null) are open to any LGU office to
+            // claim and route — only block hijacking a concern another office already owns.
+            if (concern.Category != null && user.Department != concern.Category) return ReassignOutcome.Forbidden;
 
-            if (concern.Status != "Unresolved")
-            {
-                TempData["ConcernError"] = "Only unresolved concerns can be reassigned. Once an office accepts a concern, it must finish or escalate it through the LGU workflow.";
-                return RedirectToPage(new { filter = CurrentFilter });
-            }
+            if (concern.Status != "Unresolved") return ReassignOutcome.NotEligible;
 
             try
             {
-                await _classifier.RecordCorrectionAsync(concernId, newCategory, wasCorrect: false, user!.Id);
+                await _classifier.RecordCorrectionAsync(concernId, newCategory, wasCorrect: false, user.Id);
 
                 var forwardedAt = DateTime.UtcNow;
                 var actorName = user.Department ?? user.Email ?? "LGU Office";
@@ -195,12 +190,100 @@ namespace VoxAngelos.Pages.LGU
                 });
 
                 await _db.SaveChangesAsync();
-                await NotifyDepartmentsAsync(concern.Category, newCategory);
+                return ReassignOutcome.Success;
             }
             catch (ConcernAlreadyReviewedException)
             {
-                TempData["ConcernError"] = "This concern was already reviewed by another staff member.";
+                return ReassignOutcome.AlreadyReviewed;
             }
+        }
+
+        // Manual Override Feature: lets an LGU admin correct a concern that the Google
+        // NLP classifier (or the local keyword fallback) routed to the wrong department,
+        // re-routing it to the correct one. See docs/manual-override-feature.md for the
+        // full write-up (why it exists, how the audit trail works, how it feeds the NLP
+        // feedback loop in ConcernClassificationService.RecordCorrectionAsync).
+        public async Task<IActionResult> OnPostReassignCategoryAsync(int concernId, string newCategory)
+        {
+            if (!ConcernClassificationService.Departments.Contains(newCategory))
+                return BadRequest("Unknown department.");
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+
+            var previousCategory = await _db.Concerns
+                .Where(c => c.Id == concernId)
+                .Select(c => c.Category)
+                .FirstOrDefaultAsync();
+
+            var outcome = await TryReassignConcernAsync(concernId, newCategory, user);
+
+            switch (outcome)
+            {
+                case ReassignOutcome.NotFound:
+                    return NotFound();
+                case ReassignOutcome.Forbidden:
+                    return Forbid();
+                case ReassignOutcome.NotEligible:
+                    TempData["ConcernError"] = "Only unresolved concerns can be reassigned. Once an office accepts a concern, it must finish or escalate it through the LGU workflow.";
+                    break;
+                case ReassignOutcome.AlreadyReviewed:
+                    TempData["ConcernError"] = "This concern was already reviewed by another staff member.";
+                    break;
+                case ReassignOutcome.Success:
+                    await NotifyDepartmentsAsync(previousCategory, newCategory);
+                    break;
+            }
+
+            return RedirectToPage(new { filter = CurrentFilter });
+        }
+
+        // Bulk version of the reassign feature above — lets an LGU staffer route many
+        // uncategorized/misrouted concerns to the correct department in one submit
+        // instead of clicking through the single-item modal for each one.
+        public async Task<IActionResult> OnPostBulkReassignCategoryAsync(int[] concernIds, string newCategory, string? filter)
+        {
+            CurrentFilter = filter ?? "Unresolved";
+
+            if (!ConcernClassificationService.Departments.Contains(newCategory))
+                return BadRequest("Unknown department.");
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+
+            if (concernIds == null || concernIds.Length == 0)
+            {
+                TempData["ConcernError"] = "No concerns were selected.";
+                return RedirectToPage(new { filter = CurrentFilter });
+            }
+
+            var touchedCategories = new HashSet<string?> { newCategory };
+            int succeeded = 0, skipped = 0;
+
+            foreach (var concernId in concernIds.Distinct())
+            {
+                var previousCategory = await _db.Concerns
+                    .Where(c => c.Id == concernId)
+                    .Select(c => c.Category)
+                    .FirstOrDefaultAsync();
+
+                var outcome = await TryReassignConcernAsync(concernId, newCategory, user);
+                if (outcome == ReassignOutcome.Success)
+                {
+                    succeeded++;
+                    touchedCategories.Add(previousCategory);
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+
+            await NotifyDepartmentsAsync(touchedCategories.ToArray());
+
+            TempData["ConcernSuccess"] = skipped == 0
+                ? $"Reassigned {succeeded} concern(s) to {GetDepartmentDisplayName(newCategory)}."
+                : $"Reassigned {succeeded} concern(s) to {GetDepartmentDisplayName(newCategory)}. {skipped} were skipped (already resolved, already reviewed, or owned by another office).";
 
             return RedirectToPage(new { filter = CurrentFilter });
         }

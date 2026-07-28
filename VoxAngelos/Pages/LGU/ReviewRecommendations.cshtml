@@ -5,15 +5,51 @@
 <div class="lgu-recommendations-workspace">
     <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Citizen proposal operations</span><h1>Recommendation review queue</h1><p>Assess submitted proposals, verify their department routing, and record the publication decision with a clear public response.</p></div><div class="lgu-page-context"><span>Current view</span><strong>@Model.CurrentFilter recommendations</strong></div></header>
     @if (TempData["RecError"] != null) { <div class="alert-error" role="alert">@TempData["RecError"]</div> }
+    @if (TempData["RecSuccess"] != null) { <div class="alert-success" role="alert">@TempData["RecSuccess"]</div> }
     <section class="lgu-queue-controls" aria-label="Recommendation status filters"><div class="lgu-filter-label"><span>Review status</span><strong>Select a decision stage</strong></div><div class="feed-filter-group">@foreach (var f in new[] { "Pending", "Published", "Rejected", "All" }) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" href="?filter=@f">@f</a> }</div></section>
+    <form method="post" asp-page="/LGU/ReviewRecommendations" asp-page-handler="BulkReassignOffice" id="bulk-reassign-rec-form">
+        @Html.AntiForgeryToken()
+        <div class="bulk-toolbar" id="bulk-rec-toolbar" style="display:none;">
+            <span id="bulk-rec-count">0 selected</span>
+            <select name="newOffice" id="bulk-rec-office-select" class="form-select" required>
+                <option value="" disabled selected>Assign to office...</option>
+                @foreach (var dept in Model.Departments) { <option value="@dept">@dept</option> }
+            </select>
+            <button type="submit" class="btn-va-primary">Reassign selected</button>
+            <button type="button" class="btn-va-secondary" id="bulk-rec-clear-btn">Clear selection</button>
+        </div>
+    </form>
     @if (!Model.Recommendations.Any()) { <div class="empty-state"><strong>No recommendations in this queue.</strong><p>Choose another review status to inspect a different decision stage.</p></div> }
-    else { <div class="recommendations-list">@foreach (var rec in Model.Recommendations) { <article class="rec-card"><header class="rec-card-header"><div class="rec-heading"><div class="rec-routing"><span class="rec-category">@rec.Category</span><span class="rec-office" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span></div><h2 class="rec-title">@rec.Title</h2><span class="rec-meta">Submitted by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span></div><span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span></header>
+    else { <div class="recommendations-list" id="recommendations-list">@foreach (var rec in Model.Recommendations) { <article class="rec-card"><header class="rec-card-header"><div class="rec-heading">@if (rec.Status == "Pending") { <input type="checkbox" class="rec-select" data-id="@rec.Id" aria-label="Select recommendation for bulk reassignment" /> }<div class="rec-routing"><span class="rec-category">@rec.Category</span><span class="rec-office" title="Auto-assigned by NLP classifier">@(rec.AssignedOffice ?? "Unassigned")</span></div><h2 class="rec-title">@rec.Title</h2><span class="rec-meta">Submitted by @rec.CitizenName · @rec.SubmittedAt.ToString("MMM dd, yyyy")</span></div><span class="rec-status status-@rec.Status.ToLower()">@rec.Status</span></header>
         <div class="rec-body"><div class="rec-narrative"><div><span>Justification</span><p>@rec.Justification</p></div><div><span>Proposal description</span><p>@rec.Description</p></div></div><dl class="rec-facts"><div><dt>Location</dt><dd>@rec.Location</dd></div><div><dt>Beneficiaries</dt><dd>@rec.Beneficiaries</dd></div><div><dt>Estimated people affected</dt><dd>@rec.EstimatedPeopleAffected</dd></div></dl>
         <div class="rec-attachments"><span>Attachments</span>@if (rec.AttachmentPaths.Any()) { <div class="rec-attachment-list">@for (int i = 0; i < rec.AttachmentPaths.Count; i++) { var path = rec.AttachmentPaths[i]; var type = rec.AttachmentTypes[i]; if (type == "image" || type.StartsWith("image/")) { <button type="button" class="rec-attachment-preview" aria-label="Open attached image" onclick="openLightbox('@path', 'image')"><img src="@path" alt="Recommendation attachment" /></button> } else if (type == "video" || type.StartsWith("video/")) { <button type="button" class="rec-attachment-preview" aria-label="Open attached video" onclick="openLightbox('@path', 'video')"><video src="@path"></video></button> } else { <a href="@path" target="_blank" rel="noopener" class="rec-document-link">Document</a> } }</div> } else { <p>None attached.</p> }</div></div>
-        @if (rec.Status == "Pending") { <div class="rec-actions"><form method="post">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" value="@rec.Id" /><label for="notes-@rec.Id">Decision note <span>Optional</span></label><textarea name="lguNotes" id="notes-@rec.Id" class="rec-notes-input" placeholder="Add notes (optional)..."></textarea><div class="rec-action-btns"><button type="submit" asp-page-handler="Approve" class="btn-approve">Publish recommendation</button><button type="submit" asp-page-handler="Reject" class="btn-reject">Reject</button></div></form></div> } else { <div class="rec-reviewed"><span class="rec-review-label">LGU review record</span><p><strong>Notes:</strong> @(rec.LguNotes ?? "—")</p><p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p></div> }</article> }</div> }
-</div>
+        @if (rec.Status == "Pending") { <div class="rec-actions"><form method="post">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" value="@rec.Id" /><label for="notes-@rec.Id">Decision note <span>Optional</span></label><textarea name="lguNotes" id="notes-@rec.Id" class="rec-notes-input" placeholder="Add notes (optional)..."></textarea><div class="rec-action-btns"><button type="submit" asp-page-handler="Approve" class="btn-approve">Publish recommendation</button><button type="submit" asp-page-handler="Reject" class="btn-reject">Reject</button><button type="button" class="btn-va-secondary" data-bs-toggle="modal" data-bs-target="#reassignRecModal" onclick="openReassignRecModal(@rec.Id)">Reassign office</button></div></form></div> } else { <div class="rec-reviewed"><span class="rec-review-label">LGU review record</span><p><strong>Notes:</strong> @(rec.LguNotes ?? "—")</p><p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p></div> }</article> }</div> }
+<div class="modal fade modal-va" id="reassignRecModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><div class="modal-title">Reassign to correct office</div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><form method="post" asp-page="/LGU/ReviewRecommendations" asp-page-handler="ReassignOffice">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" id="reassign-rec-id" /><div class="modal-body"><label class="form-label" for="reassign-rec-office">Correct office</label><select class="form-select" name="newOffice" id="reassign-rec-office" required><option value="" disabled selected>Select office...</option>@foreach (var dept in Model.Departments) { <option value="@dept">@dept</option> }</select></div><div class="modal-footer"><button type="button" class="btn-va-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn-va-primary">Reassign</button></div></form></div></div></div>
 <div id="lightboxOverlay" class="lgu-lightbox" onclick="closeLightbox()"><button type="button" onclick="closeLightbox()" aria-label="Close attachment preview">×</button><div onclick="event.stopPropagation()"><img id="lightboxImg" src="" alt="" /><video id="lightboxVideo" src="" controls></video></div></div>
+</div>
 @section Scripts { <script>
+function openReassignRecModal(recommendationId) { document.getElementById('reassign-rec-id').value = recommendationId; }
+function updateBulkRecToolbar() {
+    const checked = document.querySelectorAll('.rec-select:checked');
+    document.getElementById('bulk-rec-count').textContent = checked.length + ' selected';
+    document.getElementById('bulk-rec-toolbar').style.display = checked.length > 0 ? 'flex' : 'none';
+}
+const recommendationsListEl = document.getElementById('recommendations-list');
+if (recommendationsListEl) recommendationsListEl.addEventListener('change', e => { if (e.target.classList.contains('rec-select')) updateBulkRecToolbar(); });
+document.getElementById('bulk-rec-clear-btn')?.addEventListener('click', () => {
+    document.querySelectorAll('.rec-select:checked').forEach(cb => cb.checked = false);
+    updateBulkRecToolbar();
+});
+document.getElementById('bulk-reassign-rec-form').addEventListener('submit', function () {
+    this.querySelectorAll('input[name="recommendationIds"]').forEach(el => el.remove());
+    document.querySelectorAll('.rec-select:checked').forEach(cb => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'recommendationIds';
+        input.value = cb.dataset.id;
+        this.appendChild(input);
+    });
+});
 function openLightbox(src, type) { const overlay = document.getElementById('lightboxOverlay'); const img = document.getElementById('lightboxImg'); const video = document.getElementById('lightboxVideo'); img.style.display = 'none'; video.style.display = 'none'; video.pause(); if (type === 'image') { img.src = src; img.style.display = 'block'; } else if (type === 'video') { video.src = src; video.style.display = 'block'; } overlay.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
 function closeLightbox() { const overlay = document.getElementById('lightboxOverlay'); const video = document.getElementById('lightboxVideo'); video.pause(); overlay.classList.remove('is-open'); document.body.style.overflow = ''; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
