@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -14,14 +15,20 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
     public class ResetPasswordModel : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IWebHostEnvironment _environment;
 
-        public ResetPasswordModel(UserManager<ApplicationUser> userManager)
+        public ResetPasswordModel(
+            UserManager<ApplicationUser> userManager,
+            IWebHostEnvironment environment)
         {
             _userManager = userManager;
+            _environment = environment;
         }
 
         [BindProperty]
         public InputModel Input { get; set; }
+
+        public bool IsDevelopmentPreview { get; private set; }
 
         public class InputModel
         {
@@ -42,10 +49,22 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             public string Code { get; set; }
         }
 
-        public IActionResult OnGet(string code = null, string email = null)
+        public IActionResult OnGet(string code = null, string email = null, bool preview = false)
         {
             if (code == null)
-                return BadRequest("A code must be supplied for password reset.");
+            {
+                if (!preview || !_environment.IsDevelopment())
+                    return BadRequest("A code must be supplied for password reset.");
+
+                IsDevelopmentPreview = true;
+                Input = new InputModel
+                {
+                    Code = string.Empty,
+                    Email = "citizen@example.com"
+                };
+
+                return Page();
+            }
 
             Input = new InputModel
             {

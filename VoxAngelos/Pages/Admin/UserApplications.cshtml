@@ -65,8 +65,8 @@
                     }
                     @foreach (var app in Model.Applications)
                     {
-                        <tr>
-                            <td data-label="Applicant"><strong>@app.FullName</strong></td>
+                            <tr class="@(app.IsMock ? "admin-applications-mock-row" : "")">
+                            <td data-label="Applicant"><strong>@app.FullName</strong>@if (app.IsMock) { <span class="admin-applications-mock-label">Development mock</span> }</td>
                             <td data-label="Email address"><span class="admin-applications-email">@app.Email</span></td>
                             <td data-label="Contact number">@app.ContactNumber</td>
                             <td data-label="Applied"><time datetime="@app.DateApplied.ToString("yyyy-MM-dd")">@app.DateApplied.ToString("MM/dd/yyyy")</time></td>

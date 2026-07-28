@@ -13,6 +13,8 @@ namespace VoxAngelos.Pages.Admin
     [Authorize(Policy = "RequireAdminRole")]
     public class ReviewApplicationModel : PageModel
     {
+        public const string DevelopmentMockCitizenId = "__development_mock_pending_citizen__";
+
         private static readonly FileExtensionContentTypeProvider ContentTypeProvider = new();
 
         private readonly ApplicationDbContext _context;
@@ -40,11 +42,33 @@ namespace VoxAngelos.Pages.Admin
         public UserIdentityDocument? IdentityDocument { get; set; }
         public UserFaceVerification? FaceVerification { get; set; }
         public UserOcrVerification? OcrVerification { get; set; }
+        public bool IsDevelopmentMock { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(string userId)
         {
             if (string.IsNullOrEmpty(userId))
                 return RedirectToPage("/Admin/UserApplications");
+
+            if (_environment.IsDevelopment() && userId == DevelopmentMockCitizenId)
+            {
+                IsDevelopmentMock = true;
+                Citizen = new ApplicationUser
+                {
+                    Id = DevelopmentMockCitizenId,
+                    UserName = "mock.citizen@example.test",
+                    Email = "mock.citizen@example.test",
+                    PhoneNumber = "(000) 000-0000",
+                    ApprovalStatus = "Pending",
+                    CreatedAt = DateTime.UtcNow.AddDays(-1)
+                };
+                Profile = new UserProfile
+                {
+                    UserId = DevelopmentMockCitizenId,
+                    FirstName = "Mock",
+                    LastName = "Citizen"
+                };
+                return Page();
+            }
 
             Citizen = await _userManager.FindByIdAsync(userId);
             if (Citizen == null)
@@ -116,6 +140,12 @@ namespace VoxAngelos.Pages.Admin
 
         public async Task<IActionResult> OnPostApproveAsync(string userId)
         {
+            if (_environment.IsDevelopment() && userId == DevelopmentMockCitizenId)
+            {
+                TempData["AdminError"] = "Development mock only: no account was changed.";
+                return RedirectToPage("/Admin/UserApplications");
+            }
+
             var user = await _userManager.FindByIdAsync(userId);
             if (user != null && user.ApprovalStatus != "Approved")
             {
@@ -151,6 +181,12 @@ namespace VoxAngelos.Pages.Admin
 
         public async Task<IActionResult> OnPostRejectAsync(string userId, string? rejectionReason)
         {
+            if (_environment.IsDevelopment() && userId == DevelopmentMockCitizenId)
+            {
+                TempData["AdminError"] = "Development mock only: no account was changed and no email was sent.";
+                return RedirectToPage("/Admin/UserApplications");
+            }
+
             var user = await _userManager.FindByIdAsync(userId);
             if (user != null && user.ApprovalStatus != "Rejected")
             {

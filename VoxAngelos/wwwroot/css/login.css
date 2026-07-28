@@ -381,3 +381,10 @@ body {
         padding: 0;
     }
 }
+
+
+/* Recovery pages reuse the Login theme; these aliases keep their existing form markup on the same system. */
+.recovery-form-panel { width: min(100%, 390px); flex: 0 0 auto; }
+.recovery-form-panel h2 { margin: 0; color: var(--login-ink); font-size: 29px; font-weight: 760; letter-spacing: -.04em; }
+.recovery-form-intro { margin: 9px 0 29px; color: var(--login-body); font-size: 12.5px; line-height: 1.55; }
+.email-display-pill { display: flex; align-items: center; }
