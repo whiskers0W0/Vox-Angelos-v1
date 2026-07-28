@@ -4,14 +4,15 @@
 @section Styles { <link rel="stylesheet" href="~/css/lgu_review_recommendations.css" asp-append-version="true" /> }
 <div class="lgu-recommendations-workspace">
     <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Citizen proposal operations</span><h1>Recommendation review queue</h1><p>Assess submitted proposals, verify their department routing, and record the publication decision with a clear public response.</p></div><div class="lgu-page-context"><span>Current view</span><strong>@Model.CurrentFilter recommendations</strong></div></header>
-    @if (TempData["RecError"] != null) { <div class="alert-error" role="alert">@TempData["RecError"]</div> }
-    @if (TempData["RecSuccess"] != null) { <div class="alert-success" role="alert">@TempData["RecSuccess"]</div> }
+    @if (TempData["RecError"] != null) { <div class="floating-toast toast-error" role="alert"><span>@TempData["RecError"]</span><div class="toast-progress"></div></div> }
+    @if (TempData["RecSuccess"] != null) { <div class="floating-toast toast-success" role="status"><span>@TempData["RecSuccess"]</span><div class="toast-progress"></div></div> }
     <section class="lgu-queue-controls" aria-label="Recommendation status filters"><div class="lgu-filter-label"><span>Review status</span><strong>Select a decision stage</strong></div><div class="feed-filter-group">@foreach (var f in new[] { "Pending", "Published", "Rejected", "All" }) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" href="?filter=@f">@f</a> }</div></section>
-    <div class="selection-bar"><button type="button" id="select-all-rec-btn" class="btn-va-secondary">Select all</button><span class="selection-hint">Long-press a card to select it</span></div>
+    <div class="selection-hint">Long-press a card to select it</div>
     <form method="post" asp-page="/LGU/ReviewRecommendations" asp-page-handler="BulkReassignOffice" id="bulk-reassign-rec-form">
         @Html.AntiForgeryToken()
         <div class="bulk-toolbar" id="bulk-rec-toolbar" style="display:none;">
             <span id="bulk-rec-count">0 selected</span>
+            <button type="button" class="btn-va-secondary" id="select-all-rec-btn">Select all</button>
             <select name="newOffice" id="bulk-rec-office-select" class="form-select" required>
                 <option value="" disabled selected>Assign to office...</option>
                 @foreach (var dept in Model.Departments) { <option value="@dept">@dept</option> }
@@ -27,8 +28,32 @@
         @if (rec.Status == "Pending") { <div class="rec-actions"><form method="post">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" value="@rec.Id" /><label for="notes-@rec.Id">Decision note <span>Optional</span></label><textarea name="lguNotes" id="notes-@rec.Id" class="rec-notes-input" placeholder="Add notes (optional)..."></textarea><div class="rec-action-btns"><button type="submit" asp-page-handler="Approve" class="btn-approve">Publish recommendation</button><button type="submit" asp-page-handler="Reject" class="btn-reject">Reject</button><button type="button" class="btn-va-secondary" data-bs-toggle="modal" data-bs-target="#reassignRecModal" onclick="openReassignRecModal(@rec.Id)">Reassign office</button></div></form></div> } else { <div class="rec-reviewed"><span class="rec-review-label">LGU review record</span><p><strong>Notes:</strong> @(rec.LguNotes ?? "—")</p><p class="rec-reviewed-at">Reviewed: @rec.ReviewedAt?.ToString("MMM dd, yyyy")</p></div> }</article> }</div> }
 <div class="modal fade modal-va" id="reassignRecModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><div class="modal-title">Reassign to correct office</div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><form method="post" asp-page="/LGU/ReviewRecommendations" asp-page-handler="ReassignOffice">@Html.AntiForgeryToken()<input type="hidden" name="recommendationId" id="reassign-rec-id" /><div class="modal-body"><label class="form-label" for="reassign-rec-office">Correct office</label><select class="form-select" name="newOffice" id="reassign-rec-office" required><option value="" disabled selected>Select office...</option>@foreach (var dept in Model.Departments) { <option value="@dept">@dept</option> }</select></div><div class="modal-footer"><button type="button" class="btn-va-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn-va-primary">Reassign</button></div></form></div></div></div>
 <div id="lightboxOverlay" class="lgu-lightbox" onclick="closeLightbox()"><button type="button" onclick="closeLightbox()" aria-label="Close attachment preview">×</button><div onclick="event.stopPropagation()"><img id="lightboxImg" src="" alt="" /><video id="lightboxVideo" src="" controls></video></div></div>
+<button type="button" id="backToTopBtn" class="back-to-top-btn" hidden aria-label="Back to top" title="Back to top">
+    <span aria-hidden="true">↑</span>
+    <span class="back-to-top-label">Top</span>
+</button>
 </div>
 @section Scripts { <script>
+const backToTopBtn = document.getElementById('backToTopBtn');
+function updateBackToTopVisibility() { backToTopBtn.hidden = window.scrollY < 360; }
+window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+// Every action on this page is a full POST + redirect, which the browser resets to
+// the top for by default. Save scroll position before submitting and restore it once
+// the reloaded page has finished rendering.
+const REC_SCROLL_KEY = 'lguRecommendationsScrollY';
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', () => sessionStorage.setItem(REC_SCROLL_KEY, String(window.scrollY)));
+});
+window.addEventListener('load', () => {
+    const savedScrollY = sessionStorage.getItem(REC_SCROLL_KEY);
+    if (savedScrollY !== null) {
+        sessionStorage.removeItem(REC_SCROLL_KEY);
+        window.scrollTo(0, parseInt(savedScrollY, 10));
+    }
+});
+
 function openReassignRecModal(recommendationId) { document.getElementById('reassign-rec-id').value = recommendationId; }
 
 // --- Bulk selection: long-press a card to toggle it, no visible checkbox ---
@@ -37,6 +62,11 @@ const bulkRecToolbar = document.getElementById('bulk-rec-toolbar');
 const REC_LONG_PRESS_MS = 500;
 let recPressTimer = null;
 let recPressStartX = 0, recPressStartY = 0;
+let recLongPressFired = false;
+
+function anyRecCardSelected() {
+    return document.querySelectorAll('.rec-select:checked').length > 0;
+}
 
 function isRecInteractiveTarget(el) {
     return el.closest('button, a, input, select, textarea, label');
@@ -78,7 +108,7 @@ if (recommendationsListEl) {
         const card = e.target.closest('.rec-card');
         if (!card || card.dataset.selectable !== 'true' || isRecInteractiveTarget(e.target)) return;
         recPressStartX = e.clientX; recPressStartY = e.clientY;
-        recPressTimer = setTimeout(() => { toggleRecCardSelection(card); recPressTimer = null; }, REC_LONG_PRESS_MS);
+        recPressTimer = setTimeout(() => { toggleRecCardSelection(card); recPressTimer = null; recLongPressFired = true; }, REC_LONG_PRESS_MS);
     });
     recommendationsListEl.addEventListener('pointermove', e => {
         if (recPressTimer && (Math.abs(e.clientX - recPressStartX) > 10 || Math.abs(e.clientY - recPressStartY) > 10)) {
@@ -92,6 +122,15 @@ if (recommendationsListEl) {
         const card = e.target.closest('.rec-card');
         if (card && card.dataset.selectable === 'true' && !isRecInteractiveTarget(e.target)) e.preventDefault();
     });
+
+    // While in selection mode (something already selected), a plain click toggles the
+    // card instead of requiring another long-press.
+    recommendationsListEl.addEventListener('click', e => {
+        if (recLongPressFired) { recLongPressFired = false; return; }
+        const card = e.target.closest('.rec-card');
+        if (!card || card.dataset.selectable !== 'true' || isRecInteractiveTarget(e.target)) return;
+        if (anyRecCardSelected()) toggleRecCardSelection(card);
+    });
 }
 
 document.getElementById('bulk-reassign-rec-form').addEventListener('submit', function () {
@@ -104,6 +143,8 @@ document.getElementById('bulk-reassign-rec-form').addEventListener('submit', fun
         this.appendChild(input);
     });
 });
+document.querySelectorAll('.floating-toast').forEach(toast => setTimeout(() => toast.remove(), 5000));
+
 function openLightbox(src, type) { const overlay = document.getElementById('lightboxOverlay'); const img = document.getElementById('lightboxImg'); const video = document.getElementById('lightboxVideo'); img.style.display = 'none'; video.style.display = 'none'; video.pause(); if (type === 'image') { img.src = src; img.style.display = 'block'; } else if (type === 'video') { video.src = src; video.style.display = 'block'; } overlay.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
 function closeLightbox() { const overlay = document.getElementById('lightboxOverlay'); const video = document.getElementById('lightboxVideo'); video.pause(); overlay.classList.remove('is-open'); document.body.style.overflow = ''; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });

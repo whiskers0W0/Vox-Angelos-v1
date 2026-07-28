@@ -266,6 +266,21 @@ namespace VoxAngelos.Pages.LGU
 
             foreach (var recommendationId in recommendationIds.Distinct())
             {
+                var previousOffice = await _db.Recommendations
+                    .Where(r => r.Id == recommendationId)
+                    .Select(r => r.AssignedOffice)
+                    .FirstOrDefaultAsync();
+
+                // Safeguard: a "select all" can sweep up recommendations already assigned to
+                // your own office alongside genuinely unassigned ones. Bulk reassign only
+                // touches the unassigned ones — moving an already-correctly-routed item needs
+                // a deliberate single-item "Reassign office" correction, not a blanket action.
+                if (previousOffice != null && previousOffice == user.Department)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 var outcome = await TryReassignRecommendationAsync(recommendationId, newOffice, user);
                 if (outcome == ReassignOutcome.Success) succeeded++;
                 else skipped++;
@@ -273,7 +288,7 @@ namespace VoxAngelos.Pages.LGU
 
             TempData["RecSuccess"] = skipped == 0
                 ? $"Reassigned {succeeded} recommendation(s) to {newOffice}."
-                : $"Reassigned {succeeded} recommendation(s) to {newOffice}. {skipped} were skipped (already reviewed or owned by another office).";
+                : $"Reassigned {succeeded} recommendation(s) to {newOffice}. {skipped} were skipped (already assigned to your office, already reviewed, or owned by another office).";
 
             return RedirectToPage(new { filter = "Pending" });
         }

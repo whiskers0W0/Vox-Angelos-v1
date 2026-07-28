@@ -57,6 +57,7 @@ namespace VoxAngelos.Pages.LGU
 
         public List<ConcernViewModel> Concerns { get; set; } = new();
         public string CurrentFilter { get; set; } = "Unresolved";
+        public string? CurrentUserDepartment { get; set; }
 
         public async Task OnGetAsync(string? filter)
         {
@@ -64,6 +65,7 @@ namespace VoxAngelos.Pages.LGU
 
             var user = await _userManager.GetUserAsync(User);
             var userDepartment = user?.Department;
+            CurrentUserDepartment = userDepartment;
 
             var query = _db.Concerns
                 .Include(c => c.Attachments)
@@ -138,6 +140,13 @@ namespace VoxAngelos.Pages.LGU
             }
         }
 
+        // Shared by both bulk handlers: has a staffer already recorded a correct/incorrect
+        // verdict on this concern's classification? Once reviewed, a concern is considered
+        // settled and bulk actions (which can sweep up a mixed "select all") should leave
+        // it alone — only a deliberate single-item action should touch it again.
+        private async Task<bool> IsAlreadyReviewedAsync(int concernId) =>
+            await _db.ClassificationCorrections.AnyAsync(cc => cc.ConcernId == concernId);
+
         public async Task<IActionResult> OnPostConfirmCategoryAsync(int concernId)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -151,6 +160,11 @@ namespace VoxAngelos.Pages.LGU
 
         // Bulk version — confirms the NLP-assigned category is correct for many
         // concerns at once instead of clicking "Category correct" on each card.
+        // A mixed selection can include three kinds of concern:
+        //  - already reviewed (confirmed correct or previously reassigned) -> skipped, settled
+        //  - auto-classified but not yet reviewed -> confirmed correct (existing behavior)
+        //  - never auto-classified (no category) -> "Correct" here means "this is mine",
+        //    so it's claimed for the caller's own department instead of being skipped
         public async Task<IActionResult> OnPostBulkConfirmCategoryAsync(int[] concernIds, string? filter)
         {
             CurrentFilter = filter ?? "Unresolved";
@@ -164,16 +178,54 @@ namespace VoxAngelos.Pages.LGU
                 return RedirectToPage(new { filter = CurrentFilter });
             }
 
-            int succeeded = 0, skipped = 0;
-            foreach (var concernId in concernIds.Distinct())
+            if (string.IsNullOrEmpty(user.Department))
             {
-                if (await TryConfirmConcernCategoryAsync(concernId, user)) succeeded++;
-                else skipped++;
+                TempData["ConcernError"] = "Your account has no department assigned.";
+                return RedirectToPage(new { filter = CurrentFilter });
             }
 
+            int confirmed = 0, claimed = 0, skipped = 0;
+
+            foreach (var concernId in concernIds.Distinct())
+            {
+                if (await IsAlreadyReviewedAsync(concernId))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var category = await _db.Concerns
+                    .Where(c => c.Id == concernId)
+                    .Select(c => c.Category)
+                    .FirstOrDefaultAsync();
+
+                if (category == null)
+                {
+                    var outcome = await TryReassignConcernAsync(concernId, user.Department, user);
+                    if (outcome == ReassignOutcome.Success) claimed++;
+                    else skipped++;
+                }
+                else if (await TryConfirmConcernCategoryAsync(concernId, user))
+                {
+                    confirmed++;
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+
+            if (claimed > 0) await NotifyDepartmentsAsync(user.Department);
+
+            var parts = new List<string>();
+            if (confirmed > 0) parts.Add($"confirmed {confirmed} concern(s) as correctly classified");
+            if (claimed > 0) parts.Add($"claimed {claimed} unclassified concern(s) for {GetDepartmentDisplayName(user.Department)}");
+            var message = parts.Count > 0 ? string.Join(" and ", parts) : "No concerns were updated";
+            message = char.ToUpper(message[0]) + message[1..];
+
             TempData["ConcernSuccess"] = skipped == 0
-                ? $"Confirmed {succeeded} concern(s) as correctly classified."
-                : $"Confirmed {succeeded} concern(s) as correctly classified. {skipped} were skipped (uncategorized or already reviewed).";
+                ? $"{message}."
+                : $"{message}. {skipped} were skipped (already reviewed).";
 
             return RedirectToPage(new { filter = CurrentFilter });
         }
@@ -302,6 +354,17 @@ namespace VoxAngelos.Pages.LGU
 
             foreach (var concernId in concernIds.Distinct())
             {
+                // Safeguard: a "select all" can sweep up concerns that are already settled
+                // (confirmed correct, or previously reassigned) alongside ones still needing
+                // a decision. Bulk "Wrong" only touches not-yet-reviewed concerns — auto-
+                // classified-but-unconfirmed and never-classified ones both qualify; an
+                // already-reviewed one needs a deliberate single-item correction instead.
+                if (await IsAlreadyReviewedAsync(concernId))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 var previousCategory = await _db.Concerns
                     .Where(c => c.Id == concernId)
                     .Select(c => c.Category)
@@ -323,7 +386,7 @@ namespace VoxAngelos.Pages.LGU
 
             TempData["ConcernSuccess"] = skipped == 0
                 ? $"Reassigned {succeeded} concern(s) to {GetDepartmentDisplayName(newCategory)}."
-                : $"Reassigned {succeeded} concern(s) to {GetDepartmentDisplayName(newCategory)}. {skipped} were skipped (already resolved, already reviewed, or owned by another office).";
+                : $"Reassigned {succeeded} concern(s) to {GetDepartmentDisplayName(newCategory)}. {skipped} were skipped (already reviewed, already resolved, or owned by another office).";
 
             return RedirectToPage(new { filter = CurrentFilter });
         }
@@ -411,6 +474,31 @@ namespace VoxAngelos.Pages.LGU
                 var actorName = lguUser?.Department ?? lguUser?.Email ?? "LGU Office";
                 const string updateMessage = "An LGU office has accepted this concern for action.";
 
+                var notifiedCategory = concern.Category;
+
+                // Accepting a concern is itself a statement that the routing is right — fold
+                // the classification-feedback step into Accept instead of requiring a
+                // separate "Category correct" click first. Uncategorized concerns get
+                // claimed for the accepting office; already-classified ones get auto-
+                // confirmed as correct (a no-op if already reviewed).
+                if (lguUser != null && !string.IsNullOrEmpty(lguUser.Department))
+                {
+                    var department = lguUser.Department;
+                    if (concern.Category == null)
+                    {
+                        try
+                        {
+                            await _classifier.RecordCorrectionAsync(concernId, department, wasCorrect: false, lguUser.Id);
+                            notifiedCategory = department;
+                        }
+                        catch (ConcernAlreadyReviewedException) { }
+                    }
+                    else if (concern.Category == department)
+                    {
+                        await TryConfirmConcernCategoryAsync(concernId, lguUser);
+                    }
+                }
+
                 _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
                 {
                     ConcernId = concernId,
@@ -435,7 +523,7 @@ namespace VoxAngelos.Pages.LGU
                 });
                 await _db.SaveChangesAsync();
 
-                await NotifyDepartmentsAsync(concern.Category);
+                await NotifyDepartmentsAsync(notifiedCategory);
             }
 
             return RedirectToPage(new { filter = "Chosen" });
