@@ -201,9 +201,9 @@ app.UseRateLimiter();
 app.MapRazorPages();
 app.MapHub<FeedHub>("/hubs/feed");
 
-// Unauthenticated, DB-free liveness probe — pinged periodically (see
-// .github/workflows/keep-alive.yml) to stop the free Render instance from
-// spinning down on idle.
+// Unauthenticated, DB-free liveness probe — pinged periodically by an
+// external uptime monitor to stop the free Render instance from spinning
+// down on idle.
 app.MapGet("/health", () => Results.Ok("healthy")).AllowAnonymous();
 
 // 7. Role Seeding Logic
