@@ -1,0 +1,17 @@
+name: Keep Render instance alive
+
+# Pings the deployed app every 10 minutes so the free Render web service
+# never sits idle long enough (15 min) to spin down. See docs/rate-limiting.md
+# sibling discussion in project history for why this matters — cold starts on
+# the free tier can add 50s+ to the first request after idle.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: curl --fail --silent --show-error --max-time 70 https://voxangelos.onrender.com/health
