@@ -279,25 +279,24 @@ namespace VoxAngelos.Services
 
         // ── Public API ────────────────────────────────────────────────────────
 
-        // A department must clear this net learned-weight score, with no tie, before
-        // it's trusted enough to skip Google/static classification entirely.
-        private const int MinConfidentLearnedScore = 2;
+        // A department must clear this score, with no tie against the runner-up, before
+        // a classifier result (learned weights, or the static keyword fallback) is
+        // trusted — otherwise a single incidental keyword hit (e.g. "anak" matching a
+        // curse word, or a nonsense phrase) would confidently mislabel the concern
+        // instead of falling through to Uncategorized for a human to triage.
+        private const int MinConfidentClassificationScore = 2;
 
         /// <summary>
-        /// Primary: LGU-verified corrections win outright once they have a confident
-        /// signal for this text. Otherwise tries Google NLP (≥ 20 words), then falls
-        /// back to local keyword scoring blended with learned weights.
+        /// Primary: Google NLP (≥ 20 words, required by ClassifyText). Everything else
+        /// is a fallback for when Google isn't possible (too short, credentials/network
+        /// failure, or no confident category): LGU-verified corrections win outright if
+        /// they have a confident signal, otherwise local keyword scoring blended with
+        /// learned weights.
         /// </summary>
         public async Task<string?> ClassifyAsync(string description, string? credentialsPath = null)
         {
             if (string.IsNullOrWhiteSpace(description))
                 return null;
-
-            var learned = await LoadLearnedWeightsAsync();
-
-            var confidentLearnedResult = ClassifyFromLearnedWeightsOnly(description, learned);
-            if (confidentLearnedResult != null)
-                return confidentLearnedResult;
 
             // Google NLP ClassifyText requires ≥ 20 tokens
             var wordCount = description.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
@@ -307,6 +306,12 @@ namespace VoxAngelos.Services
                 if (googleResult != null)
                     return googleResult;
             }
+
+            var learned = await LoadLearnedWeightsAsync();
+
+            var confidentLearnedResult = ClassifyFromLearnedWeightsOnly(description, learned);
+            if (confidentLearnedResult != null)
+                return confidentLearnedResult;
 
             var departmentTags = await LoadDepartmentTagsAsync();
             return Classify(description, learned, departmentTags);
@@ -339,7 +344,7 @@ namespace VoxAngelos.Services
                 return null;
 
             var ranked = scores.OrderByDescending(s => s.Value).ToList();
-            var isConfident = ranked[0].Value >= MinConfidentLearnedScore
+            var isConfident = ranked[0].Value >= MinConfidentClassificationScore
                 && (ranked.Count == 1 || ranked[0].Value > ranked[1].Value);
 
             return isConfident ? ranked[0].Key : null;
@@ -348,7 +353,9 @@ namespace VoxAngelos.Services
         /// <summary>
         /// Local keyword-only classifier — no network call, always available.
         /// Scores the static keyword lists plus any learned weights from LGU feedback,
-        /// plus admin-curated tags entered per office in Office Management.
+        /// plus admin-curated tags entered per office in Office Management. Returns null
+        /// (Uncategorized) unless the top department clears <see cref="MinConfidentClassificationScore"/>
+        /// with no tie, so a single stray keyword match can't confidently mislabel a concern.
         /// </summary>
         public string? Classify(
             string description,
@@ -394,9 +401,14 @@ namespace VoxAngelos.Services
                 }
             }
 
-            return scores.Count == 0
-                ? null
-                : scores.MaxBy(s => s.Value).Key;
+            if (scores.Count == 0)
+                return null;
+
+            var ranked = scores.OrderByDescending(s => s.Value).ToList();
+            var isConfident = ranked[0].Value >= MinConfidentClassificationScore
+                && (ranked.Count == 1 || ranked[0].Value > ranked[1].Value);
+
+            return isConfident ? ranked[0].Key : null;
         }
 
         /// <summary>
