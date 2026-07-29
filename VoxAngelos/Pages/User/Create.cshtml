@@ -161,10 +161,10 @@
                     <label class="concern-form-label">Attachment/s:</label>
                     <button class="concern-upload-btn" type="button" id="concernUploadBtn">
                         <span class="upload-label">Upload</span>
-                        <span class="upload-hint">(.jpg .png .mp4 .pdf)</span>
+                        <span class="upload-hint">(.jpg .png .mp4 .pdf .doc .docx)</span>
                     </button>
                     <input type="file" id="concernFileInput" name="Attachments"
-                           class="create-file-input" multiple accept="image/*,video/*,.pdf" />
+                           class="create-file-input" multiple accept="image/*,video/*,.pdf,.doc,.docx" />
                     <span class="concern-file-names" id="concernFileNames"></span>
                     <div id="concernAttachmentPreview" class="concern-attachment-preview" aria-live="polite"></div>
                 </div>
@@ -693,35 +693,49 @@
             }
         });
 
-                btnNext.addEventListener('click', () => {
+        let recommendationSubmitting = false;
+
+        btnNext.addEventListener('click', async () => {
             if (currentStep < totalSteps) {
                 // Run validation for the current step
                 if (validateStep(currentStep)) {
                     currentStep++;
                     goToStep(currentStep);
                 }
-                } else {
+            } else {
+                if (recommendationSubmitting) return;
+
+                recommendationSubmitting = true;
+                btnNext.disabled = true;
+                btnSaveDraft.disabled = true;
+                btnNext.textContent = 'Submitting...';
+                recommendationStatus.textContent = '';
+
                 const formData = buildRecommendationFormData(true);
 
-                fetch('?handler=Recommendation', {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(readRecommendationResponse)
-                    .then(data => {
+                try {
+                    const response = await fetch('?handler=Recommendation', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await readRecommendationResponse(response);
+
                     if (data.success) {
                         stepFooter.style.display = 'none';
                         steps.forEach(s => s.classList.remove('active'));
                         successState.classList.add('active');
                     }
-                })
-                .catch(err => {
+                } catch (err) {
                     recommendationStatus.textContent = `Recommendation was not sent. ${err.message}`;
                     recommendationStatus.style.color = '#b91c1c';
                     console.error('Submission error:', err);
-                });
+                    recommendationSubmitting = false;
+                    btnNext.disabled = false;
+                    btnSaveDraft.disabled = false;
+                    btnNext.textContent = 'Submit';
+                }
             }
-            });
+        });
 
         function validateStep(step) {
             let isValid = true;
@@ -1172,6 +1186,7 @@
         // Concern submit
                 // Hidden fields for confirmed category
         let confirmedCategory = '';
+        let concernSubmitting = false;
         const classificationErrorModal = document.getElementById('classificationErrorModal');
         const classificationErrorMessage = document.getElementById('classificationErrorMessage');
         const concernForm = document.getElementById('concernForm');
@@ -1193,6 +1208,8 @@
 
         // Concern submit — Step 1: validate then classify
         document.getElementById('concernSubmitBtn').addEventListener('click', async () => {
+            if (concernSubmitting) return;
+
             let valid = true;
 
             document.getElementById('err-description').textContent = '';
@@ -1221,8 +1238,11 @@
 
             // Show loading state
             const submitBtn = document.getElementById('concernSubmitBtn');
+            concernSubmitting = true;
             submitBtn.textContent = 'Analyzing...';
             submitBtn.disabled = true;
+            concernSaveDraftBtn.disabled = true;
+            let submissionSucceeded = false;
 
             try {
                 const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
@@ -1242,14 +1262,19 @@
 
                     submitBtn.textContent = 'Submitting...';
                     await submitConfirmedConcern();
+                    submissionSucceeded = true;
                 } else {
                     showClassificationError('The AI service could not categorize your concern right now. Please try again in a moment.');
                 }
             } catch (e) {
                 showClassificationError('We could not connect to the AI service. Please check your connection and try again.');
             } finally {
-                submitBtn.textContent = 'Submit';
-                submitBtn.disabled = false;
+                if (!submissionSucceeded) {
+                    concernSubmitting = false;
+                    submitBtn.textContent = 'Submit';
+                    submitBtn.disabled = false;
+                    concernSaveDraftBtn.disabled = false;
+                }
             }
         });
 

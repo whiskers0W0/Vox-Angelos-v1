@@ -1,3 +1,5 @@
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
 
@@ -16,15 +18,18 @@ namespace VoxAngelos.Services
         private readonly IServiceProvider _services;
         private readonly IConfiguration _configuration;
         private readonly ILogger<SensitiveMediaRetentionService> _logger;
+        private readonly Cloudinary _cloudinary;
 
         public SensitiveMediaRetentionService(
             IServiceProvider services,
             IConfiguration configuration,
-            ILogger<SensitiveMediaRetentionService> logger)
+            ILogger<SensitiveMediaRetentionService> logger,
+            Cloudinary cloudinary)
         {
             _services = services;
             _configuration = configuration;
             _logger = logger;
+            _cloudinary = cloudinary;
         }
 
         private int PollIntervalMinutes => _configuration.GetValue<int?>("MediaRetention:PollIntervalMinutes") ?? 60;
@@ -55,34 +60,90 @@ namespace VoxAngelos.Services
             var purgedCount = 0;
 
             var reviewedIds = await db.UserIdentityDocuments
-                .Where(d => d.IdPhotoPath != null && d.User != null && d.User.ApprovalStatus != "Pending")
+                .Where(d => (d.IdPhotoPath != null || d.IdPhotoCloudinaryPublicId != null) &&
+                            d.User != null && d.User.ApprovalStatus != "Pending")
                 .ToListAsync(ct);
 
             foreach (var doc in reviewedIds)
             {
-                DeleteFileIfExists(IdentityDocumentStorage.IdsFolder(env), doc.IdPhotoPath);
-                doc.IdPhotoPath = null;
-                purgedCount++;
+                if (doc.IdPhotoPath != null)
+                {
+                    DeleteFileIfExists(IdentityDocumentStorage.IdsFolder(env), doc.IdPhotoPath);
+                    doc.IdPhotoPath = null;
+                    purgedCount++;
+                }
+
+                if (await DeletePrivateCloudinaryAssetAsync(doc.IdPhotoCloudinaryPublicId))
+                {
+                    doc.IdPhotoCloudinaryPublicId = null;
+                    doc.IdPhotoCloudinaryFormat = null;
+                    purgedCount++;
+                }
             }
 
             var reviewedSelfies = await db.UserFaceVerifications
-                .Where(f => f.LiveSelfiePath != null && f.User != null && f.User.ApprovalStatus != "Pending")
+                .Where(f => (f.LiveSelfiePath != null || f.LiveSelfieCloudinaryPublicId != null) &&
+                            f.User != null && f.User.ApprovalStatus != "Pending")
                 .ToListAsync(ct);
 
             foreach (var selfie in reviewedSelfies)
             {
-                DeleteFileIfExists(IdentityDocumentStorage.SelfiesFolder(env), selfie.LiveSelfiePath);
-                selfie.LiveSelfiePath = null;
-                purgedCount++;
+                if (selfie.LiveSelfiePath != null)
+                {
+                    DeleteFileIfExists(IdentityDocumentStorage.SelfiesFolder(env), selfie.LiveSelfiePath);
+                    selfie.LiveSelfiePath = null;
+                    purgedCount++;
+                }
+
+                if (await DeletePrivateCloudinaryAssetAsync(selfie.LiveSelfieCloudinaryPublicId))
+                {
+                    selfie.LiveSelfieCloudinaryPublicId = null;
+                    selfie.LiveSelfieCloudinaryFormat = null;
+                    purgedCount++;
+                }
             }
 
             if (purgedCount > 0)
             {
                 await db.SaveChangesAsync(ct);
                 _logger.LogInformation(
-                    "Sensitive media retention sweep purged {Count} file(s) for reviewed accounts.",
+                    "Sensitive media retention sweep purged {Count} protected media copy/copies for reviewed accounts.",
                     purgedCount);
             }
+        }
+
+        private async Task<bool> DeletePrivateCloudinaryAssetAsync(string? publicId)
+        {
+            if (string.IsNullOrWhiteSpace(publicId)) return false;
+
+            try
+            {
+                var result = await _cloudinary.DestroyAsync(new DeletionParams(publicId)
+                {
+                    Type = "private",
+                    ResourceType = ResourceType.Image
+                });
+
+                if (string.Equals(result.Result, "ok", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(result.Result, "not found", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(result.Result, "not_found", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                _logger.LogWarning(
+                    "Private Cloudinary media deletion did not complete for asset {PublicId}. Result: {Result}",
+                    publicId,
+                    result.Result);
+            }
+            catch (Exception ex)
+            {
+                // Leave the database reference intact. The next retention cycle will retry
+                // the deletion instead of silently retaining an untracked sensitive asset.
+                _logger.LogWarning(ex, "Private Cloudinary media deletion failed for asset {PublicId}.", publicId);
+            }
+
+            return false;
         }
 
         private void DeleteFileIfExists(string folder, string? fileName)
