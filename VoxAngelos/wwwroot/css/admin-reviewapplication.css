@@ -4,3 +4,59 @@
 .review-decision { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 20px; border:1px solid #cad9f3; border-radius:10px; background:#f8fbff; }.review-decision h2 { margin:0; color:var(--review-ink); font-size:15px; font-weight:760; }.review-decision p { max-width:350px; margin:6px 0 0; color:var(--review-body); font-size:11px; line-height:1.45; }.action-buttons { display:flex; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end; gap:7px; }.btn-cancel,.btn-reject,.btn-approve { display:inline-flex; min-height:32px; align-items:center; justify-content:center; padding:0 11px; border-radius:6px; font-size:10.5px; font-weight:750; text-decoration:none; cursor:pointer; }.btn-cancel { border:1px solid #cfd8e6; background:#fff; color:var(--review-body); }.btn-reject { border:1px solid #e5abb2; background:#fff; color:var(--review-red); }.btn-approve { border:1px solid var(--review-blue); background:var(--review-blue); color:#fff; }.btn-cancel:hover { border-color:#aebdce; color:var(--review-ink); }.btn-reject:hover { background:var(--review-red-soft); }.btn-approve:hover { border-color:var(--review-blue-dark); background:var(--review-blue-dark); }.review-decision--complete { justify-content:flex-start; background:#fff; }.status-message { margin:0!important; padding:8px 10px; border-radius:5px; font-size:11px!important; font-weight:700; }.status-message.approved { background:var(--review-green-soft); color:var(--review-green); }.status-message.rejected { background:var(--review-red-soft); color:var(--review-red); }
 .modal-overlay { position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.5); }.modal-box { width:min(100%,420px); padding:22px; border:1px solid var(--review-line); border-radius:10px; background:#fff; box-shadow:0 18px 42px rgba(15,23,42,.2); }.modal-eyebrow { display:block; margin-bottom:7px; color:var(--review-blue); font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }.modal-eyebrow--danger { color:var(--review-red); }.modal-box h3 { margin:0; color:var(--review-ink); font-size:18px; letter-spacing:-.02em; }.modal-box p { margin:9px 0 0; color:var(--review-body); font-size:12px; line-height:1.5; }.modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }.modal-actions form { margin:0; }.image-modal-box { position:relative; display:flex; max-width:min(940px,92vw); max-height:88vh; align-items:center; justify-content:center; }.image-modal-box img { display:block; max-width:100%; max-height:82vh; border-radius:8px; object-fit:contain; }.image-modal-box button { position:absolute; top:-12px; right:-12px; width:32px; height:32px; border:0; border-radius:50%; background:#fff; color:#172033; font-size:22px; line-height:1; cursor:pointer; }
 @media (max-width:900px) { .review-grid { grid-template-columns:1fr; }.review-left { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }.review-left .review-card { margin-bottom:0; } } @media (max-width:680px) { .review-header,.review-decision { align-items:flex-start; flex-direction:column; }.review-header-actions { width:100%; justify-content:space-between; }.review-decision,.action-buttons,.action-buttons a,.action-buttons button { width:100%; }.action-buttons { justify-content:stretch; }.photos-grid,.review-left { grid-template-columns:1fr; }.review-photo,.photo-placeholder { height:230px; }.info-row { grid-template-columns:1fr; gap:4px; } }
+
+
+/* Modal action feedback: make every decision button visibly interactive. */
+.modal-actions button,
+.modal-actions a {
+    cursor: pointer;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.modal-actions .btn-cancel:hover {
+    border-color: #9eb2d2;
+    background: #f1f4f9;
+    color: var(--review-ink);
+    box-shadow: 0 4px 10px rgba(23, 32, 51, .08);
+    transform: translateY(-1px);
+}
+
+.modal-actions .btn-reject:hover {
+    border-color: var(--review-red);
+    background: var(--review-red-soft);
+    color: #a72f3b;
+    box-shadow: 0 4px 10px rgba(196, 63, 75, .16);
+    transform: translateY(-1px);
+}
+
+.modal-actions .btn-approve:hover {
+    border-color: var(--review-blue-dark);
+    background: var(--review-blue-dark);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(22, 70, 160, .2);
+    transform: translateY(-1px);
+}
+
+.modal-actions button:active,
+.modal-actions a:active {
+    box-shadow: none;
+    transform: translateY(0);
+}
+
+.modal-actions button:focus-visible,
+.modal-actions a:focus-visible {
+    outline: 3px solid rgba(22, 70, 160, .24);
+    outline-offset: 2px;
+}
+
+.modal-actions .btn-reject:focus-visible {
+    outline-color: rgba(196, 63, 75, .28);
+}
+
+.modal-actions button:disabled,
+.modal-actions a[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: .6;
+    pointer-events: none;
+    transform: none;
+}
