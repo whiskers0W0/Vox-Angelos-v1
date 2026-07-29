@@ -16,10 +16,12 @@ namespace VoxAngelos.Services
     public class ConcernClassificationService
     {
         private readonly ApplicationDbContext _db;
+        private readonly ILogger<ConcernClassificationService> _logger;
 
-        public ConcernClassificationService(ApplicationDbContext db)
+        public ConcernClassificationService(ApplicationDbContext db, ILogger<ConcernClassificationService> logger)
         {
             _db = db;
+            _logger = logger;
         }
 
         // Departments this classifier can route to — used to validate corrections.
@@ -301,7 +303,7 @@ namespace VoxAngelos.Services
             var wordCount = description.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
             if (wordCount >= 20)
             {
-                var googleResult = await TryGoogleNlpAsync(description, credentialsPath);
+                var googleResult = await TryGoogleNlpAsync(description, credentialsPath, _logger);
                 if (googleResult != null)
                     return googleResult;
             }
@@ -510,7 +512,7 @@ namespace VoxAngelos.Services
 
         // ── Private helpers ───────────────────────────────────────────────────
 
-        private static async Task<string?> TryGoogleNlpAsync(string description, string? credentialsPath)
+        private static async Task<string?> TryGoogleNlpAsync(string description, string? credentialsPath, ILogger logger)
         {
             try
             {
@@ -532,10 +534,16 @@ namespace VoxAngelos.Services
                     .OrderByDescending(c => c.Confidence)
                     .FirstOrDefault();
 
-                return best == null ? null : MapGoogleCategory(best.Name);
+                var mapped = best == null ? null : MapGoogleCategory(best.Name);
+                logger.LogWarning(
+                    "TEMP-NLP-DEBUG: Google returned category={GoogleCategory} confidence={Confidence} mapped={Mapped}",
+                    best?.Name ?? "(none)", best?.Confidence, mapped ?? "(null)");
+
+                return mapped;
             }
-            catch
+            catch (Exception ex)
             {
+                logger.LogWarning(ex, "TEMP-NLP-DEBUG: Google NLP call failed, falling back to local classifier");
                 return null; // silently fall back to local classifier
             }
         }
