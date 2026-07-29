@@ -16,6 +16,12 @@ namespace VoxAngelos.Data
 
         public string? LiveSelfiePath { get; set; }
 
+        // Private Cloudinary asset details for newly submitted live selfies.
+        // Existing records continue using LiveSelfiePath until their normal retention purge.
+        public string? LiveSelfieCloudinaryPublicId { get; set; }
+
+        public string? LiveSelfieCloudinaryFormat { get; set; }
+
         [Column(TypeName = "decimal(5,4)")]
         public decimal? MatchConfidence { get; set; }
 

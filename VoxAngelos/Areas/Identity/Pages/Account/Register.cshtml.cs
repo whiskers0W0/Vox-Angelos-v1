@@ -41,6 +41,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         private readonly FaceVerificationService _faceVerificationService;
         private readonly IdValidationService _idValidationService;
         private readonly OcrService _ocrService;
+        private readonly PrivateIdentityMediaStorage _privateIdentityMediaStorage;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
@@ -52,7 +53,8 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             ApplicationDbContext context,
             FaceVerificationService faceVerificationService,
             IdValidationService idValidationService,
-            OcrService ocrService)
+            OcrService ocrService,
+            PrivateIdentityMediaStorage privateIdentityMediaStorage)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -65,6 +67,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             _faceVerificationService = faceVerificationService;
             _idValidationService = idValidationService;
             _ocrService = ocrService;
+            _privateIdentityMediaStorage = privateIdentityMediaStorage;
         }
 
         [BindProperty]
@@ -457,6 +460,50 @@ if (savedFileName != null)
                         VerifiedAt = DateTime.UtcNow,
                     };
                     _context.UserFaceVerifications.Add(faceVerification);
+                    await _context.SaveChangesAsync();
+
+                    // OCR and face matching above use the protected local copies created for
+                    // this request. After those checks complete, make a private cloud backup.
+                    // Each image is attempted independently so one successful upload is never
+                    // repeated just because the other is temporarily unavailable.
+                    var cloudUploadErrors = new List<string>();
+                    try
+                    {
+                        var privateId = await _privateIdentityMediaStorage.UploadAsync(Input.IdPhoto, "id");
+                        identityDocument.IdPhotoCloudinaryPublicId = privateId.PublicId;
+                        identityDocument.IdPhotoCloudinaryFormat = privateId.Format;
+                    }
+                    catch (Exception ex)
+                    {
+                        cloudUploadErrors.Add("ID image backup failed.");
+                        _logger.LogWarning(ex, "Private ID upload failed for user {UserId}.", user.Id);
+                    }
+
+                    try
+                    {
+                        var privateSelfie = await _privateIdentityMediaStorage.UploadAsync(Input.SelfiePhoto, "selfie");
+                        faceVerification.LiveSelfieCloudinaryPublicId = privateSelfie.PublicId;
+                        faceVerification.LiveSelfieCloudinaryFormat = privateSelfie.Format;
+                    }
+                    catch (Exception ex)
+                    {
+                        cloudUploadErrors.Add("Selfie backup failed.");
+                        _logger.LogWarning(ex, "Private selfie upload failed for user {UserId}.", user.Id);
+                    }
+
+                    if (cloudUploadErrors.Count == 0)
+                    {
+                        identityDocument.CloudinaryUploadAttempts = 0;
+                        identityDocument.CloudinaryNextRetryAt = null;
+                        identityDocument.CloudinaryLastUploadError = null;
+                    }
+                    else
+                    {
+                        identityDocument.CloudinaryUploadAttempts = 1;
+                        identityDocument.CloudinaryNextRetryAt = DateTime.UtcNow.AddMinutes(5);
+                        identityDocument.CloudinaryLastUploadError = string.Join(" ", cloudUploadErrors);
+                    }
+
                     await _context.SaveChangesAsync();
 
                     await _userManager.AddToRoleAsync(user, "User");

@@ -1,3 +1,4 @@
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -22,19 +23,22 @@ namespace VoxAngelos.Pages.Admin
         private readonly IEmailSender _emailSender;
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<ReviewApplicationModel> _logger;
+        private readonly Cloudinary _cloudinary;
 
         public ReviewApplicationModel(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IEmailSender emailSender,
             IWebHostEnvironment environment,
-            ILogger<ReviewApplicationModel> logger)
+            ILogger<ReviewApplicationModel> logger,
+            Cloudinary cloudinary)
         {
             _context = context;
             _userManager = userManager;
             _emailSender = emailSender;
             _environment = environment;
             _logger = logger;
+            _cloudinary = cloudinary;
         }
 
         public ApplicationUser? Citizen { get; set; }
@@ -102,12 +106,16 @@ namespace VoxAngelos.Pages.Admin
         public async Task<IActionResult> OnGetIdentityMediaAsync(int documentId, string mediaType)
         {
             string? fileName;
+            string? cloudinaryPublicId;
+            string? cloudinaryFormat;
             string folder;
 
             if (mediaType == "id")
             {
                 var doc = await _context.UserIdentityDocuments.FindAsync(documentId);
                 fileName = doc?.IdPhotoPath;
+                cloudinaryPublicId = doc?.IdPhotoCloudinaryPublicId;
+                cloudinaryFormat = doc?.IdPhotoCloudinaryFormat;
                 folder = IdentityDocumentStorage.IdsFolder(_environment);
             }
             else if (mediaType == "selfie")
@@ -115,11 +123,29 @@ namespace VoxAngelos.Pages.Admin
                 var face = await _context.UserFaceVerifications
                     .FirstOrDefaultAsync(f => f.IdentityDocumentId == documentId);
                 fileName = face?.LiveSelfiePath;
+                cloudinaryPublicId = face?.LiveSelfieCloudinaryPublicId;
+                cloudinaryFormat = face?.LiveSelfieCloudinaryFormat;
                 folder = IdentityDocumentStorage.SelfiesFolder(_environment);
             }
             else
             {
                 return BadRequest();
+            }
+
+            // Cloudinary assets are private, and this authorized endpoint only issues a
+            // short-lived signed link after the admin-role check above has succeeded.
+            if (!string.IsNullOrWhiteSpace(cloudinaryPublicId) && !string.IsNullOrWhiteSpace(cloudinaryFormat))
+            {
+                var expiresAt = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+                var privateUrl = _cloudinary.DownloadPrivate(
+                    cloudinaryPublicId,
+                    attachment: false,
+                    format: cloudinaryFormat,
+                    type: "private",
+                    expiresAt: expiresAt,
+                    resourceType: "image");
+
+                return Redirect(privateUrl);
             }
 
             // Covers both "never uploaded" and "purged after the retention window" (the

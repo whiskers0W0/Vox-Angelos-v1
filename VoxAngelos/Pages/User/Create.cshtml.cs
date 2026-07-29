@@ -22,6 +22,7 @@ namespace VoxAngelos.Pages.User
         private readonly ConcernClassificationService _classifier;
         private readonly UrgencyScoreService _urgencyScore;
         private readonly IHubContext<FeedHub> _feedHub;
+        private readonly CloudinaryAttachmentStorage _attachmentStorage;
         private static readonly HashSet<string> ConcernCategoryHints = new(StringComparer.Ordinal)
         {
             "Infrastructure & Public Works",
@@ -40,7 +41,8 @@ namespace VoxAngelos.Pages.User
                            IConfiguration configuration,
                            ConcernClassificationService classifier,
                            UrgencyScoreService urgencyScore,
-                           IHubContext<FeedHub> feedHub)
+                           IHubContext<FeedHub> feedHub,
+                           CloudinaryAttachmentStorage attachmentStorage)
         {
             _db = db;
             _userManager = userManager;
@@ -49,6 +51,7 @@ namespace VoxAngelos.Pages.User
             _classifier = classifier;
             _urgencyScore = urgencyScore;
             _feedHub = feedHub;
+            _attachmentStorage = attachmentStorage;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
@@ -210,25 +213,16 @@ namespace VoxAngelos.Pages.User
 
             if (Attachments != null && Attachments.Count > 0)
             {
-                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "concerns");
-                Directory.CreateDirectory(uploadsFolder);
-
                 foreach (var file in Attachments)
                 {
                     if (file.Length == 0) continue;
-                    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-                    var fileName = $"{Guid.NewGuid()}{ext}";
-                    var filePath = Path.Combine(uploadsFolder, fileName);
-                    using var stream = new FileStream(filePath, FileMode.Create);
-                    await file.CopyToAsync(stream);
-                    var fileType = file.ContentType.StartsWith("video") ? "video"
-                                 : file.ContentType.StartsWith("image") ? "image"
-                                 : "document";
+                    var uploadedAttachment = await _attachmentStorage.UploadAsync(file, "concerns");
+
                     _db.ConcernAttachments.Add(new ConcernAttachment
                     {
                         ConcernId = concern.Id,
-                        FilePath = $"/uploads/concerns/{fileName}",
-                        FileType = fileType,
+                        FilePath = uploadedAttachment.FilePath,
+                        FileType = uploadedAttachment.FileType,
                         UploadedAt = DateTime.UtcNow
                     });
                 }
@@ -382,27 +376,16 @@ namespace VoxAngelos.Pages.User
 
             if (RecAttachments != null && RecAttachments.Count > 0)
             {
-                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "recommendations");
-                Directory.CreateDirectory(uploadsFolder);
-
                 foreach (var file in RecAttachments)
                 {
                     if (file.Length == 0) continue;
-                    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-                    var fileName = $"{Guid.NewGuid()}{ext}";
-                    var filePath = Path.Combine(uploadsFolder, fileName);
-                    using var stream = new FileStream(filePath, FileMode.Create);
-                    await file.CopyToAsync(stream);
-
-                    var fileType = file.ContentType.StartsWith("video") ? "video"
-                                 : file.ContentType.StartsWith("image") ? "image"
-                                 : "document";
+                    var uploadedAttachment = await _attachmentStorage.UploadAsync(file, "recommendations");
 
                     _db.RecommendationAttachments.Add(new RecommendationAttachment
                     {
                         RecommendationId = recommendation.Id,
-                        FilePath = $"/uploads/recommendations/{fileName}",
-                        FileType = fileType,
+                        FilePath = uploadedAttachment.FilePath,
+                        FileType = uploadedAttachment.FileType,
                         UploadedAt = DateTime.UtcNow
                     });
                 }

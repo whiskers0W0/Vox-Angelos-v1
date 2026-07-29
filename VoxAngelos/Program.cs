@@ -1,3 +1,4 @@
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -9,6 +10,27 @@ using VoxAngelos.Services;
 using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Cloudinary credentials come from User Secrets locally and environment variables
+// in deployment. They are never stored in appsettings.json or committed to Git.
+builder.Services.AddSingleton<Cloudinary>(_ =>
+{
+    var cloudName = builder.Configuration["Cloudinary:CloudName"];
+    var apiKey = builder.Configuration["Cloudinary:ApiKey"];
+    var apiSecret = builder.Configuration["Cloudinary:ApiSecret"];
+
+    if (string.IsNullOrWhiteSpace(cloudName) ||
+        string.IsNullOrWhiteSpace(apiKey) ||
+        string.IsNullOrWhiteSpace(apiSecret))
+    {
+        throw new InvalidOperationException(
+            "Cloudinary credentials are missing. Configure Cloudinary:CloudName, Cloudinary:ApiKey, and Cloudinary:ApiSecret.");
+    }
+
+    var cloudinary = new Cloudinary(new Account(cloudName, apiKey, apiSecret));
+    cloudinary.Api.Secure = true;
+    return cloudinary;
+});
 
 // Allow the request to reach the recommendation handler. The handler itself
 // enforces the 100 MB per-video limit and returns a user-friendly message.
@@ -44,6 +66,8 @@ builder.Services.AddScoped<OcrService>();
 builder.Services.AddScoped<ConcernClassificationService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<RecommendationRatingService>();
+builder.Services.AddScoped<CloudinaryAttachmentStorage>();
+builder.Services.AddScoped<PrivateIdentityMediaStorage>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, o => o.UseNetTopologySuite()));
@@ -112,6 +136,7 @@ builder.Services.AddSignalR();
 
 // 5b. Background purge of sensitive ID/selfie images (Data Privacy Act retention).
 builder.Services.AddHostedService<SensitiveMediaRetentionService>();
+builder.Services.AddHostedService<IdentityMediaCloudBackupService>();
 
 // 5c. Location Density Score for the Urgency Algorithm (PostGIS-backed).
 builder.Services.AddScoped<UrgencyScoreService>();
