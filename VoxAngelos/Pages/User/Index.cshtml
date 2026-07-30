@@ -156,16 +156,28 @@
 
                 @if (rec.AttachmentPaths.Any())
                 {
-                    <div class="attachments">
+                    <div class="attachments" data-attachment-gallery>
                         @{
                             var maxShow = Math.Min(2, rec.AttachmentPaths.Count);
                             var extra = rec.AttachmentPaths.Count - maxShow;
                         }
+                        <div class="attachment-preview-data" hidden>
+                            @for (int attachmentIndex = 0; attachmentIndex < rec.AttachmentPaths.Count; attachmentIndex++)
+                            {
+                                <span class="attachment-preview-source"
+                                      data-path="@rec.AttachmentPaths[attachmentIndex]"
+                                      data-type="@rec.AttachmentTypes.ElementAtOrDefault(attachmentIndex)"></span>
+                            }
+                        </div>
                         @for (int i = 0; i < maxShow; i++)
                         {
                             var path = rec.AttachmentPaths[i];
                             var type = rec.AttachmentTypes[i];
-                            <div class="attachment-thumb">
+                            <div class="attachment-thumb attachment-preview-trigger"
+                                 data-attachment-index="@i"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="Preview attachment @(i + 1) of @rec.AttachmentPaths.Count">
                                 @if (type == "image" || type.StartsWith("image/"))
                                 {
                                     <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
@@ -190,7 +202,11 @@
                         }
                         @if (extra > 0)
                         {
-                            <div class="attachment-thumb more-files">
+                            <div class="attachment-thumb more-files attachment-preview-trigger"
+                                 data-attachment-index="@maxShow"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="Preview @extra more attachment@(extra == 1 ? "" : "s")">
                                 <span>@extra+</span>
                                 <small>Files</small>
                             </div>
@@ -263,16 +279,28 @@
 
                         @if (rec.AttachmentPaths.Any())
                         {
-                            <div class="attachments">
+                            <div class="attachments" data-attachment-gallery>
                                 @{
                                     var maxShow2 = Math.Min(2, rec.AttachmentPaths.Count);
                                     var extra2 = rec.AttachmentPaths.Count - maxShow2;
                                 }
+                                <div class="attachment-preview-data" hidden>
+                                    @for (int attachmentIndex = 0; attachmentIndex < rec.AttachmentPaths.Count; attachmentIndex++)
+                                    {
+                                        <span class="attachment-preview-source"
+                                              data-path="@rec.AttachmentPaths[attachmentIndex]"
+                                              data-type="@rec.AttachmentTypes.ElementAtOrDefault(attachmentIndex)"></span>
+                                    }
+                                </div>
                                 @for (int i = 0; i < maxShow2; i++)
                                 {
                                     var path = rec.AttachmentPaths[i];
                                     var type = rec.AttachmentTypes[i];
-                                    <div class="attachment-thumb">
+                                    <div class="attachment-thumb attachment-preview-trigger"
+                                         data-attachment-index="@i"
+                                         role="button"
+                                         tabindex="0"
+                                         aria-label="Preview attachment @(i + 1) of @rec.AttachmentPaths.Count">
                                         @if (type == "image" || type.StartsWith("image/"))
                                         {
                                             <img src="@path" alt="attachment" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" />
@@ -297,7 +325,11 @@
                                 }
                                 @if (extra2 > 0)
                                 {
-                                    <div class="attachment-thumb more-files">
+                                    <div class="attachment-thumb more-files attachment-preview-trigger"
+                                         data-attachment-index="@maxShow2"
+                                         role="button"
+                                         tabindex="0"
+                                         aria-label="Preview @extra2 more attachment@(extra2 == 1 ? "" : "s")">
                                         <span>@extra2+</span>
                                         <small>Files</small>
                                     </div>
@@ -371,6 +403,34 @@
     </div>
 </div>
 
+<div id="attachmentPreviewModal"
+     class="attachment-preview-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="attachmentPreviewTitle"
+     hidden>
+    <div class="attachment-preview-dialog">
+        <header class="attachment-preview-header">
+            <div>
+                <span>Recommendation attachment</span>
+                <h2 id="attachmentPreviewTitle">Attachment preview</h2>
+            </div>
+            <button type="button" id="attachmentPreviewClose" class="attachment-preview-close" aria-label="Close attachment preview">&times;</button>
+        </header>
+
+        <div class="attachment-preview-stage">
+            <button type="button" id="attachmentPreviewPrevious" class="attachment-preview-nav previous" aria-label="Previous attachment">&#8249;</button>
+            <div id="attachmentPreviewContent" class="attachment-preview-content"></div>
+            <button type="button" id="attachmentPreviewNext" class="attachment-preview-nav next" aria-label="Next attachment">&#8250;</button>
+        </div>
+
+        <footer class="attachment-preview-footer">
+            <span id="attachmentPreviewCount"></span>
+            <a id="attachmentPreviewOpen" href="#" target="_blank" rel="noopener noreferrer">Open attachment</a>
+        </footer>
+    </div>
+</div>
+
 <button type="button" id="backToTopBtn" class="back-to-top-btn" hidden aria-label="Back to top" title="Back to top">
     <span aria-hidden="true">↑</span>
     <span class="back-to-top-label">Top</span>
@@ -389,6 +449,136 @@
         const headerRight = document.querySelector('.header-right');
         const tabIndicator = document.querySelector('.tab-indicator');
         const backToTopBtn = document.getElementById('backToTopBtn');
+        const attachmentPreviewModal = document.getElementById('attachmentPreviewModal');
+        const attachmentPreviewContent = document.getElementById('attachmentPreviewContent');
+        const attachmentPreviewTitle = document.getElementById('attachmentPreviewTitle');
+        const attachmentPreviewCount = document.getElementById('attachmentPreviewCount');
+        const attachmentPreviewOpen = document.getElementById('attachmentPreviewOpen');
+        const attachmentPreviewPrevious = document.getElementById('attachmentPreviewPrevious');
+        const attachmentPreviewNext = document.getElementById('attachmentPreviewNext');
+        const attachmentPreviewClose = document.getElementById('attachmentPreviewClose');
+        let activeAttachmentGallery = [];
+        let activeAttachmentIndex = 0;
+        let attachmentPreviewReturnFocus = null;
+
+        function getAttachmentName(path) {
+            try {
+                const pathname = new URL(path, window.location.origin).pathname;
+                return decodeURIComponent(pathname.split('/').pop() || 'Attachment');
+            } catch {
+                return 'Attachment';
+            }
+        }
+
+        function renderAttachmentPreview() {
+            const attachment = activeAttachmentGallery[activeAttachmentIndex];
+            if (!attachment) return;
+
+            attachmentPreviewContent.innerHTML = '';
+            const type = (attachment.type || '').toLowerCase();
+            const path = attachment.path;
+            const name = getAttachmentName(path);
+            const extension = name.includes('.') ? name.split('.').pop().toUpperCase() : 'FILE';
+
+            attachmentPreviewTitle.textContent = name;
+            attachmentPreviewCount.textContent =
+                `${activeAttachmentIndex + 1} of ${activeAttachmentGallery.length}`;
+            attachmentPreviewOpen.href = path;
+            attachmentPreviewPrevious.hidden = activeAttachmentGallery.length < 2;
+            attachmentPreviewNext.hidden = activeAttachmentGallery.length < 2;
+
+            if (type === 'image' || type.startsWith('image/')) {
+                const image = document.createElement('img');
+                image.src = path;
+                image.alt = `Full preview of ${name}`;
+                attachmentPreviewContent.appendChild(image);
+            } else if (type === 'video' || type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = path;
+                video.controls = true;
+                video.preload = 'metadata';
+                video.setAttribute('aria-label', `Video preview of ${name}`);
+                attachmentPreviewContent.appendChild(video);
+            } else if (type.includes('pdf') || path.toLowerCase().split('?')[0].endsWith('.pdf')) {
+                const frame = document.createElement('iframe');
+                frame.src = path;
+                frame.title = `PDF preview of ${name}`;
+                attachmentPreviewContent.appendChild(frame);
+            } else {
+                const documentPreview = document.createElement('div');
+                documentPreview.className = 'attachment-document-preview';
+                const typeLabel = document.createElement('strong');
+                typeLabel.textContent = extension;
+                const message = document.createElement('p');
+                message.textContent = 'This document can be opened in a new browser tab or downloaded.';
+                documentPreview.append(typeLabel, message);
+                attachmentPreviewContent.appendChild(documentPreview);
+            }
+        }
+
+        function openAttachmentPreview(trigger) {
+            const gallery = trigger.closest('[data-attachment-gallery]');
+            if (!gallery) return;
+
+            activeAttachmentGallery = Array.from(gallery.querySelectorAll('.attachment-preview-source'))
+                .map(source => ({
+                    path: source.dataset.path,
+                    type: source.dataset.type || ''
+                }))
+                .filter(attachment => attachment.path);
+
+            if (activeAttachmentGallery.length === 0) return;
+
+            activeAttachmentIndex = Math.min(
+                Number(trigger.dataset.attachmentIndex) || 0,
+                activeAttachmentGallery.length - 1);
+            attachmentPreviewReturnFocus = trigger;
+            renderAttachmentPreview();
+            attachmentPreviewModal.hidden = false;
+            document.body.style.overflow = 'hidden';
+            attachmentPreviewClose.focus();
+        }
+
+        function closeAttachmentPreview() {
+            attachmentPreviewModal.hidden = true;
+            attachmentPreviewContent.innerHTML = '';
+            document.body.style.overflow = '';
+            attachmentPreviewReturnFocus?.focus();
+        }
+
+        function moveAttachmentPreview(direction) {
+            activeAttachmentIndex =
+                (activeAttachmentIndex + direction + activeAttachmentGallery.length) %
+                activeAttachmentGallery.length;
+            renderAttachmentPreview();
+        }
+
+        document.addEventListener('click', event => {
+            const trigger = event.target.closest('.attachment-preview-trigger');
+            if (!trigger || event.target.closest('video')) return;
+            openAttachmentPreview(trigger);
+        });
+
+        document.addEventListener('keydown', event => {
+            const trigger = event.target.closest?.('.attachment-preview-trigger');
+            if (trigger && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                openAttachmentPreview(trigger);
+                return;
+            }
+
+            if (attachmentPreviewModal.hidden) return;
+            if (event.key === 'Escape') closeAttachmentPreview();
+            if (event.key === 'ArrowLeft') moveAttachmentPreview(-1);
+            if (event.key === 'ArrowRight') moveAttachmentPreview(1);
+        });
+
+        attachmentPreviewClose.addEventListener('click', closeAttachmentPreview);
+        attachmentPreviewPrevious.addEventListener('click', () => moveAttachmentPreview(-1));
+        attachmentPreviewNext.addEventListener('click', () => moveAttachmentPreview(1));
+        attachmentPreviewModal.addEventListener('click', event => {
+            if (event.target === attachmentPreviewModal) closeAttachmentPreview();
+        });
 
         function updateBackToTopVisibility() {
             backToTopBtn.hidden = window.scrollY < 360;

@@ -471,7 +471,23 @@
                /* ── Multi-step form ────────────────────────── */
         let currentStep = 1;
         const totalSteps = 4;
+        const maximumAttachmentCount = 8;
         let selectedCategory = '';
+        const recommendationFormSurface = projectView.querySelector('.proposal-card');
+        const createModePanel = document.querySelector('.create-mode-panel');
+
+        function setSubmissionInteractionLock(element, locked) {
+            element.inert = locked;
+            createModePanel.inert = locked;
+
+            if (locked) {
+                element.setAttribute('aria-busy', 'true');
+                createModePanel.setAttribute('aria-busy', 'true');
+            } else {
+                element.removeAttribute('aria-busy');
+                createModePanel.removeAttribute('aria-busy');
+            }
+        }
 
         const steps = document.querySelectorAll('.step-content');
         const btnBack = document.getElementById('btnBack');
@@ -503,13 +519,28 @@
 
         uploadBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', () => {
+            let limitExceeded = false;
+
             Array.from(fileInput.files).forEach(file => {
                 const alreadySelected = selectedRecommendationFiles.some(selected =>
                     selected.name === file.name && selected.size === file.size && selected.lastModified === file.lastModified);
-                if (!alreadySelected) selectedRecommendationFiles.push(file);
+
+                if (!alreadySelected) {
+                    if (selectedRecommendationFiles.length >= maximumAttachmentCount) {
+                        limitExceeded = true;
+                        return;
+                    }
+
+                    selectedRecommendationFiles.push(file);
+                }
             });
             syncRecommendationFileInput();
             renderRecommendationAttachmentPreview();
+
+            if (limitExceeded) {
+                fileLabel.textContent = `You can upload a maximum of ${maximumAttachmentCount} attachments.`;
+                fileLabel.style.color = '#b91c1c';
+            }
         });
 
         function syncRecommendationFileInput() {
@@ -584,6 +615,7 @@
             recommendationPreviewUrls.forEach(URL.revokeObjectURL);
             recommendationPreviewUrls = [];
             recAttachmentPreview.innerHTML = '';
+            fileLabel.style.color = '';
             fileLabel.textContent = selectedRecommendationFiles.length
                 ? `${selectedRecommendationFiles.length} file${selectedRecommendationFiles.length === 1 ? '' : 's'} selected`
                 : '';
@@ -706,6 +738,7 @@
                 if (recommendationSubmitting) return;
 
                 recommendationSubmitting = true;
+                setSubmissionInteractionLock(recommendationFormSurface, true);
                 btnNext.disabled = true;
                 btnSaveDraft.disabled = true;
                 btnNext.textContent = 'Submitting...';
@@ -721,6 +754,7 @@
                     const data = await readRecommendationResponse(response);
 
                     if (data.success) {
+                        setSubmissionInteractionLock(recommendationFormSurface, false);
                         stepFooter.style.display = 'none';
                         steps.forEach(s => s.classList.remove('active'));
                         successState.classList.add('active');
@@ -730,6 +764,7 @@
                     recommendationStatus.style.color = '#b91c1c';
                     console.error('Submission error:', err);
                     recommendationSubmitting = false;
+                    setSubmissionInteractionLock(recommendationFormSurface, false);
                     btnNext.disabled = false;
                     btnSaveDraft.disabled = false;
                     btnNext.textContent = 'Submit';
@@ -1038,6 +1073,8 @@
         concernUploadBtn.addEventListener('click', () => concernFileInput.click());
         concernFileInput.addEventListener('change', () => {
             const newlySelectedFiles = Array.from(concernFileInput.files);
+            let limitExceeded = false;
+
             newlySelectedFiles.forEach(file => {
                 const isAlreadySelected = selectedConcernFiles.some(selectedFile =>
                     selectedFile.name === file.name &&
@@ -1045,12 +1082,20 @@
                     selectedFile.lastModified === file.lastModified);
 
                 if (!isAlreadySelected) {
+                    if (selectedConcernFiles.length >= maximumAttachmentCount) {
+                        limitExceeded = true;
+                        return;
+                    }
+
                     selectedConcernFiles.push(file);
                 }
             });
 
             syncConcernFileInput();
             renderConcernAttachmentPreview();
+            document.getElementById('err-attachment').textContent = limitExceeded
+                ? `You can upload a maximum of ${maximumAttachmentCount} attachments.`
+                : '';
         });
 
         function syncConcernFileInput() {
@@ -1110,6 +1155,7 @@
                     selectedConcernFiles.splice(index, 1);
                     syncConcernFileInput();
                     renderConcernAttachmentPreview();
+                    document.getElementById('err-attachment').textContent = '';
                 });
                 item.appendChild(removeButton);
                 concernAttachmentPreview.appendChild(item);
@@ -1239,6 +1285,7 @@
             // Show loading state
             const submitBtn = document.getElementById('concernSubmitBtn');
             concernSubmitting = true;
+            setSubmissionInteractionLock(concernForm, true);
             submitBtn.textContent = 'Analyzing...';
             submitBtn.disabled = true;
             concernSaveDraftBtn.disabled = true;
@@ -1271,6 +1318,7 @@
             } finally {
                 if (!submissionSucceeded) {
                     concernSubmitting = false;
+                    setSubmissionInteractionLock(concernForm, false);
                     submitBtn.textContent = 'Submit';
                     submitBtn.disabled = false;
                     concernSaveDraftBtn.disabled = false;
@@ -1332,6 +1380,7 @@
             document.getElementById('err-description').textContent = '';
             document.getElementById('err-location').textContent = '';
             document.getElementById('err-attachment').textContent = '';
+            setSubmissionInteractionLock(concernForm, false);
             concernSuccessState.classList.remove('active');
             concernForm.style.display = '';
             document.getElementById('concernDescription').focus();

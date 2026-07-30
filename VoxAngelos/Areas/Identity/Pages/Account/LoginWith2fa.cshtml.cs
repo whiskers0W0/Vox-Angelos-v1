@@ -151,9 +151,21 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             var roles = await _userManager.GetRolesAsync(user);
             if (roles.Contains("Admin")) return RedirectToPage("/Admin/Index");
             if (roles.Contains("LGU")) return RedirectToPage("/LGU/Index");
-            if (roles.Contains("User")) return RedirectToPage("/User/Index");
+            if (roles.Contains("User"))
+            {
+                // Citizens may return only to a local page inside their own workspace.
+                // This supports the landing-page submission handoff without allowing
+                // an external redirect or access to another role's area.
+                if (Url.IsLocalUrl(returnUrl) &&
+                    returnUrl.StartsWith("/User/", StringComparison.OrdinalIgnoreCase))
+                {
+                    return LocalRedirect(returnUrl);
+                }
 
-            return LocalRedirect(returnUrl);
+                return RedirectToPage("/User/Index");
+            }
+
+            return RedirectToPage("./Login");
         }
     }
 }

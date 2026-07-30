@@ -308,6 +308,7 @@
 .attachment-thumb {
     width: 32%;
     height: 150px;
+    box-sizing: border-box;
     border-radius: 8px;
     border: 1.5px solid var(--border);
     box-shadow: inset 2px 2px 2px 0 #fff, inset -2px -2px 2px 0 #00000020;
@@ -936,6 +937,223 @@
        so the main feed expands to fill the 100% width */
     .leaderboard-wrapper {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Attachment preview */
+.attachment-preview-trigger {
+    cursor: zoom-in;
+}
+
+.attachment-preview-trigger:focus-visible {
+    outline: 3px solid rgba(30, 78, 180, 0.35);
+    outline-offset: 3px;
+}
+
+.attachment-preview-modal[hidden] {
+    display: none;
+}
+
+.attachment-preview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(8, 20, 45, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.attachment-preview-dialog {
+    width: min(980px, calc(100vw - 40px));
+    height: min(760px, calc(100dvh - 40px));
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 28px 80px rgba(3, 12, 32, 0.38);
+}
+
+.attachment-preview-header,
+.attachment-preview-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    background: #ffffff;
+}
+
+.attachment-preview-header {
+    border-bottom: 1px solid #d9e2ef;
+}
+
+.attachment-preview-header > div {
+    min-width: 0;
+}
+
+.attachment-preview-header span {
+    display: block;
+    margin-bottom: 3px;
+    color: #31517e;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.attachment-preview-header h2 {
+    max-width: min(720px, 70vw);
+    margin: 0;
+    overflow: hidden;
+    color: #0b1d3a;
+    font-size: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-preview-close {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border: 1px solid #cbd7e7;
+    border-radius: 50%;
+    background: #f7f9fc;
+    color: #143c86;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.attachment-preview-stage {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 52px;
+    align-items: stretch;
+    background: #0d1729;
+}
+
+.attachment-preview-content {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 18px;
+}
+
+.attachment-preview-content img,
+.attachment-preview-content video {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.attachment-preview-content iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.attachment-preview-nav {
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    font-size: 48px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.attachment-preview-nav:hover,
+.attachment-preview-nav:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+}
+
+.attachment-document-preview {
+    width: min(420px, 100%);
+    padding: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    text-align: center;
+}
+
+.attachment-document-preview strong {
+    display: inline-grid;
+    min-width: 76px;
+    min-height: 76px;
+    place-items: center;
+    margin-bottom: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.72);
+    border-radius: 10px;
+    font-size: 18px;
+}
+
+.attachment-document-preview p {
+    margin: 0;
+    color: #d9e4f5;
+    line-height: 1.5;
+}
+
+.attachment-preview-footer {
+    border-top: 1px solid #d9e2ef;
+    color: #526987;
+    font-size: 13px;
+}
+
+.attachment-preview-footer a {
+    padding: 9px 15px;
+    border-radius: 8px;
+    background: #174db4;
+    color: #ffffff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.attachment-preview-footer a:hover {
+    background: #103d93;
+}
+
+@media (max-width: 600px) {
+    .attachment-preview-modal {
+        padding: 8px;
+    }
+
+    .attachment-preview-dialog {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+        border-radius: 13px;
+    }
+
+    .attachment-preview-header,
+    .attachment-preview-footer {
+        padding: 12px 14px;
+    }
+
+    .attachment-preview-header h2 {
+        max-width: 68vw;
+        font-size: 15px;
+    }
+
+    .attachment-preview-stage {
+        grid-template-columns: 40px minmax(0, 1fr) 40px;
+    }
+
+    .attachment-preview-content {
+        padding: 8px;
+    }
+
+    .attachment-preview-nav {
+        font-size: 38px;
     }
 }
 

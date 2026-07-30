@@ -10,6 +10,8 @@ namespace VoxAngelos.Pages.Admin
     [AllowAnonymous]
     public class LoginModel : PageModel
     {
+        private const string SharedLoginUrl = "/Identity/Account/Login?returnUrl=%2FAdmin%2FIndex";
+
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
@@ -35,51 +37,8 @@ namespace VoxAngelos.Pages.Admin
 
         public string? ErrorMessage { get; set; }
 
-        public void OnGet() { }
+        public IActionResult OnGet() => Redirect(SharedLoginUrl);
 
-        public async Task<IActionResult> OnPostAsync()
-        {
-            var user = await _userManager.FindByEmailAsync(Email);
-            if (user == null)
-            {
-                ErrorMessage = "Invalid credentials.";
-                return Page();
-            }
-
-            if (!await _userManager.IsInRoleAsync(user, "Admin"))
-            {
-                ErrorMessage = "Invalid credentials.";
-                return Page();
-            }
-
-            if (await _userManager.IsLockedOutAsync(user))
-            {
-                ErrorMessage = "This account is locked. Please try again later.";
-                return Page();
-            }
-
-            var passwordValid = await _userManager.CheckPasswordAsync(user, Password);
-            if (!passwordValid)
-            {
-                await _userManager.AccessFailedAsync(user);
-                ErrorMessage = "Invalid credentials.";
-                return Page();
-            }
-
-            await _userManager.ResetAccessFailedCountAsync(user);
-
-            var otp = await _userManager.GenerateTwoFactorTokenAsync(user, TokenOptions.DefaultEmailProvider);
-            _logger.LogWarning("Admin OTP for {Email}: {Otp}", user.Email, otp);
-
-            await _emailSender.SendEmailAsync(
-                user.Email!,
-                "Your Vox Angelos Admin Login Code",
-                $"Admin login OTP for <strong>{user.Email}</strong>: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
-
-            TempData["Admin_2FA_UserId"] = user.Id;
-            TempData["Admin_2FA_OtpPreview"] = otp;
-
-            return RedirectToPage("/Admin/LoginOtp");
-        }
+        public IActionResult OnPost() => Redirect(SharedLoginUrl);
     }
 }

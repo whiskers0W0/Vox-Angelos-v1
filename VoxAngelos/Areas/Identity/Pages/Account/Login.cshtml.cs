@@ -6,6 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -23,12 +26,22 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IConfiguration _configuration;
+        private static readonly HttpClient RecaptchaClient = new()
+        {
+            Timeout = TimeSpan.FromSeconds(10)
+        };
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager, ILogger<LoginModel> logger, UserManager<ApplicationUser> userManager)
+        public LoginModel(
+            SignInManager<ApplicationUser> signInManager,
+            ILogger<LoginModel> logger,
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration)
         {
             _signInManager = signInManager;
             _logger = logger;
             _userManager = userManager;
+            _configuration = configuration;
         }
 
         [BindProperty]
@@ -79,6 +92,17 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (!ModelState.IsValid)
                 return Page();
 
+            var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
+            if (string.IsNullOrWhiteSpace(recaptchaToken))
+            {
+                ModelState.AddModelError(string.Empty,
+                    "Please confirm that you are not a robot before signing in.");
+                return Page();
+            }
+
+            if (!await VerifyRecaptchaAsync(recaptchaToken))
+                return Page();
+
             // Find user by email
             var user = await _userManager.FindByEmailAsync(Input.Email);
             if (user == null)
@@ -110,44 +134,105 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             // Get roles once — used throughout
             var userRoles = await _userManager.GetRolesAsync(user);
 
-            // Block unapproved citizens
-            if (userRoles.Contains("User") && user.ApprovalStatus != "Approved")
+            var isAdmin = userRoles.Contains("Admin");
+            var isLgu = userRoles.Contains("LGU");
+            var isCitizen = userRoles.Contains("User");
+
+            // Citizen accounts require approval. Staff roles bypass this citizen-only
+            // requirement, so a valid Admin or LGU account can use the shared login.
+            if (!isAdmin && !isLgu && isCitizen && user.ApprovalStatus != "Approved")
             {
                 ModelState.AddModelError(string.Empty,
                     "Your account is pending admin approval. Please check back later.");
                 return Page();
             }
 
-            // Block Admin and LGU from using citizen login
-            if (userRoles.Contains("Admin") || userRoles.Contains("LGU"))
+            if (!isAdmin && !isLgu && !isCitizen)
             {
                 ModelState.AddModelError(string.Empty,
-                    "Please use the appropriate portal to log in.");
+                    "This account does not have permission to access Vox Angelos.");
                 return Page();
             }
 
-            // If 2FA is enabled, redirect to OTP page
-            if (user.TwoFactorEnabled)
+            // Every recognized role must complete the existing email OTP step.
+            // This keeps the former Citizen, LGU, and Admin login security behavior
+            // while allowing all roles to start from the same login page.
+            var otp = await _userManager.GenerateTwoFactorTokenAsync(
+                user, TokenOptions.DefaultEmailProvider);
+            _logger.LogWarning("OTP for {Email}: {Otp}", user.Email, otp);
+
+            TempData["2FA_UserId"] = user.Id;
+            TempData["2FA_OTP"] = otp;
+            TempData["2FA_RememberMe"] = Input.RememberMe;
+
+            return RedirectToPage("./LoginWith2fa",
+                new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+        }
+
+        private async Task<bool> VerifyRecaptchaAsync(string token)
+        {
+            var secretKey = _configuration["Recaptcha:SecretKey"];
+            if (string.IsNullOrWhiteSpace(secretKey))
             {
-                var otp = await _userManager.GenerateTwoFactorTokenAsync(
-                    user, TokenOptions.DefaultEmailProvider);
-                _logger.LogWarning("OTP for {Email}: {Otp}", user.Email, otp);
-
-                TempData["2FA_UserId"] = user.Id;
-                TempData["2FA_OTP"] = otp;
-                TempData["2FA_RememberMe"] = Input.RememberMe;
-
-                return RedirectToPage("./LoginWith2fa",
-                    new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                _logger.LogError("The reCAPTCHA secret key is not configured.");
+                ModelState.AddModelError(string.Empty,
+                    "Security verification is temporarily unavailable. Please try again later.");
+                return false;
             }
 
-            // No 2FA — sign in directly
-            await _signInManager.SignInAsync(user, Input.RememberMe);
-            _logger.LogInformation("User logged in.");
+            try
+            {
+                using var requestContent = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["secret"] = secretKey,
+                    ["response"] = token
+                });
 
-            if (userRoles.Contains("User")) return RedirectToPage("/User/Index");
+                using var response = await RecaptchaClient.PostAsync(
+                    "https://www.google.com/recaptcha/api/siteverify",
+                    requestContent,
+                    HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
 
-            return LocalRedirect(returnUrl);
+                var verification = await response.Content.ReadFromJsonAsync<RecaptchaVerificationResponse>(
+                    cancellationToken: HttpContext.RequestAborted);
+
+                if (verification?.Success == true)
+                    return true;
+
+                var errorCodes = verification?.ErrorCodes ?? Array.Empty<string>();
+                _logger.LogWarning(
+                    "reCAPTCHA rejected a login attempt. Error codes: {ErrorCodes}",
+                    string.Join(", ", errorCodes));
+
+                var message = errorCodes.Contains("timeout-or-duplicate")
+                    ? "Security verification expired. Please complete the checkbox again."
+                    : "We could not verify that you are not a robot. Please try again.";
+
+                ModelState.AddModelError(string.Empty, message);
+                return false;
+            }
+            catch (HttpRequestException exception)
+            {
+                _logger.LogError(exception, "The reCAPTCHA verification request failed.");
+            }
+            catch (TaskCanceledException exception) when (!HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                _logger.LogError(exception, "The reCAPTCHA verification request timed out.");
+            }
+
+            ModelState.AddModelError(string.Empty,
+                "Security verification is temporarily unavailable. Please try again later.");
+            return false;
+        }
+
+        private sealed class RecaptchaVerificationResponse
+        {
+            [JsonPropertyName("success")]
+            public bool Success { get; set; }
+
+            [JsonPropertyName("error-codes")]
+            public string[] ErrorCodes { get; set; } = Array.Empty<string>();
         }
     }
 }
