@@ -23,6 +23,8 @@ namespace VoxAngelos.Pages.User
         private readonly UrgencyScoreService _urgencyScore;
         private readonly IHubContext<FeedHub> _feedHub;
         private readonly CloudinaryAttachmentStorage _attachmentStorage;
+        private readonly ILogger<CreateModel> _logger;
+        private const int MaximumAttachmentCount = 8;
         private static readonly HashSet<string> ConcernCategoryHints = new(StringComparer.Ordinal)
         {
             "Infrastructure & Public Works",
@@ -42,7 +44,8 @@ namespace VoxAngelos.Pages.User
                            ConcernClassificationService classifier,
                            UrgencyScoreService urgencyScore,
                            IHubContext<FeedHub> feedHub,
-                           CloudinaryAttachmentStorage attachmentStorage)
+                           CloudinaryAttachmentStorage attachmentStorage,
+                           ILogger<CreateModel> logger)
         {
             _db = db;
             _userManager = userManager;
@@ -52,6 +55,7 @@ namespace VoxAngelos.Pages.User
             _urgencyScore = urgencyScore;
             _feedHub = feedHub;
             _attachmentStorage = attachmentStorage;
+            _logger = logger;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
@@ -149,6 +153,8 @@ namespace VoxAngelos.Pages.User
                 ModelState.AddModelError("LocationName", "Please pin your location using the map.");
             if (Attachments == null || Attachments.Count == 0)
                 ModelState.AddModelError("Attachments", "Please upload at least one image or video.");
+            if (Attachments != null && Attachments.Count > MaximumAttachmentCount)
+                ModelState.AddModelError("Attachments", $"You can upload a maximum of {MaximumAttachmentCount} attachments.");
 
             const long maximumVideoSizeInBytes = 100 * 1024 * 1024;
             var oversizedVideo = Attachments?.FirstOrDefault(file =>
@@ -173,6 +179,45 @@ namespace VoxAngelos.Pages.User
                 return Page();
             }
 
+            var classifiedCategory = !string.IsNullOrWhiteSpace(ConfirmedCategory)
+                ? ConfirmedCategory
+                : await _classifier.ClassifyAsync(
+                    Description,
+                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+
+            // Upload every attachment before writing the concern to the database.
+            // A Cloudinary failure therefore cannot leave a submitted concern with
+            // missing attachment records.
+            var uploadedAttachments = new List<CloudinaryAttachmentUpload>();
+            try
+            {
+                foreach (var file in Attachments!)
+                {
+                    if (file.Length == 0) continue;
+                    uploadedAttachments.Add(await _attachmentStorage.UploadAsync(file, "concerns"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Concern attachment upload failed for user {UserId}.", user.Id);
+                const string uploadError =
+                    "We could not upload your attachment, so your concern was not submitted. Please try again.";
+
+                if (isAjaxRequest)
+                {
+                    return new JsonResult(new { success = false, message = uploadError })
+                    {
+                        StatusCode = StatusCodes.Status503ServiceUnavailable
+                    };
+                }
+
+                ModelState.AddModelError("Attachments", uploadError);
+                await OnGetAsync();
+                return Page();
+            }
+
+            await using var submissionTransaction = await _db.Database.BeginTransactionAsync();
+
             var concern = await _db.Concerns
                 .FirstOrDefaultAsync(c => c.CitizenId == user.Id && c.Status == "Draft");
 
@@ -190,11 +235,7 @@ namespace VoxAngelos.Pages.User
             concern.Latitude = Latitude;
             concern.Longitude = Longitude;
             concern.Status = "Unresolved";
-            concern.Category = !string.IsNullOrWhiteSpace(ConfirmedCategory)
-                ? ConfirmedCategory
-                : await _classifier.ClassifyAsync(
-                    Description,
-                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            concern.Category = classifiedCategory;
             concern.SubmittedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -211,25 +252,20 @@ namespace VoxAngelos.Pages.User
             });
             await _db.SaveChangesAsync();
 
-            if (Attachments != null && Attachments.Count > 0)
+            foreach (var uploadedAttachment in uploadedAttachments)
             {
-                foreach (var file in Attachments)
+                _db.ConcernAttachments.Add(new ConcernAttachment
                 {
-                    if (file.Length == 0) continue;
-                    var uploadedAttachment = await _attachmentStorage.UploadAsync(file, "concerns");
-
-                    _db.ConcernAttachments.Add(new ConcernAttachment
-                    {
-                        ConcernId = concern.Id,
-                        FilePath = uploadedAttachment.FilePath,
-                        FileType = uploadedAttachment.FileType,
-                        UploadedAt = DateTime.UtcNow
-                    });
-                }
-                await _db.SaveChangesAsync();
+                    ConcernId = concern.Id,
+                    FilePath = uploadedAttachment.FilePath,
+                    FileType = uploadedAttachment.FileType,
+                    UploadedAt = DateTime.UtcNow
+                });
             }
+            await _db.SaveChangesAsync();
 
             await _urgencyScore.ApplyLocationAsync(concern);
+            await submissionTransaction.CommitAsync();
 
             // Push the LGU dashboard(s) that will show this concern (LGU/Index.cshtml.cs
             // lists a department's own concerns plus any still-unclassified ones, so an
@@ -329,6 +365,15 @@ namespace VoxAngelos.Pages.User
 
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage("/Login");
+
+            if (RecAttachments != null && RecAttachments.Count > MaximumAttachmentCount)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = $"You can upload a maximum of {MaximumAttachmentCount} attachments."
+                });
+            }
 
             const long maximumVideoSizeInBytes = 100 * 1024 * 1024;
             var oversizedVideo = RecAttachments?.FirstOrDefault(file =>

@@ -17,14 +17,17 @@ namespace VoxAngelos.Pages.User
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RecommendationRatingService _ratingService;
         private readonly IHubContext<FeedHub> _feedHub;
+        private readonly IWebHostEnvironment _environment;
 
         public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
-            RecommendationRatingService ratingService, IHubContext<FeedHub> feedHub)
+            RecommendationRatingService ratingService, IHubContext<FeedHub> feedHub,
+            IWebHostEnvironment environment)
         {
             _db = db;
             _userManager = userManager;
             _ratingService = ratingService;
             _feedHub = feedHub;
+            _environment = environment;
         }
 
         public List<RecommendationCardViewModel> Recommendations { get; set; } = new();
@@ -115,10 +118,13 @@ namespace VoxAngelos.Pages.User
             TopRated = topRated.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
         }
 
-        private static RecommendationCardViewModel MapToViewModel(
+        private RecommendationCardViewModel MapToViewModel(
             Recommendation r, Dictionary<int, RecommendationRating> myRatings, string currentUserId)
         {
             myRatings.TryGetValue(r.Id, out var mine);
+            var availableAttachments = r.Attachments
+                .Where(a => IsAvailableAttachmentPath(a.FilePath))
+                .ToList();
 
             return new RecommendationCardViewModel
             {
@@ -143,9 +149,34 @@ namespace VoxAngelos.Pages.User
                 MyFeasibility = mine?.FeasibilityStars ?? 0,
                 IsOwnRecommendation = r.CitizenId == currentUserId,
                 HasRated = mine != null,
-                AttachmentPaths = r.Attachments.Select(a => a.FilePath).ToList(),
-                AttachmentTypes = r.Attachments.Select(a => a.FileType).ToList()
+                AttachmentPaths = availableAttachments.Select(a => a.FilePath).ToList(),
+                AttachmentTypes = availableAttachments.Select(a => a.FileType).ToList()
             };
+        }
+
+        private bool IsAvailableAttachmentPath(string? attachmentPath)
+        {
+            if (string.IsNullOrWhiteSpace(attachmentPath))
+                return false;
+
+            if (Uri.TryCreate(attachmentPath, UriKind.Absolute, out var remoteUri) &&
+                (remoteUri.Scheme == Uri.UriSchemeHttps || remoteUri.Scheme == Uri.UriSchemeHttp))
+            {
+                return true;
+            }
+
+            var relativePath = attachmentPath
+                .TrimStart('~', '/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar);
+            var webRoot = Path.GetFullPath(_environment.WebRootPath);
+            var fullPath = Path.GetFullPath(Path.Combine(webRoot, relativePath));
+            var requiredPrefix = webRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            if (!fullPath.StartsWith(requiredPrefix, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return System.IO.File.Exists(fullPath);
         }
 
         public async Task<IActionResult> OnPostRateAsync(

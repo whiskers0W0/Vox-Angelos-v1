@@ -17,6 +17,7 @@ namespace VoxAngelos.Pages.LGU
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ConcernClassificationService _classifier;
         private readonly IHubContext<FeedHub> _feedHub;
+        private readonly IWebHostEnvironment _environment;
         private static readonly IReadOnlyDictionary<string, string> DepartmentDisplayNames =
             new Dictionary<string, string>
             {
@@ -30,12 +31,14 @@ namespace VoxAngelos.Pages.LGU
             };
 
         public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
-            ConcernClassificationService classifier, IHubContext<FeedHub> feedHub)
+            ConcernClassificationService classifier, IHubContext<FeedHub> feedHub,
+            IWebHostEnvironment environment)
         {
             _db = db;
             _userManager = userManager;
             _classifier = classifier;
             _feedHub = feedHub;
+            _environment = environment;
         }
 
         // Notifies every LGU dashboard that could be displaying this concern — its
@@ -119,7 +122,35 @@ namespace VoxAngelos.Pages.LGU
                 .ToListAsync();
 
             foreach (var concern in Concerns)
+            {
                 concern.HasFeedback = reviewedConcernIds.Contains(concern.Id);
+                concern.FirstAttachmentPath = GetAvailableAttachmentPath(concern.FirstAttachmentPath);
+            }
+        }
+
+        private string? GetAvailableAttachmentPath(string? attachmentPath)
+        {
+            if (string.IsNullOrWhiteSpace(attachmentPath))
+                return null;
+
+            if (Uri.TryCreate(attachmentPath, UriKind.Absolute, out var remoteUri) &&
+                (remoteUri.Scheme == Uri.UriSchemeHttps || remoteUri.Scheme == Uri.UriSchemeHttp))
+            {
+                return attachmentPath;
+            }
+
+            var relativePath = attachmentPath
+                .TrimStart('~', '/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar);
+            var webRoot = Path.GetFullPath(_environment.WebRootPath);
+            var fullPath = Path.GetFullPath(Path.Combine(webRoot, relativePath));
+            var requiredPrefix = webRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            if (!fullPath.StartsWith(requiredPrefix, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return System.IO.File.Exists(fullPath) ? attachmentPath : null;
         }
 
         // Shared by the single-concern confirm handler and the bulk one below.
