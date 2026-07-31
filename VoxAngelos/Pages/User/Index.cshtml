@@ -156,7 +156,8 @@
 
                 @if (rec.AttachmentPaths.Any())
                 {
-                    <div class="attachments" data-attachment-gallery>
+                    <div class="attachments @(rec.AttachmentPaths.Count >= 3 ? "attachments--three-or-more" : "")"
+                         data-attachment-gallery>
                         @{
                             var maxShow = Math.Min(2, rec.AttachmentPaths.Count);
                             var extra = rec.AttachmentPaths.Count - maxShow;
@@ -279,7 +280,8 @@
 
                         @if (rec.AttachmentPaths.Any())
                         {
-                            <div class="attachments" data-attachment-gallery>
+                            <div class="attachments @(rec.AttachmentPaths.Count >= 3 ? "attachments--three-or-more" : "")"
+                                 data-attachment-gallery>
                                 @{
                                     var maxShow2 = Math.Min(2, rec.AttachmentPaths.Count);
                                     var extra2 = rec.AttachmentPaths.Count - maxShow2;

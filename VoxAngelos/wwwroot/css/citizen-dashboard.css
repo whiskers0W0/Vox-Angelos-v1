@@ -1146,3 +1146,21 @@
         margin-top: 14px !important;
     }
 }
+
+
+/* Keep the two preview thumbnails and the 3+-file summary tile on one row. */
+.discover-page .proposal-card .attachments.attachments--three-or-more {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: min(100%, 466px) !important;
+}
+
+.discover-page .proposal-card .attachments.attachments--three-or-more .attachment-thumb {
+    width: 100% !important;
+}
+
+@media (max-width: 480px) {
+    .discover-page .proposal-card .attachments.attachments--three-or-more {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        width: 100% !important;
+    }
+}
