@@ -46,64 +46,19 @@
             <div class="hero-brand" aria-label="Vox Angelos"><img src="~/assets/VoxAngelosLogo.png" alt="" /></div>
             <div class="hero-copy"><span class="hero-kicker">A clearer path to civic action</span><h1 id="heroModeTitle">What concern needs attention?</h1></div>
             <div class="hero-mode-switcher" role="radiogroup" aria-label="Choose a submission type"><button type="button" class="hero-mode-button is-active" data-mode="concern" role="radio" aria-checked="true">Report a concern</button><button type="button" class="hero-mode-button" data-mode="recommendation" role="radio" aria-checked="false">Propose an idea</button></div>
-            <div class="hero-composer" aria-live="polite"><div class="hero-composer-heading"><label for="heroModeMessage" id="heroModeLabel">Describe the concern</label><span class="hero-mode-badge" id="heroModeBadge">Concern report</span></div><textarea id="heroModeMessage" rows="3" autocomplete="off" placeholder="Example: The streetlight near our barangay hall has been out for several nights."></textarea><div class="hero-composer-footer"><span id="heroModeHelper">Keep it specific: include the issue, where it is happening, and who it affects.</span><span class="hero-composer-scope">Non-urgent matters only</span></div><div class="hero-composer-submit-row"><button id="heroModeSubmit" class="hero-submit-button" type="button">Continue concern <span aria-hidden="true">→</span></button></div></div>
-            <div class="hero-portal-row"><span>Have an account already?</span><a asp-area="Identity" asp-page="/Account/Login" class="home-portal-link">Enter Vox Angelos portal <span aria-hidden="true">→</span></a></div>
+            <div class="hero-composer" aria-live="polite"><div class="hero-composer-heading"><label for="heroModeMessage" id="heroModeLabel">Describe the concern</label><span class="hero-mode-badge" id="heroModeBadge">Concern report</span></div><textarea id="heroModeMessage" rows="3" autocomplete="off" placeholder="Example: The streetlight near our barangay hall has been out for several nights."></textarea><div class="hero-composer-footer"><span id="heroModeHelper">Keep it specific: include the issue, where it is happening, and who it affects.</span><span class="hero-composer-scope">Non-urgent matters only</span></div><div class="hero-composer-submit-row"><button id="heroModeSubmit" class="hero-submit-button" type="button">Submit concern <span aria-hidden="true">→</span></button></div></div>
         </div>
-        <div class="footer-bar home-proof-bar d-flex align-items-center justify-content-center flex-wrap gap-2 px-3" style="z-index:30; position:relative;"><div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Community voiced</div><div class="f-sep"></div><div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Government actioned</div><div class="f-sep"></div><div class="f-badge d-flex align-items-center gap-1"><span class="f-pip rounded-circle"></span>Data secured</div></div>
         <script>
             (() => {
                 const root = document.getElementById('heroModeSwitcher');
                 if (!root) return;
-                const copy = { concern: { title: 'What concern needs attention?', label: 'Describe the concern', badge: 'Concern report', placeholder: 'Example: The streetlight near our barangay hall has been out for several nights.', helper: 'Keep it specific: include the issue, where it is happening, and who it affects.', submit: 'Continue concern' }, recommendation: { title: 'What improvement would you like to propose?', label: 'Share your recommendation', badge: 'Community recommendation', placeholder: 'Example: Add shaded seating and clear waste bins near the public market entrance.', helper: 'Share the improvement you propose, the location or service involved, and the people it may help.', submit: 'Continue recommendation' } };
+                const copy = { concern: { title: 'What concern needs attention?', label: 'Describe the concern', badge: 'Concern report', placeholder: 'Example: The streetlight near our barangay hall has been out for several nights.', helper: 'Keep it specific: include the issue, where it is happening, and who it affects.', submit: 'Submit concern' }, recommendation: { title: 'What improvement would you like to propose?', label: 'Share your recommendation', badge: 'Community recommendation', placeholder: 'Example: Add shaded seating and clear waste bins near the public market entrance.', helper: 'Share the improvement you propose, the location or service involved, and the people it may help.', submit: 'Submit recommendation' } };
                 const fields = { title: document.getElementById('heroModeTitle'), label: document.getElementById('heroModeLabel'), badge: document.getElementById('heroModeBadge'), input: document.getElementById('heroModeMessage'), helper: document.getElementById('heroModeHelper'), submit: document.getElementById('heroModeSubmit') };
                 root.querySelectorAll('.hero-mode-button').forEach(button => button.addEventListener('click', () => { const mode = button.dataset.mode; const content = copy[mode]; root.dataset.mode = mode; root.querySelectorAll('.hero-mode-button').forEach(item => { const selected = item === button; item.classList.toggle('is-active', selected); item.setAttribute('aria-checked', String(selected)); }); fields.title.textContent = content.title; fields.label.textContent = content.label; fields.badge.textContent = content.badge; fields.input.placeholder = content.placeholder; fields.helper.textContent = content.helper; fields.submit.firstChild.textContent = `${content.submit} `; }));
                 fields.input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) event.preventDefault(); });
-                fields.submit.addEventListener('click', () => {
-                    const message = fields.input.value.trim();
-                    try {
-                        if (message) {
-                            const draft = { mode: root.dataset.mode, message };
-                            sessionStorage.setItem('voxAngelosLandingDraft', JSON.stringify(draft));
-                        } else {
-                            sessionStorage.removeItem('voxAngelosLandingDraft');
-                        }
-                    } catch {
-                        // The handoff still works when browser storage is unavailable;
-                        // only automatic text restoration will be skipped.
-                    }
-
-                    const isCitizenAuthenticated = @(User.Identity?.IsAuthenticated == true && User.IsInRole("User") ? "true" : "false");
-                    if (isCitizenAuthenticated) {
-                        window.location.href = '/User/Create?landingDraft=1';
-                        return;
-                    }
-
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('heroContinueModal')).show();
-                });
             })();
         </script>
 
-    </div>
-
-    <!-- Sign-in handoff for the landing-page concern/recommendation starter -->
-    <div class="modal fade" id="heroContinueModal" tabindex="-1" aria-labelledby="heroContinueModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="heroContinueModalLabel">Continue with Vox Angelos</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-2">Sign in or create a verified citizen account to complete your submission.</p>
-                    <p class="text-muted small mb-0">Your message is saved in this browser and will be restored when you continue.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <a asp-area="Identity" asp-page="/Account/Register" asp-route-returnUrl="/User/Create" class="btn btn-outline-primary">Create Citizen Account</a>
-                    <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="/User/Create" class="btn btn-primary">Sign In and Continue</a>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Information Sections -->

@@ -405,3 +405,35 @@
     .citizen-shell .security-card { padding: 19px; }
     .citizen-shell .security-primary-btn { width: 100%; }
 }
+
+/* Use the full citizen workspace, matching the My Concerns visual treatment. */
+.security-page {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+.citizen-shell .security-page .content-header {
+    max-width: none;
+    margin: 0 0 25px;
+}
+
+.citizen-shell .security-page .security-container {
+    max-width: none;
+    margin: 0;
+}
+
+@media (max-width: 780px) {
+    .security-page .content-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .citizen-shell .security-container {
+        grid-template-columns: 1fr;
+    }
+
+    .citizen-shell .security-otp-card {
+        grid-column: auto;
+    }
+}

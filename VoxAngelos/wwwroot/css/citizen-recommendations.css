@@ -3,13 +3,13 @@
 
 .recommendations-page {
     width: 100%;
-    max-width: 1180px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     color: var(--va-ink);
 }
 
 .recommendation-page-header {
-    max-width: 1180px !important;
+    max-width: none !important;
 }
 
 .recommendation-create-action svg {
@@ -975,6 +975,10 @@
 
 /* ── Responsive behavior ──────────────────────────────────────── */
 @media (max-width: 1040px) {
+    .recommendation-overview .overview-copy {
+        grid-template-columns: 1fr;
+    }
+
     .recommendation-record-body {
         grid-template-columns: minmax(0, 1fr) 280px;
     }
