@@ -185,6 +185,8 @@ namespace VoxAngelos.Pages.LGU
 
             if (!await TryConfirmConcernCategoryAsync(concernId, user))
                 TempData["ConcernError"] = "This concern could not be confirmed — it may already be reviewed by another staff member.";
+            else
+                TempData["ConcernSuccess"] = "The concern category was confirmed successfully.";
 
             return RedirectToPage(new { filter = CurrentFilter });
         }
@@ -355,6 +357,7 @@ namespace VoxAngelos.Pages.LGU
                     break;
                 case ReassignOutcome.Success:
                     await NotifyDepartmentsAsync(previousCategory, newCategory);
+                    TempData["ConcernSuccess"] = $"The concern was reassigned to {GetDepartmentDisplayName(newCategory)}.";
                     break;
             }
 
@@ -477,6 +480,7 @@ namespace VoxAngelos.Pages.LGU
                 await _db.SaveChangesAsync();
 
                 await NotifyDepartmentsAsync(concern.Category);
+                TempData["ConcernSuccess"] = $"The concern status was updated to {status}.";
             }
 
             return RedirectToPage(new { filter = CurrentFilter });
@@ -555,9 +559,92 @@ namespace VoxAngelos.Pages.LGU
                 await _db.SaveChangesAsync();
 
                 await NotifyDepartmentsAsync(notifiedCategory);
+                TempData["ConcernSuccess"] = "The concern was accepted successfully. The citizen was notified.";
             }
 
             return RedirectToPage(new { filter = "Chosen" });
+        }
+
+        public async Task<IActionResult> OnPostCloseInvalidAsync(int concernId, string? reason)
+        {
+            reason = reason?.Trim();
+            if (string.IsNullOrWhiteSpace(reason) || reason.Length < 10 || reason.Length > 500)
+            {
+                TempData["ConcernError"] = "Provide a clear reason between 10 and 500 characters before closing the concern.";
+                return RedirectToPage(new { filter = "Unresolved" });
+            }
+
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null || string.IsNullOrWhiteSpace(lguUser.Department))
+                return Forbid();
+
+            var concern = await _db.Concerns
+                .Where(c => c.Id == concernId)
+                .Select(c => new { c.Category, c.CitizenId, c.Status })
+                .FirstOrDefaultAsync();
+
+            if (concern == null)
+                return NotFound();
+
+            if (concern.Category == null)
+            {
+                TempData["ConcernError"] = "Assign this concern to the correct department before closing it.";
+                return RedirectToPage(new { filter = "Unresolved" });
+            }
+
+            if (concern.Category != lguUser.Department)
+                return Forbid();
+
+            var closedAt = DateTime.UtcNow;
+            var actorName = lguUser.Department ?? lguUser.Email ?? "LGU Office";
+            var citizenMessage = $"The LGU closed this concern as invalid or non-actionable. Reason: {reason}";
+
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            var updated = await _db.Concerns
+                .Where(c => c.Id == concernId &&
+                            c.Status == "Unresolved" &&
+                            c.Category == lguUser.Department)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.Status, "Closed")
+                    .SetProperty(c => c.LguNotes, reason)
+                    .SetProperty(c => c.UpdatedAt, closedAt));
+
+            if (updated == 0)
+            {
+                await transaction.RollbackAsync();
+                TempData["ConcernError"] = "This concern was already accepted, closed, or updated by another staff member.";
+                return RedirectToPage(new { filter = "Unresolved" });
+            }
+
+            _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+            {
+                ConcernId = concernId,
+                EventType = "Concern Closed",
+                Status = "Closed",
+                Message = citizenMessage,
+                ActorRole = "LGU",
+                ActorName = actorName,
+                CreatedAt = closedAt
+            });
+
+            _db.UserNotifications.Add(new UserNotification
+            {
+                RecipientUserId = concern.CitizenId,
+                Title = "Your concern was closed after review",
+                Message = citizenMessage,
+                NotificationType = "ConcernUpdate",
+                SenderRole = "LGU",
+                SenderName = actorName,
+                LinkUrl = "/User/Notifications",
+                CreatedAt = closedAt
+            });
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            await NotifyDepartmentsAsync(concern.Category);
+
+            TempData["ConcernSuccess"] = "The concern was closed and the citizen was notified.";
+            return RedirectToPage(new { filter = "Unresolved" });
         }
     }
 

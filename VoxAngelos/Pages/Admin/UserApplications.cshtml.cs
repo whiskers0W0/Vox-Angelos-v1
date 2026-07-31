@@ -94,7 +94,13 @@ namespace VoxAngelos.Pages.Admin
                 var result = await _userManager.UpdateAsync(user);
                 if (!result.Succeeded)
                     TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
+                else
+                    TempData["AdminSuccess"] = "The citizen account was approved successfully.";
             }
+            else
+                TempData["AdminError"] = user == null
+                    ? "The citizen account could not be found."
+                    : "This citizen account is already approved.";
             return RedirectToPage(new { filterStatus = FilterStatus });
         }
 
@@ -107,7 +113,13 @@ namespace VoxAngelos.Pages.Admin
                 var result = await _userManager.UpdateAsync(user);
                 if (!result.Succeeded)
                     TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
+                else
+                    TempData["AdminSuccess"] = "The citizen account was rejected successfully.";
             }
+            else
+                TempData["AdminError"] = user == null
+                    ? "The citizen account could not be found."
+                    : "This citizen account is already rejected.";
             return RedirectToPage(new { filterStatus = FilterStatus });
         }
     }

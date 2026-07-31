@@ -374,6 +374,36 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 {
                     _logger.LogInformation("User created a new account with password.");
 
+                    // Upload the original request files immediately after account creation,
+                    // before OCR and face matching perform additional work. This mirrors the
+                    // working concern/recommendation attachment flow while keeping identity
+                    // media private. Protected local copies remain available for retries.
+                    PrivateIdentityMediaUpload privateIdUpload = null;
+                    PrivateIdentityMediaUpload privateSelfieUpload = null;
+                    var cloudUploadErrors = new List<string>();
+
+                    try
+                    {
+                        privateIdUpload = await _privateIdentityMediaStorage
+                            .UploadAsync(Input.IdPhoto, "id");
+                    }
+                    catch (Exception ex)
+                    {
+                        cloudUploadErrors.Add("ID image backup failed.");
+                        _logger.LogWarning(ex, "Private ID upload failed for user {UserId}.", user.Id);
+                    }
+
+                    try
+                    {
+                        privateSelfieUpload = await _privateIdentityMediaStorage
+                            .UploadAsync(Input.SelfiePhoto, "selfie");
+                    }
+                    catch (Exception ex)
+                    {
+                        cloudUploadErrors.Add("Selfie backup failed.");
+                        _logger.LogWarning(ex, "Private selfie upload failed for user {UserId}.", user.Id);
+                    }
+
                     // Save UserProfile
                     var profile = new UserProfile
                     {
@@ -391,6 +421,8 @@ var identityDocument = new UserIdentityDocument
     UserId = user.Id,
     IdType = Input.IdType,
     IdPhotoPath = savedFileName,
+    IdPhotoCloudinaryPublicId = privateIdUpload?.PublicId,
+    IdPhotoCloudinaryFormat = privateIdUpload?.Format,
     UploadedAt = DateTime.UtcNow,
 };
 _context.UserIdentityDocuments.Add(identityDocument);
@@ -455,41 +487,14 @@ if (savedFileName != null)
                         UserId = user.Id,
                         IdentityDocumentId = identityDocument.Id,
                         LiveSelfiePath = savedSelfieFileName,
+                        LiveSelfieCloudinaryPublicId = privateSelfieUpload?.PublicId,
+                        LiveSelfieCloudinaryFormat = privateSelfieUpload?.Format,
                         MatchConfidence = confidence,
                         VerificationStatus = isMatch ? "Verified" : "Failed",
                         VerifiedAt = DateTime.UtcNow,
                     };
                     _context.UserFaceVerifications.Add(faceVerification);
                     await _context.SaveChangesAsync();
-
-                    // OCR and face matching above use the protected local copies created for
-                    // this request. After those checks complete, make a private cloud backup.
-                    // Each image is attempted independently so one successful upload is never
-                    // repeated just because the other is temporarily unavailable.
-                    var cloudUploadErrors = new List<string>();
-                    try
-                    {
-                        var privateId = await _privateIdentityMediaStorage.UploadAsync(Input.IdPhoto, "id");
-                        identityDocument.IdPhotoCloudinaryPublicId = privateId.PublicId;
-                        identityDocument.IdPhotoCloudinaryFormat = privateId.Format;
-                    }
-                    catch (Exception ex)
-                    {
-                        cloudUploadErrors.Add("ID image backup failed.");
-                        _logger.LogWarning(ex, "Private ID upload failed for user {UserId}.", user.Id);
-                    }
-
-                    try
-                    {
-                        var privateSelfie = await _privateIdentityMediaStorage.UploadAsync(Input.SelfiePhoto, "selfie");
-                        faceVerification.LiveSelfieCloudinaryPublicId = privateSelfie.PublicId;
-                        faceVerification.LiveSelfieCloudinaryFormat = privateSelfie.Format;
-                    }
-                    catch (Exception ex)
-                    {
-                        cloudUploadErrors.Add("Selfie backup failed.");
-                        _logger.LogWarning(ex, "Private selfie upload failed for user {UserId}.", user.Id);
-                    }
 
                     if (cloudUploadErrors.Count == 0)
                     {

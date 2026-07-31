@@ -201,6 +201,13 @@ namespace VoxAngelos.Pages.Admin
                     $"</div>");
 
                 _logger.LogInformation("Admin approved citizen {UserId}", userId);
+                TempData["AdminSuccess"] = "The citizen account was verified successfully. The applicant was notified.";
+            }
+            else
+            {
+                TempData["AdminError"] = user == null
+                    ? "The citizen account could not be found."
+                    : "This citizen account is already approved.";
             }
             return RedirectToPage("/Admin/UserApplications");
         }
@@ -237,6 +244,13 @@ namespace VoxAngelos.Pages.Admin
                     $"</div>");
 
                 _logger.LogInformation("Admin rejected citizen {UserId}", userId);
+                TempData["AdminSuccess"] = "The citizen application was rejected successfully. The applicant was notified.";
+            }
+            else
+            {
+                TempData["AdminError"] = user == null
+                    ? "The citizen account could not be found."
+                    : "This citizen application is already rejected.";
             }
             return RedirectToPage("/Admin/UserApplications");
         }

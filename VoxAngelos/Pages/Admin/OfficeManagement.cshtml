@@ -54,6 +54,21 @@
     @@media (max-width: 700px) { .admin-offices-header, .admin-offices-panel-header { align-items: flex-start !important; flex-direction: column !important; gap: 14px !important; } .btn-create.admin-offices-primary-action { width: 100% !important; } }
 </style>
 
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="admin-office-toast admin-office-toast--success" role="status" aria-live="polite">
+        <span>@Model.SuccessMessage</span>
+        <div class="admin-office-toast-progress" aria-hidden="true"></div>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="admin-office-toast admin-office-toast--error" role="alert" aria-live="assertive">
+        <span>@Model.ErrorMessage</span>
+        <div class="admin-office-toast-progress" aria-hidden="true"></div>
+    </div>
+}
+
 <div class="admin-offices-workspace">
     <header class="admin-offices-header">
         <div>
@@ -72,15 +87,6 @@
         <article><span>Disabled access</span><strong class="admin-offices-danger">@disabledAccounts</strong><small>Locked office accounts</small></article>
         <article><span>Office coverage</span><strong>@officeCoverage</strong><small>Assigned departments</small></article>
     </section>
-
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-        <div class="alert-error" role="alert">@Model.ErrorMessage</div>
-    }
-    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
-    {
-        <div class="alert-success" role="status">@Model.SuccessMessage</div>
-    }
 
     <section class="admin-offices-panel" aria-labelledby="officeAccountsHeading">
         <header class="admin-offices-panel-header">
@@ -516,4 +522,8 @@
         document.getElementById('editModal').style.display = 'none';
         document.getElementById('deleteForm').submit();
     }
+
+    window.setTimeout(() => {
+        document.querySelectorAll('.admin-office-toast').forEach(toast => toast.remove());
+    }, 5000);
 </script>
