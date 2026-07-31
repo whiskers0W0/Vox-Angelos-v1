@@ -62,7 +62,7 @@
     width: min(404px, 100%);
     flex: 0 0 auto;
     padding: 3px;
-    border: 1px solid #dbe2ec;
+    border: 1px solid var(--va-line);
     border-radius: 8px;
     background: #edf1f6;
 }
@@ -89,13 +89,14 @@
     border-radius: 6px;
     background: transparent;
     color: #687488;
-    font-size: 10px;
-    font-weight: 750;
+    font-size: 10.5px;
+    font-weight: 700 !important;
+    -webkit-text-stroke: .2px currentColor;
     transition: color .16s ease;
 }
 
-.tab-btn.active,
-.tab-btn:hover { color: var(--va-blue); }
+.tab-btn.active { color: var(--va-blue) !important; }
+.tab-btn:hover:not(.active) { color: var(--va-blue); }
 
 .view-section { display: none; width: 100%; }
 .view-section.active-view { display: block; }
@@ -446,16 +447,34 @@
 /* ── Review, step controls, and success ───────────────────────── */
 .review-section-title { margin: 0 0 12px; color: var(--va-ink); font-size: 14px; font-weight: 760; }
 .review-box {
-    padding: 17px;
+    padding: 20px;
     border: 1px solid var(--va-line);
     border-radius: 8px;
     background: var(--va-surface-subtle);
-    color: #3e4a5d;
-    font-size: 10.5px;
-    line-height: 1.8;
+    color: #26364a;
+    font-size: 11px;
+    line-height: 1.65;
 }
-.review-box strong { color: var(--va-muted); font-weight: 750; }
-.review-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.review-box > br { display: none; }
+.review-box > div { margin: 0; }
+.review-box > div:not(:first-child) {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e0e6ee;
+}
+.review-box > div > strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #42526a;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .01em;
+}
+.review-box > div > span {
+    color: #1f2d3d;
+    font-weight: 600;
+}
+.review-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
 .step-footer {
     display: flex;
@@ -486,6 +505,39 @@
 }
 .btn-back:hover,
 .btn-new:hover { border-color: #9eb0ca; background: var(--va-surface-subtle); }
+
+/* Recommendation action hierarchy: save progress, navigate, or continue. */
+#btnSaveDraft {
+    border-color: #e8cd8f;
+    background: var(--va-amber-soft);
+    color: var(--va-amber);
+    font-weight: 800;
+}
+
+#btnSaveDraft:hover:not(:disabled) {
+    border-color: #d5ad4c;
+    background: #ffedbc;
+    color: #795006;
+}
+
+#btnSaveDraft:disabled {
+    cursor: wait;
+    opacity: .7;
+}
+
+#btnBack {
+    border-color: #c8d3e2;
+    background: #fff;
+    color: #48586d;
+    font-weight: 750;
+}
+
+#btnBack:hover {
+    border-color: #9eb2cd;
+    background: #f3f6fa;
+    color: #33445a;
+}
+
 .btn-back svg,
 .btn-next svg { width: 15px; height: 15px; }
 
@@ -593,7 +645,7 @@
 .create-page-header .citizen-page-description { font-size: 14px !important; line-height: 1.55; }
 .create-mode-copy > span { font-size: 10px !important; }
 .create-mode-copy p { font-size: 12px !important; line-height: 1.5; }
-.tab-btn { font-size: 10px !important; }
+.tab-btn { font-size: 10.5px !important; }
 .proposal-card-header p { font-size: 11.5px !important; }
 .concern-username { font-size: 10.5px !important; }
 

@@ -20,11 +20,45 @@
 
     <div class="layout-wrapper">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="adminSidebar">
             <div class="sidebar-brand" aria-label="Vox Angelos Administration">
                 <img src="~/assets/VoxAngelosLogo.png" class="brand-logo" alt="" />
                 <span class="brand-name">Vox Angelos</span>
             </div>
+
+            <button type="button" class="sidebar-collapse-toggle" id="adminSidebarCollapseToggle" aria-controls="adminSidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const toggle = document.getElementById('adminSidebarCollapseToggle');
+                    const layout = toggle?.closest('.layout-wrapper');
+                    if (!toggle || !layout) return;
+
+                    const preferenceKey = 'voxangelos.admin.sidebar-collapsed';
+                    layout.querySelectorAll('.sidebar .nav-item').forEach(item => {
+                        const label = item.textContent.trim();
+                        if (label) {
+                            item.setAttribute('title', label);
+                            item.setAttribute('aria-label', label);
+                        }
+                    });
+
+                    const applyState = collapsed => {
+                        layout.classList.toggle('sidebar-collapsed', collapsed);
+                        toggle.setAttribute('aria-expanded', (!collapsed).toString());
+                        toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+                        toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+                    };
+
+                    try { applyState(localStorage.getItem(preferenceKey) === 'true'); } catch { applyState(false); }
+                    toggle.addEventListener('click', () => {
+                        const collapsed = !layout.classList.contains('sidebar-collapsed');
+                        applyState(collapsed);
+                        try { localStorage.setItem(preferenceKey, collapsed.toString()); } catch { }
+                    });
+                });
+            </script>
 
                 <nav class="sidebar-nav">
 

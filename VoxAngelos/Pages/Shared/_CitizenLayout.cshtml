@@ -47,7 +47,7 @@
 
     <div class="layout-wrapper">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="citizenSidebar">
             <a asp-page="/User/Index" class="sidebar-brand" aria-label="Vox Angelos citizen portal">
                 <img src="~/assets/VoxAngelosLogo.png" class="brand-logo" alt="" />
                 <span class="brand-copy">
@@ -55,6 +55,41 @@
                     <small>Citizen portal</small>
                 </span>
             </a>
+
+            <button type="button" class="sidebar-collapse-toggle" id="citizenSidebarCollapseToggle" aria-controls="citizenSidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const toggle = document.getElementById('citizenSidebarCollapseToggle');
+                    const layout = toggle?.closest('.layout-wrapper');
+                    if (!toggle || !layout) return;
+
+                    const preferenceKey = 'voxangelos.citizen.sidebar-collapsed';
+                    const navItems = layout.querySelectorAll('.sidebar .nav-item');
+                    navItems.forEach(item => {
+                        const label = item.textContent.trim();
+                        if (label) {
+                            item.setAttribute('title', label);
+                            item.setAttribute('aria-label', label);
+                        }
+                    });
+
+                    const applyState = collapsed => {
+                        layout.classList.toggle('sidebar-collapsed', collapsed);
+                        toggle.setAttribute('aria-expanded', (!collapsed).toString());
+                        toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+                        toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+                    };
+
+                    try { applyState(localStorage.getItem(preferenceKey) === 'true'); } catch { applyState(false); }
+                    toggle.addEventListener('click', () => {
+                        const collapsed = !layout.classList.contains('sidebar-collapsed');
+                        applyState(collapsed);
+                        try { localStorage.setItem(preferenceKey, collapsed.toString()); } catch { }
+                    });
+                });
+            </script>
 
             <nav class="sidebar-nav" aria-label="Citizen navigation">
 
@@ -101,13 +136,6 @@
                             <line x1="8" y1="12" x2="16" y2="12" />
                         </svg>
                         <span>Create</span>
-                    </a>
-                    <a asp-page="/User/Profile" class="nav-item @(path == "/user/profile" ? "active" : "")">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="8" r="4" />
-                            <path d="M4 21a8 8 0 0 1 16 0" />
-                        </svg>
-                        <span>Profile</span>
                     </a>
                     <a asp-page="/User/AccountSecurity" class="nav-item @(path == "/user/accountsecurity" ? "active" : "")">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

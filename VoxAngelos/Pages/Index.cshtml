@@ -388,20 +388,72 @@
       language-code="en"
       max-query-length="-1">
       <df-messenger-chat-bubble
-        chat-title="Vox Angelos Chatbot">
+        chat-title="Vox Angelos Help Desk">
       </df-messenger-chat-bubble>
     </df-messenger>
     <style>
+      /* Reuse the citizen Help Desk visual system while retaining the public agent flow. */
       df-messenger {
-        z-index: 999;
         position: fixed;
-        --df-messenger-font-color: #000;
-        --df-messenger-font-family: Google Sans;
-        --df-messenger-chat-background: #f3f6fc;
-        --df-messenger-message-user-background: #d3e3fd;
-        --df-messenger-message-bot-background: #fff;
-        bottom: 16px;
-        right: 16px;
+        right: 24px;
+        bottom: 22px;
+        z-index: 999;
+        --df-messenger-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --df-messenger-font-size: 13px;
+        --df-messenger-font-color: #172033;
+        --df-messenger-primary-color: #1646a0;
+        --df-messenger-focus-color: #1646a0;
+        --df-messenger-focus-color-contrast: #ffffff;
+        --df-messenger-chat-border: 1px solid #dfe5ed;
+        --df-messenger-chat-border-radius: 12px;
+        --df-messenger-chat-window-width: min(380px, calc(100vw - 32px));
+        --df-messenger-chat-window-height: min(560px, calc(100vh - 104px));
+        --df-messenger-chat-window-offset: 14px;
+        --df-messenger-chat-window-box-shadow: 0 18px 45px rgba(23, 32, 51, .18);
+        --df-messenger-chat-bubble-size: 54px;
+        --df-messenger-chat-bubble-background: #1646a0;
+        --df-messenger-chat-bubble-border: 1px solid #0b2e6f;
+        --df-messenger-chat-bubble-border-radius: 14px;
+        --df-messenger-chat-bubble-icon-color: #ffffff;
+        --df-messenger-titlebar-background: #0b2e6f;
+        --df-messenger-titlebar-padding: 0 18px;
+        --df-messenger-titlebar-border-bottom: 1px solid rgba(255, 255, 255, .16);
+        --df-messenger-titlebar-font-color: #ffffff;
+        --df-messenger-titlebar-title-font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --df-messenger-titlebar-title-font-size: 14px;
+        --df-messenger-titlebar-title-font-weight: 750;
+        --df-messenger-titlebar-title-letter-spacing: -.01em;
+        --df-messenger-chat-background: #f8fafc;
+        --df-messenger-chat-padding: 14px;
+        --df-messenger-message-spacing: 9px;
+        --df-messenger-message-border-radius: 9px;
+        --df-messenger-message-bot-background: #ffffff;
+        --df-messenger-message-bot-border: 1px solid #dfe5ed;
+        --df-messenger-message-bot-font-color: #253047;
+        --df-messenger-message-user-background: #1646a0;
+        --df-messenger-message-user-font-color: #ffffff;
+        --df-messenger-message-font-size: 12.5px;
+        --df-messenger-input-background: #ffffff;
+        --df-messenger-input-border-top: 1px solid #dfe5ed;
+        --df-messenger-input-box-border: 1px solid #d5deeb;
+        --df-messenger-input-box-focus-border: 1px solid #1646a0;
+        --df-messenger-input-box-border-radius: 8px;
+        --df-messenger-input-box-padding: 10px 14px;
+        --df-messenger-input-box-focus-padding: 10px 14px;
+        --df-messenger-input-font-color: #172033;
+        --df-messenger-input-font-size: 12.5px;
+        --df-messenger-send-icon-color: #8994a6;
+        --df-messenger-send-icon-color-hover: #1646a0;
+        --df-messenger-send-icon-color-active: #1646a0;
+      }
+
+      @@media (max-width: 640px) {
+        df-messenger {
+          right: 14px;
+          bottom: 14px;
+          --df-messenger-chat-window-width: calc(100vw - 28px);
+          --df-messenger-chat-window-height: min(520px, calc(100vh - 92px));
+        }
       }
     </style>
 

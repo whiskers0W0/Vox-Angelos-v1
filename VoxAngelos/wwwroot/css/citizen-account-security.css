@@ -298,6 +298,15 @@
     color: var(--va-blue);
     font-size: 17px;
 }
+.citizen-shell .security-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
 .citizen-shell .security-card h2 { color: var(--va-ink); font-size: 16px; letter-spacing: -.015em; }
 .citizen-shell .security-card-heading p { margin-top: 4px; color: var(--va-muted); font-size: 10.5px; line-height: 1.45; }
 

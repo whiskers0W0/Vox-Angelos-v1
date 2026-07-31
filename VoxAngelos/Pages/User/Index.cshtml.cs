@@ -114,6 +114,36 @@ namespace VoxAngelos.Pages.User
 
             Recommendations = recs.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
 
+            if (_environment.IsDevelopment() &&
+                bool.TryParse(Request.Query["previewAttachments"].ToString(), out var showAttachmentPreview) &&
+                showAttachmentPreview)
+            {
+                Recommendations.Insert(0, new RecommendationCardViewModel
+                {
+                    Id = -1,
+                    CitizenName = "Development preview",
+                    Category = "Infrastructure",
+                    AssignedOffice = "CEO",
+                    Title = "Six-attachment layout preview",
+                    Description = "Temporary preview data for checking the Discover attachment layout.",
+                    ApprovedAt = DateTime.UtcNow,
+                    IsOwnRecommendation = true,
+                    AttachmentPaths = new List<string>
+                    {
+                        "/assets/Angeles.jpg",
+                        "/assets/Logo-VoxAngelos.png",
+                        "/assets/VoxAngelosLogo.png",
+                        "/assets/Angeles.jpg",
+                        "/assets/Logo-VoxAngelos.png",
+                        "/assets/VoxAngelosLogo.png"
+                    },
+                    AttachmentTypes = new List<string>
+                    {
+                        "image", "image", "image", "image", "image", "image"
+                    }
+                });
+            }
+
             var topRated = await _ratingService.GetTopRecommendationsAsync(forLgu: false);
             TopRated = topRated.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
         }
