@@ -8,6 +8,21 @@
     <link rel="stylesheet" href="~/css/admin-userapplications.css" asp-append-version="true" />
 }
 
+@if (TempData["AdminSuccess"] is string successMessage)
+{
+    <div class="admin-action-toast admin-action-toast--success" role="status" aria-live="polite">
+        <span>@successMessage</span>
+        <div class="admin-action-toast-progress" aria-hidden="true"></div>
+    </div>
+}
+@if (TempData["AdminError"] is string errorMessage)
+{
+    <div class="admin-action-toast admin-action-toast--error" role="alert" aria-live="assertive">
+        <span>@errorMessage</span>
+        <div class="admin-action-toast-progress" aria-hidden="true"></div>
+    </div>
+}
+
 <div class="admin-applications-workspace">
     <header class="admin-applications-header">
         <div>
@@ -21,11 +36,6 @@
             <small>@Model.Applications.Count application@(Model.Applications.Count == 1 ? "" : "s")</small>
         </div>
     </header>
-
-    @if (TempData["AdminError"] != null)
-    {
-        <div class="admin-applications-alert" role="alert">@TempData["AdminError"]</div>
-    }
 
     <section class="admin-applications-panel" aria-labelledby="applicationsQueueHeading">
         <header class="admin-applications-panel-header">
@@ -90,3 +100,9 @@
         </div>
     </section>
 </div>
+
+<script>
+    window.setTimeout(() => {
+        document.querySelectorAll('.admin-action-toast').forEach(toast => toast.remove());
+    }, 5000);
+</script>

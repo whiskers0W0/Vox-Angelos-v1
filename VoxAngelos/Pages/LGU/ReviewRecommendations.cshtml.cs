@@ -16,12 +16,18 @@ namespace VoxAngelos.Pages.LGU
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHubContext<FeedHub> _feedHub;
+        private readonly IWebHostEnvironment _environment;
 
-        public ReviewRecommendationsModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IHubContext<FeedHub> feedHub)
+        public ReviewRecommendationsModel(
+            ApplicationDbContext db,
+            UserManager<ApplicationUser> userManager,
+            IHubContext<FeedHub> feedHub,
+            IWebHostEnvironment environment)
         {
             _db = db;
             _userManager = userManager;
             _feedHub = feedHub;
+            _environment = environment;
         }
 
         public string[] Departments => ConcernClassificationService.Departments;
@@ -75,27 +81,68 @@ namespace VoxAngelos.Pages.LGU
                 .OrderByDescending(r => r.SubmittedAt)
                 .ToListAsync();
 
-            Recommendations = recs.Select(r => new RecommendationViewModel
+            Recommendations = recs.Select(r =>
             {
-                Id = r.Id,
-                CitizenName = r.Citizen.UserProfile != null
-                    ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
-                    : r.Citizen.Email ?? "Citizen",
-                Justification = r.Justification,
-                Category = r.Category,
-                AssignedOffice = r.AssignedOffice,
-                Title = r.Title,
-                Location = r.Location,
-                Description = r.Description,
-                Beneficiaries = r.Beneficiaries,
-                EstimatedPeopleAffected = r.EstimatedPeopleAffected,
-                Status = r.Status,
-                LguNotes = r.LguNotes,
-                SubmittedAt = r.SubmittedAt,
-                ReviewedAt = r.ReviewedAt,
-                AttachmentPaths = r.Attachments.Select(a => a.FilePath).ToList(),
-                AttachmentTypes = r.Attachments.Select(a => a.FileType).ToList()
+                var availableAttachments = r.Attachments
+                    .OrderBy(a => a.UploadedAt)
+                    .Select(a => new
+                    {
+                        Path = NormalizeAvailableAttachmentPath(a.FilePath),
+                        a.FileType
+                    })
+                    .Where(a => a.Path != null)
+                    .ToList();
+
+                return new RecommendationViewModel
+                {
+                    Id = r.Id,
+                    CitizenName = r.Citizen.UserProfile != null
+                        ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
+                        : r.Citizen.Email ?? "Citizen",
+                    Justification = r.Justification,
+                    Category = r.Category,
+                    AssignedOffice = r.AssignedOffice,
+                    Title = r.Title,
+                    Location = r.Location,
+                    Description = r.Description,
+                    Beneficiaries = r.Beneficiaries,
+                    EstimatedPeopleAffected = r.EstimatedPeopleAffected,
+                    Status = r.Status,
+                    LguNotes = r.LguNotes,
+                    SubmittedAt = r.SubmittedAt,
+                    ReviewedAt = r.ReviewedAt,
+                    AttachmentPaths = availableAttachments.Select(a => a.Path!).ToList(),
+                    AttachmentTypes = availableAttachments.Select(a => a.FileType).ToList()
+                };
             }).ToList();
+        }
+
+        private string? NormalizeAvailableAttachmentPath(string? attachmentPath)
+        {
+            if (string.IsNullOrWhiteSpace(attachmentPath))
+                return null;
+
+            if (Uri.TryCreate(attachmentPath, UriKind.Absolute, out var remoteUri) &&
+                (remoteUri.Scheme == Uri.UriSchemeHttps || remoteUri.Scheme == Uri.UriSchemeHttp))
+            {
+                return remoteUri.ToString();
+            }
+
+            var relativePath = attachmentPath
+                .TrimStart('~', '/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar);
+            var webRoot = Path.GetFullPath(_environment.WebRootPath);
+            var fullPath = Path.GetFullPath(Path.Combine(webRoot, relativePath));
+            var requiredPrefix = webRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            if (!fullPath.StartsWith(requiredPrefix, StringComparison.OrdinalIgnoreCase) ||
+                !System.IO.File.Exists(fullPath))
+            {
+                return null;
+            }
+
+            return "/" + relativePath.Replace(Path.DirectorySeparatorChar, '/');
         }
 
         public async Task<IActionResult> OnPostApproveAsync(int recommendationId, string? lguNotes)
@@ -140,6 +187,7 @@ namespace VoxAngelos.Pages.LGU
                 await _db.SaveChangesAsync();
 
                 await _feedHub.Clients.Group(FeedHub.DiscoverGroup).SendAsync("PostPublished");
+                TempData["RecSuccess"] = "The recommendation was approved and published successfully.";
             }
 
             return RedirectToPage(new { filter = "Pending" });
@@ -183,6 +231,7 @@ namespace VoxAngelos.Pages.LGU
                     CreatedAt = reviewedAt
                 });
                 await _db.SaveChangesAsync();
+                TempData["RecSuccess"] = "The recommendation was rejected successfully. The citizen was notified.";
             }
 
             return RedirectToPage(new { filter = "Pending" });
@@ -239,6 +288,9 @@ namespace VoxAngelos.Pages.LGU
                     break;
                 case ReassignOutcome.AlreadyReviewed:
                     TempData["RecError"] = "This recommendation was already reviewed by another staff member.";
+                    break;
+                case ReassignOutcome.Success:
+                    TempData["RecSuccess"] = $"The recommendation was reassigned to {newOffice}.";
                     break;
             }
 

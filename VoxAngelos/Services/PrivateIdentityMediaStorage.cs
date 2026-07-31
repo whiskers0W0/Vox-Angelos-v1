@@ -11,6 +11,8 @@ public sealed record PrivateIdentityMediaUpload(string PublicId, string Format);
 /// </summary>
 public sealed class PrivateIdentityMediaStorage
 {
+    private const int MaximumUploadAttempts = 3;
+
     private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".jpg", ".jpeg", ".png"
@@ -37,8 +39,7 @@ public sealed class PrivateIdentityMediaStorage
             throw new InvalidOperationException("Only JPG and PNG identity images are allowed.");
         }
 
-        await using var stream = file.OpenReadStream();
-        return await UploadStreamAsync(stream, file.FileName, mediaType);
+        return await UploadWithRetriesAsync(file.OpenReadStream, file.FileName, mediaType);
     }
 
     /// <summary>
@@ -54,13 +55,14 @@ public sealed class PrivateIdentityMediaStorage
         if (!AllowedImageExtensions.Contains(Path.GetExtension(fileName)))
             throw new InvalidOperationException("Only JPG and PNG identity images are allowed.");
 
-        await using var stream = File.OpenRead(fullPath);
-        return await UploadStreamAsync(stream, fileName, mediaType);
+        return await UploadWithRetriesAsync(() => File.OpenRead(fullPath), fileName, mediaType);
     }
 
-    private async Task<PrivateIdentityMediaUpload> UploadStreamAsync(Stream stream, string fileName, string mediaType)
+    private async Task<PrivateIdentityMediaUpload> UploadWithRetriesAsync(
+        Func<Stream> openStream,
+        string fileName,
+        string mediaType)
     {
-
         var folder = mediaType switch
         {
             "id" => "voxangelos/identity/ids",
@@ -68,23 +70,63 @@ public sealed class PrivateIdentityMediaStorage
             _ => throw new ArgumentException("Unsupported identity media type.", nameof(mediaType))
         };
 
-        var result = await CreateCloudinary().UploadAsync(new ImageUploadParams
+        var cloudinary = CreateCloudinary();
+
+        for (var attempt = 1; attempt <= MaximumUploadAttempts; attempt++)
         {
-            File = new FileDescription(fileName, stream),
-            Folder = folder,
-            PublicId = Guid.NewGuid().ToString("N"),
-            Type = "private",
-            Overwrite = false
-        });
+            await using var stream = openStream();
 
-        if (result.Error is not null)
-            throw new InvalidOperationException($"Cloudinary could not upload the identity image: {result.Error.Message}");
+            try
+            {
+                var result = await cloudinary.UploadAsync(new ImageUploadParams
+                {
+                    File = new FileDescription(fileName, stream),
+                    Folder = folder,
+                    PublicId = Guid.NewGuid().ToString("N"),
+                    Type = "private",
+                    Overwrite = false
+                });
 
-        if (string.IsNullOrWhiteSpace(result.PublicId) || string.IsNullOrWhiteSpace(result.Format))
-            throw new InvalidOperationException("Cloudinary did not return the identity image details.");
+                if (result.Error is null)
+                {
+                    if (string.IsNullOrWhiteSpace(result.PublicId) || string.IsNullOrWhiteSpace(result.Format))
+                    {
+                        throw new InvalidOperationException(
+                            "Cloudinary did not return the identity image details.");
+                    }
 
-        return new PrivateIdentityMediaUpload(result.PublicId, result.Format);
+                    return new PrivateIdentityMediaUpload(result.PublicId, result.Format);
+                }
+
+                if (attempt < MaximumUploadAttempts && IsTransientStatusCode((int)result.StatusCode))
+                {
+                    await DelayBeforeRetryAsync(attempt);
+                    continue;
+                }
+
+                throw new InvalidOperationException(
+                    $"Cloudinary could not upload the identity image: {result.Error.Message}");
+            }
+            catch (Exception ex) when (
+                attempt < MaximumUploadAttempts && IsTransientException(ex))
+            {
+                await DelayBeforeRetryAsync(attempt);
+            }
+        }
+
+        throw new InvalidOperationException(
+            "Cloudinary could not upload the identity image after multiple attempts.");
     }
+
+    private static bool IsTransientStatusCode(int statusCode) =>
+        statusCode is 408 or 429 || statusCode >= 500;
+
+    private static bool IsTransientException(Exception exception) =>
+        exception is HttpRequestException or TaskCanceledException ||
+        (exception.InnerException is not null && IsTransientException(exception.InnerException));
+
+    private static Task DelayBeforeRetryAsync(int failedAttempt) =>
+        Task.Delay(TimeSpan.FromSeconds(failedAttempt == 1 ? 1 : 3));
 
     private Cloudinary CreateCloudinary()
     {
