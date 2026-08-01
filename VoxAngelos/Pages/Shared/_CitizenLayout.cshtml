@@ -196,6 +196,28 @@
 
                             <div class="notification-dropdown">
                                 <div class="notification-dropdown-title">Notifications</div>
+                                @if (currentUser != null)
+                                {
+                                    <div class="notification-email-preference">
+                                        <div class="notification-email-preference-copy">
+                                            <strong>Email updates</strong>
+                                            <span>
+                                                @(currentUser.EmailConfirmed
+                                                    ? $"Send important updates to {currentUser.Email}"
+                                                    : "Confirm your email address to enable email updates.")
+                                            </span>
+                                        </div>
+                                        <label class="notification-email-switch" for="emailNotificationsToggle">
+                                            <input type="checkbox"
+                                                   id="emailNotificationsToggle"
+                                                   checked="@currentUser.EmailNotificationsEnabled"
+                                                   disabled="@(!currentUser.EmailConfirmed)"
+                                                   aria-label="Receive citizen activity updates by email" />
+                                            <span aria-hidden="true"></span>
+                                        </label>
+                                        <small id="emailNotificationsStatus" class="notification-email-status" aria-live="polite"></small>
+                                    </div>
+                                }
                                 @if (!recentNotifications.Any())
                                 {
                                     <p class="notification-empty-state">You have no notifications yet.</p>
@@ -226,6 +248,8 @@
                     const sidebar = document.querySelector('.sidebar');
                     const overlay = document.getElementById('sidebarOverlay');
                     const notificationRequestToken = document.querySelector('#notification-antiforgery-form input[name="__RequestVerificationToken"]')?.value;
+                    const emailNotificationsToggle = document.getElementById('emailNotificationsToggle');
+                    const emailNotificationsStatus = document.getElementById('emailNotificationsStatus');
 
                     hamburgerBtn.addEventListener('click', () => {
                         sidebar.classList.toggle('open');
@@ -235,6 +259,37 @@
                     overlay.addEventListener('click', () => {
                         sidebar.classList.remove('open');
                         overlay.classList.remove('active');
+                    });
+
+                    emailNotificationsToggle?.addEventListener('change', async () => {
+                        const requestedState = emailNotificationsToggle.checked;
+                        emailNotificationsToggle.disabled = true;
+                        emailNotificationsStatus.textContent = 'Saving preference...';
+                        emailNotificationsStatus.classList.remove('is-success', 'is-error');
+
+                        try {
+                            const response = await fetch('/User/Notifications?handler=SetEmailNotifications', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: `enabled=${encodeURIComponent(requestedState)}&__RequestVerificationToken=${encodeURIComponent(notificationRequestToken ?? '')}`
+                            });
+                            const result = await response.json();
+
+                            if (!response.ok || !result.success) {
+                                throw new Error(result.message || 'Unable to update your email preference.');
+                            }
+
+                            emailNotificationsStatus.textContent = result.message;
+                            emailNotificationsStatus.classList.add('is-success');
+                        } catch (error) {
+                            emailNotificationsToggle.checked = !requestedState;
+                            emailNotificationsStatus.textContent = error.message || 'Unable to update your email preference.';
+                            emailNotificationsStatus.classList.add('is-error');
+                        } finally {
+                            emailNotificationsToggle.disabled = false;
+                        }
                     });
 
                     document.querySelectorAll('.notification-dropdown-item.unread').forEach(item => {

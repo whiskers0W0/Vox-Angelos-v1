@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using VoxAngelos.Data;
 using VoxAngelos.Hubs;
 using VoxAngelos.Services;
@@ -17,17 +19,23 @@ namespace VoxAngelos.Pages.LGU
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHubContext<FeedHub> _feedHub;
         private readonly IWebHostEnvironment _environment;
+        private readonly IEmailSender _emailSender;
+        private readonly ILogger<ReviewRecommendationsModel> _logger;
 
         public ReviewRecommendationsModel(
             ApplicationDbContext db,
             UserManager<ApplicationUser> userManager,
             IHubContext<FeedHub> feedHub,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IEmailSender emailSender,
+            ILogger<ReviewRecommendationsModel> logger)
         {
             _db = db;
             _userManager = userManager;
             _feedHub = feedHub;
             _environment = environment;
+            _emailSender = emailSender;
+            _logger = logger;
         }
 
         public string[] Departments => ConcernClassificationService.Departments;
@@ -145,6 +153,51 @@ namespace VoxAngelos.Pages.LGU
             return "/" + relativePath.Replace(Path.DirectorySeparatorChar, '/');
         }
 
+        private async Task SendCitizenEmailIfEnabledAsync(
+            string citizenId,
+            string subject,
+            string heading,
+            string message)
+        {
+            var recipient = await _db.Users
+                .AsNoTracking()
+                .Where(user => user.Id == citizenId &&
+                               user.EmailNotificationsEnabled &&
+                               user.EmailConfirmed &&
+                               user.Email != null)
+                .Select(user => new { user.Email })
+                .SingleOrDefaultAsync();
+
+            if (recipient?.Email == null)
+                return;
+
+            var recommendationsUrl = Url.Page("/User/Recommendations", null, null, Request.Scheme)
+                ?? "/User/Recommendations";
+            var htmlMessage =
+                "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#17213a;'>" +
+                $"<h2 style='color:#1746b1;'>{WebUtility.HtmlEncode(heading)}</h2>" +
+                $"<p style='line-height:1.6;'>{WebUtility.HtmlEncode(message)}</p>" +
+                "<p style='margin:28px 0;'>" +
+                $"<a href='{WebUtility.HtmlEncode(recommendationsUrl)}' style='background:#1746b1;color:#fff;padding:11px 18px;text-decoration:none;border-radius:7px;font-weight:700;'>View your recommendation</a>" +
+                "</p>" +
+                "<p style='color:#718096;font-size:12px;'>You received this because email updates are enabled in your Vox Angelos notifications.</p>" +
+                "</div>";
+
+            try
+            {
+                await _emailSender.SendEmailAsync(recipient.Email, subject, htmlMessage);
+            }
+            catch (Exception exception)
+            {
+                // The in-app notification and LGU decision remain successful even when
+                // the optional email provider or network is temporarily unavailable.
+                _logger.LogWarning(
+                    exception,
+                    "Could not send the optional recommendation update email to citizen {CitizenId}.",
+                    citizenId);
+            }
+        }
+
         public async Task<IActionResult> OnPostApproveAsync(int recommendationId, string? lguNotes)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -185,6 +238,11 @@ namespace VoxAngelos.Pages.LGU
                     CreatedAt = reviewedAt
                 });
                 await _db.SaveChangesAsync();
+                await SendCitizenEmailIfEnabledAsync(
+                    recommendation.CitizenId,
+                    "Your Vox Angelos recommendation was published",
+                    "Your recommendation was published",
+                    notificationMessage);
 
                 await _feedHub.Clients.Group(FeedHub.DiscoverGroup).SendAsync("PostPublished");
                 TempData["RecSuccess"] = "The recommendation was approved and published successfully.";
@@ -231,6 +289,11 @@ namespace VoxAngelos.Pages.LGU
                     CreatedAt = reviewedAt
                 });
                 await _db.SaveChangesAsync();
+                await SendCitizenEmailIfEnabledAsync(
+                    recommendation.CitizenId,
+                    "Update on your Vox Angelos recommendation",
+                    "Your recommendation was not published",
+                    notificationMessage);
                 TempData["RecSuccess"] = "The recommendation was rejected successfully. The citizen was notified.";
             }
 

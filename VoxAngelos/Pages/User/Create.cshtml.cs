@@ -216,63 +216,80 @@ namespace VoxAngelos.Pages.User
                 return Page();
             }
 
-            await using var submissionTransaction = await _db.Database.BeginTransactionAsync();
+            var executionStrategy = _db.Database.CreateExecutionStrategy();
+            IEnumerable<string> notifyDepartments = Array.Empty<string>();
 
-            var concern = await _db.Concerns
-                .FirstOrDefaultAsync(c => c.CitizenId == user.Id && c.Status == "Draft");
-
-            if (concern == null)
+            await executionStrategy.ExecuteAsync(async () =>
             {
-                concern = new Concern
+                _db.ChangeTracker.Clear();
+                await using var submissionTransaction = await _db.Database.BeginTransactionAsync();
+
+                var concern = await _db.Concerns
+                    .FirstOrDefaultAsync(c => c.CitizenId == user.Id && c.Status == "Draft");
+
+                if (concern == null)
                 {
-                    CitizenId = user.Id
-                };
-                _db.Concerns.Add(concern);
-            }
+                    concern = new Concern
+                    {
+                        CitizenId = user.Id
+                    };
+                    _db.Concerns.Add(concern);
+                }
 
-            concern.Description = Description;
-            concern.LocationName = LocationName;
-            concern.Latitude = Latitude;
-            concern.Longitude = Longitude;
-            concern.Status = "Unresolved";
-            concern.Category = classifiedCategory;
-            concern.SubmittedAt = DateTime.UtcNow;
+                concern.Description = Description;
+                concern.LocationName = LocationName;
+                concern.Latitude = Latitude;
+                concern.Longitude = Longitude;
+                concern.Status = "Unresolved";
+                concern.Category = classifiedCategory;
+                concern.SubmittedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
 
-            _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
-            {
-                ConcernId = concern.Id,
-                EventType = "Submitted",
-                Status = concern.Status,
-                Message = "Your concern was submitted and is awaiting review.",
-                ActorRole = "Citizen",
-                ActorName = user.UserName ?? user.Email ?? "Citizen",
-                CreatedAt = concern.SubmittedAt
-            });
-            await _db.SaveChangesAsync();
-
-            foreach (var uploadedAttachment in uploadedAttachments)
-            {
-                _db.ConcernAttachments.Add(new ConcernAttachment
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
                 {
                     ConcernId = concern.Id,
-                    FilePath = uploadedAttachment.FilePath,
-                    FileType = uploadedAttachment.FileType,
-                    UploadedAt = DateTime.UtcNow
+                    EventType = "Submitted",
+                    Status = concern.Status,
+                    Message = "Your concern was submitted and is awaiting review.",
+                    ActorRole = "Citizen",
+                    ActorName = user.UserName ?? user.Email ?? "Citizen",
+                    CreatedAt = concern.SubmittedAt
                 });
-            }
-            await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
 
-            await _urgencyScore.ApplyLocationAsync(concern);
-            await submissionTransaction.CommitAsync();
+                foreach (var uploadedAttachment in uploadedAttachments)
+                {
+                    _db.ConcernAttachments.Add(new ConcernAttachment
+                    {
+                        ConcernId = concern.Id,
+                        FilePath = uploadedAttachment.FilePath,
+                        FileType = uploadedAttachment.FileType,
+                        UploadedAt = DateTime.UtcNow
+                    });
+                }
+                await _db.SaveChangesAsync();
 
-            // Push the LGU dashboard(s) that will show this concern (LGU/Index.cshtml.cs
-            // lists a department's own concerns plus any still-unclassified ones, so an
-            // unclassified submission needs to reach every department's group).
-            var notifyDepartments = concern.Category != null
-                ? new[] { concern.Category }
-                : ConcernClassificationService.Departments;
+                // Push the LGU dashboard(s) that will show this concern (LGU/Index.cshtml.cs
+                // lists a department's own concerns plus any still-unclassified ones, so an
+                // unclassified submission needs to reach every department's group).
+                notifyDepartments = concern.Category != null
+                    ? new[] { concern.Category }
+                    : ConcernClassificationService.Departments;
+
+                await AddLguSubmissionNotificationsAsync(
+                    notifyDepartments,
+                    title: "New concern received",
+                    message: "A new citizen concern has been assigned to your office for review.",
+                    notificationType: "IncomingConcern",
+                    senderName: user.UserName ?? user.Email ?? "Citizen",
+                    linkUrl: "/LGU/Index?filter=Unresolved");
+                await _db.SaveChangesAsync();
+
+                await _urgencyScore.ApplyLocationAsync(concern);
+                await submissionTransaction.CommitAsync();
+            });
+
             foreach (var dept in notifyDepartments)
                 await _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(dept)).SendAsync("ConcernFeedChanged");
 
@@ -391,6 +408,48 @@ namespace VoxAngelos.Pages.User
 
             var classificationText = $"{RecTitle} {RecDescription} {RecJustification}";
 
+            // Upload attachments before changing a draft into a submitted
+            // recommendation. This makes Cloudinary failures visible to the client
+            // and avoids saving a recommendation whose attachment rows are missing.
+            var uploadedAttachments = new List<CloudinaryAttachmentUpload>();
+            try
+            {
+                foreach (var file in RecAttachments ?? Enumerable.Empty<IFormFile>())
+                {
+                    if (file.Length == 0) continue;
+                    uploadedAttachments.Add(
+                        await _attachmentStorage.UploadAsync(file, "recommendations"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Recommendation attachment upload failed for user {UserId}.",
+                    user.Id);
+
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "We could not upload your attachments to Cloudinary, so your recommendation was not submitted. Please try again."
+                })
+                {
+                    StatusCode = StatusCodes.Status503ServiceUnavailable
+                };
+            }
+
+            // Keep the external classification call outside the retryable database unit.
+            // A temporary database reconnect must not send the same text to the AI twice.
+            var assignedOffice = await _classifier.ClassifyAsync(
+                classificationText,
+                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            var executionStrategy = _db.Database.CreateExecutionStrategy();
+
+            await executionStrategy.ExecuteAsync(async () =>
+            {
+                _db.ChangeTracker.Clear();
+                await using var submissionTransaction = await _db.Database.BeginTransactionAsync();
+
             var recommendation = await _db.Recommendations
                 .FirstOrDefaultAsync(r => r.CitizenId == user.Id && r.Status == "Draft");
 
@@ -412,32 +471,88 @@ namespace VoxAngelos.Pages.User
             recommendation.EstimatedPeopleAffected = RecPeopleAffected;
             recommendation.IsAnonymous = RecIsAnonymous;
             recommendation.Status = "Pending";
-            recommendation.AssignedOffice = await _classifier.ClassifyAsync(
-                classificationText,
-                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            recommendation.AssignedOffice = assignedOffice;
             recommendation.SubmittedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
 
-            if (RecAttachments != null && RecAttachments.Count > 0)
+            foreach (var uploadedAttachment in uploadedAttachments)
             {
-                foreach (var file in RecAttachments)
+                _db.RecommendationAttachments.Add(new RecommendationAttachment
                 {
-                    if (file.Length == 0) continue;
-                    var uploadedAttachment = await _attachmentStorage.UploadAsync(file, "recommendations");
+                    RecommendationId = recommendation.Id,
+                    FilePath = uploadedAttachment.FilePath,
+                    FileType = uploadedAttachment.FileType,
+                    UploadedAt = DateTime.UtcNow
+                });
+            }
+            await _db.SaveChangesAsync();
 
-                    _db.RecommendationAttachments.Add(new RecommendationAttachment
-                    {
-                        RecommendationId = recommendation.Id,
-                        FilePath = uploadedAttachment.FilePath,
-                        FileType = uploadedAttachment.FileType,
-                        UploadedAt = DateTime.UtcNow
-                    });
-                }
+            if (!string.IsNullOrWhiteSpace(recommendation.AssignedOffice))
+            {
+                await AddLguSubmissionNotificationsAsync(
+                    new[] { recommendation.AssignedOffice },
+                    title: "New recommendation received",
+                    message: $"A new citizen recommendation, “{recommendation.Title},” is ready for your office to review.",
+                    notificationType: "IncomingRecommendation",
+                    senderName: user.UserName ?? user.Email ?? "Citizen",
+                    linkUrl: "/LGU/ReviewRecommendations");
                 await _db.SaveChangesAsync();
+
+            }
+
+                await submissionTransaction.CommitAsync();
+            });
+
+            if (!string.IsNullOrWhiteSpace(assignedOffice))
+            {
+                await _feedHub.Clients
+                    .Group(FeedHub.LguDepartmentGroup(assignedOffice))
+                    .SendAsync("RecommendationFeedChanged");
             }
 
             return new JsonResult(new { success = true });
+        }
+
+        private async Task AddLguSubmissionNotificationsAsync(
+            IEnumerable<string> departments,
+            string title,
+            string message,
+            string notificationType,
+            string senderName,
+            string linkUrl)
+        {
+            var departmentCodes = departments
+                .Where(department => !string.IsNullOrWhiteSpace(department))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (departmentCodes.Count == 0)
+                return;
+
+            var recipientIds = await _userManager.Users
+                .AsNoTracking()
+                .Where(account => (account.LockoutEnd == null || account.LockoutEnd < DateTimeOffset.UtcNow)
+                    && account.Department != null
+                    && departmentCodes.Contains(account.Department!))
+                .Select(account => account.Id)
+                .ToListAsync();
+
+            foreach (var recipientId in recipientIds)
+            {
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = recipientId,
+                    Title = title,
+                    Message = message,
+                    NotificationType = notificationType,
+                    SenderRole = "Citizen",
+                    SenderName = senderName,
+                    LinkUrl = linkUrl,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
         }
 
         public async Task<IActionResult> OnPostSaveRecommendationDraftAsync()

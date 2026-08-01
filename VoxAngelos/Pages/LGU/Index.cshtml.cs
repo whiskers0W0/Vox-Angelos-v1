@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
 using VoxAngelos.Data;
 using VoxAngelos.Hubs;
 using VoxAngelos.Services;
@@ -18,6 +21,8 @@ namespace VoxAngelos.Pages.LGU
         private readonly ConcernClassificationService _classifier;
         private readonly IHubContext<FeedHub> _feedHub;
         private readonly IWebHostEnvironment _environment;
+        private readonly IEmailSender _emailSender;
+        private readonly ILogger<IndexModel> _logger;
         private static readonly IReadOnlyDictionary<string, string> DepartmentDisplayNames =
             new Dictionary<string, string>
             {
@@ -32,13 +37,16 @@ namespace VoxAngelos.Pages.LGU
 
         public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
             ConcernClassificationService classifier, IHubContext<FeedHub> feedHub,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment, IEmailSender emailSender,
+            ILogger<IndexModel> logger)
         {
             _db = db;
             _userManager = userManager;
             _classifier = classifier;
             _feedHub = feedHub;
             _environment = environment;
+            _emailSender = emailSender;
+            _logger = logger;
         }
 
         // Notifies every LGU dashboard that could be displaying this concern — its
@@ -55,6 +63,54 @@ namespace VoxAngelos.Pages.LGU
 
         private static string GetDepartmentDisplayName(string department) =>
             DepartmentDisplayNames.GetValueOrDefault(department, department);
+
+        private async Task SendCitizenEmailIfEnabledAsync(
+            string citizenId,
+            string subject,
+            string heading,
+            string message)
+        {
+            var recipient = await _db.Users
+                .AsNoTracking()
+                .Where(user => user.Id == citizenId &&
+                               user.EmailNotificationsEnabled &&
+                               user.EmailConfirmed &&
+                               user.Email != null)
+                .Select(user => new { user.Email })
+                .SingleOrDefaultAsync();
+
+            if (recipient?.Email == null)
+                return;
+
+            var safeHeading = WebUtility.HtmlEncode(heading);
+            var safeMessage = WebUtility.HtmlEncode(message);
+            var updatesUrl = Url.Page("/User/Notifications", null, null, Request.Scheme)
+                ?? "/User/Notifications";
+
+            var htmlMessage =
+                "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#17213a;'>" +
+                $"<h2 style='color:#1746b1;'>{safeHeading}</h2>" +
+                $"<p style='line-height:1.6;'>{safeMessage}</p>" +
+                "<p style='margin:28px 0;'>" +
+                $"<a href='{WebUtility.HtmlEncode(updatesUrl)}' style='background:#1746b1;color:#fff;padding:11px 18px;text-decoration:none;border-radius:7px;font-weight:700;'>View your concern</a>" +
+                "</p>" +
+                "<p style='color:#718096;font-size:12px;'>You received this because email updates are enabled in your Vox Angelos notifications.</p>" +
+                "</div>";
+
+            try
+            {
+                await _emailSender.SendEmailAsync(recipient.Email, subject, htmlMessage);
+            }
+            catch (Exception exception)
+            {
+                // Email is supplementary. A temporary provider/network failure must not
+                // undo the LGU action or the in-app notification already saved above.
+                _logger.LogWarning(
+                    exception,
+                    "Could not send the optional concern update email to citizen {CitizenId}.",
+                    citizenId);
+            }
+        }
 
         public string[] Departments => ConcernClassificationService.Departments;
 
@@ -121,11 +177,111 @@ namespace VoxAngelos.Pages.LGU
                 })
                 .ToListAsync();
 
+            var barangayBoundaries = await LoadBarangayBoundariesAsync();
+
             foreach (var concern in Concerns)
             {
                 concern.HasFeedback = reviewedConcernIds.Contains(concern.Id);
                 concern.FirstAttachmentPath = GetAvailableAttachmentPath(concern.FirstAttachmentPath);
+
+                if (concern.Latitude.HasValue && concern.Longitude.HasValue)
+                {
+                    concern.BarangayName = FindBarangay(
+                        concern.Latitude.Value,
+                        concern.Longitude.Value,
+                        barangayBoundaries);
+                }
             }
+        }
+
+        private sealed class BarangayBoundary
+        {
+            public string Name { get; init; } = string.Empty;
+            public string GeometryType { get; init; } = string.Empty;
+            public JsonElement Coordinates { get; init; }
+        }
+
+        private async Task<List<BarangayBoundary>> LoadBarangayBoundariesAsync()
+        {
+            var geoJsonPath = Path.Combine(
+                _environment.WebRootPath,
+                "geojson",
+                "angeles-city-barangays.geojson");
+
+            if (!System.IO.File.Exists(geoJsonPath))
+                return new List<BarangayBoundary>();
+
+            await using var stream = System.IO.File.OpenRead(geoJsonPath);
+            using var document = await JsonDocument.ParseAsync(stream);
+
+            return document.RootElement.GetProperty("features")
+                .EnumerateArray()
+                .Select(feature => new BarangayBoundary
+                {
+                    Name = feature.GetProperty("properties").GetProperty("name").GetString() ?? string.Empty,
+                    GeometryType = feature.GetProperty("geometry").GetProperty("type").GetString() ?? string.Empty,
+                    Coordinates = feature.GetProperty("geometry").GetProperty("coordinates").Clone()
+                })
+                .ToList();
+        }
+
+        private static string? FindBarangay(
+            double latitude,
+            double longitude,
+            IEnumerable<BarangayBoundary> boundaries)
+        {
+            foreach (var boundary in boundaries)
+            {
+                var containsPoint = boundary.GeometryType switch
+                {
+                    "Polygon" => IsPointInPolygon(longitude, latitude, boundary.Coordinates),
+                    "MultiPolygon" => boundary.Coordinates.EnumerateArray()
+                        .Any(polygon => IsPointInPolygon(longitude, latitude, polygon)),
+                    _ => false
+                };
+
+                if (containsPoint)
+                    return boundary.Name;
+            }
+
+            return null;
+        }
+
+        private static bool IsPointInPolygon(double longitude, double latitude, JsonElement polygon)
+        {
+            if (polygon.GetArrayLength() == 0 || !IsPointInRing(longitude, latitude, polygon[0]))
+                return false;
+
+            return !polygon.EnumerateArray().Skip(1)
+                .Any(hole => IsPointInRing(longitude, latitude, hole));
+        }
+
+        private static bool IsPointInRing(double longitude, double latitude, JsonElement ring)
+        {
+            var inside = false;
+            var pointCount = ring.GetArrayLength();
+            if (pointCount < 3)
+                return false;
+
+            for (int current = 0, previous = pointCount - 1;
+                 current < pointCount;
+                 previous = current++)
+            {
+                var currentLongitude = ring[current][0].GetDouble();
+                var currentLatitude = ring[current][1].GetDouble();
+                var previousLongitude = ring[previous][0].GetDouble();
+                var previousLatitude = ring[previous][1].GetDouble();
+
+                var crossesLatitude = (currentLatitude > latitude) != (previousLatitude > latitude);
+                if (crossesLatitude && longitude <
+                    (previousLongitude - currentLongitude) * (latitude - currentLatitude) /
+                    (previousLatitude - currentLatitude) + currentLongitude)
+                {
+                    inside = !inside;
+                }
+            }
+
+            return inside;
         }
 
         private string? GetAvailableAttachmentPath(string? attachmentPath)
@@ -315,6 +471,11 @@ namespace VoxAngelos.Pages.LGU
                 });
 
                 await _db.SaveChangesAsync();
+                await SendCitizenEmailIfEnabledAsync(
+                    concern.CitizenId,
+                    "Your Vox Angelos concern was forwarded",
+                    "Your concern was forwarded",
+                    updateMessage);
                 return ReassignOutcome.Success;
             }
             catch (ConcernAlreadyReviewedException)
@@ -478,6 +639,11 @@ namespace VoxAngelos.Pages.LGU
                     CreatedAt = updatedAt
                 });
                 await _db.SaveChangesAsync();
+                await SendCitizenEmailIfEnabledAsync(
+                    concern.CitizenId,
+                    $"Vox Angelos concern status: {status}",
+                    "Your concern was updated",
+                    updateMessage);
 
                 await NotifyDepartmentsAsync(concern.Category);
                 TempData["ConcernSuccess"] = $"The concern status was updated to {status}.";
@@ -557,6 +723,11 @@ namespace VoxAngelos.Pages.LGU
                     CreatedAt = updatedAt
                 });
                 await _db.SaveChangesAsync();
+                await SendCitizenEmailIfEnabledAsync(
+                    concern.CitizenId,
+                    "Your Vox Angelos concern was accepted",
+                    "Your concern was accepted",
+                    updateMessage);
 
                 await NotifyDepartmentsAsync(notifiedCategory);
                 TempData["ConcernSuccess"] = "The concern was accepted successfully. The citizen was notified.";
@@ -599,48 +770,68 @@ namespace VoxAngelos.Pages.LGU
             var actorName = lguUser.Department ?? lguUser.Email ?? "LGU Office";
             var citizenMessage = $"The LGU closed this concern as invalid or non-actionable. Reason: {reason}";
 
-            await using var transaction = await _db.Database.BeginTransactionAsync();
-            var updated = await _db.Concerns
-                .Where(c => c.Id == concernId &&
-                            c.Status == "Unresolved" &&
-                            c.Category == lguUser.Department)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(c => c.Status, "Closed")
-                    .SetProperty(c => c.LguNotes, reason)
-                    .SetProperty(c => c.UpdatedAt, closedAt));
+            var executionStrategy = _db.Database.CreateExecutionStrategy();
+            var concernClosed = false;
 
-            if (updated == 0)
+            await executionStrategy.ExecuteAsync(async () =>
             {
-                await transaction.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                await using var transaction = await _db.Database.BeginTransactionAsync();
+
+                var updated = await _db.Concerns
+                    .Where(c => c.Id == concernId &&
+                                c.Status == "Unresolved" &&
+                                c.Category == lguUser.Department)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.Status, "Closed")
+                        .SetProperty(c => c.LguNotes, reason)
+                        .SetProperty(c => c.UpdatedAt, closedAt));
+
+                if (updated == 0)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concernId,
+                    EventType = "Concern Closed",
+                    Status = "Closed",
+                    Message = citizenMessage,
+                    ActorRole = "LGU",
+                    ActorName = actorName,
+                    CreatedAt = closedAt
+                });
+
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId,
+                    Title = "Your concern was closed after review",
+                    Message = citizenMessage,
+                    NotificationType = "ConcernUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Notifications",
+                    CreatedAt = closedAt
+                });
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                concernClosed = true;
+            });
+
+            if (!concernClosed)
+            {
                 TempData["ConcernError"] = "This concern was already accepted, closed, or updated by another staff member.";
                 return RedirectToPage(new { filter = "Unresolved" });
             }
 
-            _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
-            {
-                ConcernId = concernId,
-                EventType = "Concern Closed",
-                Status = "Closed",
-                Message = citizenMessage,
-                ActorRole = "LGU",
-                ActorName = actorName,
-                CreatedAt = closedAt
-            });
-
-            _db.UserNotifications.Add(new UserNotification
-            {
-                RecipientUserId = concern.CitizenId,
-                Title = "Your concern was closed after review",
-                Message = citizenMessage,
-                NotificationType = "ConcernUpdate",
-                SenderRole = "LGU",
-                SenderName = actorName,
-                LinkUrl = "/User/Notifications",
-                CreatedAt = closedAt
-            });
-
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
+            await SendCitizenEmailIfEnabledAsync(
+                concern.CitizenId,
+                "Your Vox Angelos concern was closed after review",
+                "Your concern was closed after review",
+                citizenMessage);
             await NotifyDepartmentsAsync(concern.Category);
 
             TempData["ConcernSuccess"] = "The concern was closed and the citizen was notified.";
@@ -659,6 +850,7 @@ namespace VoxAngelos.Pages.LGU
         public bool HasFeedback { get; set; }
         public string Status { get; set; } = string.Empty;
         public string LocationName { get; set; } = string.Empty;
+        public string? BarangayName { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public int LocationDensityScore { get; set; }

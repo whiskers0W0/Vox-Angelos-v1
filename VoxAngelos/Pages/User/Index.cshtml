@@ -152,6 +152,7 @@
                 <div class="card-body">
                     <h3 class="proposal-title">@rec.Title</h3>
                     <p class="proposal-excerpt">@rec.Description</p>
+                    <button type="button" class="proposal-text-toggle" aria-expanded="false">See more</button>
                 </div>
 
                 @if (rec.AttachmentPaths.Any())
@@ -276,6 +277,7 @@
                         <div class="card-body">
                             <h3 class="proposal-title">@rec.Title</h3>
                             <p class="proposal-excerpt">@rec.Description</p>
+                            <button type="button" class="proposal-text-toggle" aria-expanded="false">See more</button>
                         </div>
 
                         @if (rec.AttachmentPaths.Any())
@@ -463,6 +465,40 @@
         let activeAttachmentIndex = 0;
         let attachmentPreviewReturnFocus = null;
 
+        function refreshDescriptionToggles(root = document) {
+            root.querySelectorAll('.card-body').forEach(cardBody => {
+                const excerpt = cardBody.querySelector('.proposal-excerpt');
+                const toggle = cardBody.querySelector('.proposal-text-toggle');
+                if (!excerpt || !toggle) return;
+
+                if (excerpt.classList.contains('is-expanded')) {
+                    toggle.classList.add('is-visible');
+                    return;
+                }
+
+                toggle.classList.toggle('is-visible', excerpt.scrollHeight > excerpt.clientHeight + 1);
+            });
+        }
+
+        document.querySelectorAll('.proposal-text-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const excerpt = toggle.previousElementSibling;
+                const expanded = excerpt.classList.toggle('is-expanded');
+
+                toggle.textContent = expanded ? 'See less' : 'See more';
+                toggle.setAttribute('aria-expanded', expanded.toString());
+            });
+        });
+
+        requestAnimationFrame(() => refreshDescriptionToggles(proposalsView));
+        window.addEventListener('load', () => refreshDescriptionToggles(proposalsView));
+        window.addEventListener('resize', () => {
+            refreshDescriptionToggles(proposalsView);
+            if (leaderboardView.classList.contains('active-view')) {
+                refreshDescriptionToggles(leaderboardView);
+            }
+        });
+
         function getAttachmentName(path) {
             try {
                 const pathname = new URL(path, window.location.origin).pathname;
@@ -610,6 +646,7 @@
                     contentHeader.hidden = true;
                     conceptStage.hidden = true;
                     pageTitle.textContent = "Leaderboard";
+                    requestAnimationFrame(() => refreshDescriptionToggles(leaderboardView));
                 }
             });
         });
@@ -707,6 +744,7 @@
             noFilterResults.hidden = visibleCount !== 0;
             resultCount.textContent = `${visibleCount} result${visibleCount === 1 ? '' : 's'}`;
             clearFiltersBtn.hidden = !query && !office && !period && dateSort.value === 'desc';
+            requestAnimationFrame(() => refreshDescriptionToggles(proposalsView));
         }
 
         clearFiltersBtn.addEventListener('click', () => {

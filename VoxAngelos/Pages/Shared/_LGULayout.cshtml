@@ -1,11 +1,36 @@
 ﻿@{
     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
-    var userEmail = User.Identity?.Name ?? "";
-    var prefix = userEmail.Contains("@") ? userEmail.Split('@')[0] : userEmail;
-    var departmentMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { { "socialwelfare", "Social Welfare" }, { "publicsafety", "Public Safety" }, { "health", "Health" }, { "agriculture", "Agriculture" }, { "engineering", "Engineering" }, { "admin", "Admin" } };
-    var departmentName = departmentMap.TryGetValue(prefix, out var dName) ? dName : prefix;
     bool IsActive(string path) => currentPage.StartsWith(path, StringComparison.OrdinalIgnoreCase);
+
+    var currentLguUser = await UserManager.GetUserAsync(User);
+    var departmentCode = currentLguUser?.Department?.Trim();
+    var departmentName = !string.IsNullOrWhiteSpace(departmentCode)
+        ? departmentCode.ToUpperInvariant()
+        : "Department not assigned";
+    var recentLguNotifications = new List<UserNotification>();
+    var unreadLguNotificationCount = 0;
+
+    if (currentLguUser != null)
+    {
+        unreadLguNotificationCount = await Db.UserNotifications
+            .AsNoTracking()
+            .CountAsync(notification =>
+                notification.RecipientUserId == currentLguUser.Id &&
+                !notification.IsRead);
+
+        recentLguNotifications = await Db.UserNotifications
+            .AsNoTracking()
+            .Where(notification => notification.RecipientUserId == currentLguUser.Id)
+            .OrderByDescending(notification => notification.CreatedAt)
+            .Take(5)
+            .ToListAsync();
+    }
 }
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using VoxAngelos.Data
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>@ViewData["Title"] | LGU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
@@ -18,6 +43,103 @@
 <a asp-page="/LGU/Leaderboard" class="nav-item @(IsActive("/LGU/Leaderboard") ? "active" : "")"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6" /></svg><span>View Leaderboard</span></a>
 <a asp-page="/LGU/Heatmap" class="nav-item @(IsActive("/LGU/Heatmap") ? "active" : "")"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3" /><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" /></svg><span>View Heatmap</span></a>
 </nav><div class="sidebar-footer"><form method="post" action="/Identity/Account/Logout" class="w-100">@Html.AntiForgeryToken()<input type="hidden" name="returnUrl" value="/Identity/Account/Login" /><button type="submit" class="nav-item logout-btn w-100 border-0 bg-transparent text-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16,17 21,12 16,7" /><line x1="21" y1="12" x2="9" y2="12" /></svg><span>Log Out</span></button></form></div></aside>
-<div class="mobile-topbar"><button class="hamburger" id="hamburgerBtn" aria-label="Open menu"><span></span><span></span><span></span></button><div class="mobile-brand"><span>Vox Angelos</span></div></div><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="main-content">@RenderBody()</main></div>
+<div class="mobile-topbar"><button class="hamburger" id="hamburgerBtn" aria-label="Open menu"><span></span><span></span><span></span></button><div class="mobile-brand"><span>Vox Angelos</span></div></div><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="main-content">
+<form id="lgu-notification-antiforgery-form" hidden>@Html.AntiForgeryToken()</form>
+<div class="lgu-notification-toolbar">
+<details class="lgu-notification-menu" id="lguNotificationMenu">
+<summary class="lgu-notification-trigger" aria-label="Open LGU notifications">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>
+@if (unreadLguNotificationCount > 0)
+{
+<span class="lgu-notification-count">@(unreadLguNotificationCount > 99 ? "99+" : unreadLguNotificationCount.ToString())</span>
+}
+</summary>
+<div class="lgu-notification-dropdown">
+<div class="lgu-notification-header"><div><span class="lgu-notification-eyebrow">LGU ALERTS</span><strong>Notifications</strong></div>@if (unreadLguNotificationCount > 0){<span>@unreadLguNotificationCount unread</span>}</div>
+@if (recentLguNotifications.Count == 0)
+{
+<div class="lgu-notification-empty"><strong>No notifications yet</strong><span>New assigned concerns and recommendations will appear here.</span></div>
+}
+else
+{
+<div class="lgu-notification-list">
+@foreach (var notification in recentLguNotifications)
+{
+<a class="lgu-notification-item @(!notification.IsRead ? "unread" : "")" href="@(string.IsNullOrWhiteSpace(notification.LinkUrl) ? "/LGU/Dashboard" : notification.LinkUrl)" data-notification-id="@notification.Id">
+<span class="lgu-notification-item-icon">
+@if (notification.NotificationType == "IncomingRecommendation")
+{
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M8.5 14.5A7 7 0 1 1 15.5 14.5C14.5 15.2 14 16 14 17h-4c0-1-.5-1.8-1.5-2.5Z" /></svg>
+}
+else
+{
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H7l-3 3V4Z" /><path d="M8 8h8M8 12h5" /></svg>
+}
+</span>
+<span class="lgu-notification-copy"><strong>@notification.Title</strong><span>@notification.Message</span><small>@notification.CreatedAt.ToLocalTime().ToString("MMM d, h:mm tt")</small></span>
+</a>
+}
+</div>
+}
+</div>
+</details>
+</div>
+@RenderBody()</main></div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const notificationRequestToken = document.querySelector('#lgu-notification-antiforgery-form input[name="__RequestVerificationToken"]')?.value;
+
+    const bindNotificationClickHandlers = (root = document) => {
+        root.querySelectorAll('.lgu-notification-item.unread').forEach(item => {
+            if (item.dataset.readHandlerAttached === 'true') return;
+            item.dataset.readHandlerAttached = 'true';
+
+            item.addEventListener('click', async event => {
+                event.preventDefault();
+
+                const destination = item.href;
+                const notificationId = item.dataset.notificationId;
+
+                try {
+                    await fetch('/LGU/Notifications?handler=MarkNotificationRead', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `notificationId=${encodeURIComponent(notificationId ?? '')}&__RequestVerificationToken=${encodeURIComponent(notificationRequestToken ?? '')}`
+                    });
+                } finally {
+                    window.location.assign(destination);
+                }
+            });
+        });
+    };
+
+    const refreshNotificationBell = async () => {
+        try {
+            const response = await fetch(window.location.href, {
+                cache: 'no-store',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!response.ok) return;
+
+            const pageHtml = await response.text();
+            const updatedPage = new DOMParser().parseFromString(pageHtml, 'text/html');
+            const updatedToolbar = updatedPage.querySelector('.lgu-notification-toolbar');
+            const currentToolbar = document.querySelector('.lgu-notification-toolbar');
+
+            if (!updatedToolbar || !currentToolbar) return;
+
+            currentToolbar.replaceWith(updatedToolbar);
+            bindNotificationClickHandlers(updatedToolbar);
+        } catch (error) {
+            console.warn('Unable to refresh LGU notifications:', error);
+        }
+    };
+
+    bindNotificationClickHandlers();
+    window.addEventListener('voxangelos:lgu-notification', refreshNotificationBell);
+});
+</script>
 <script>const hamburgerBtn=document.getElementById('hamburgerBtn');const sidebar=document.querySelector('.sidebar');const overlay=document.getElementById('sidebarOverlay');hamburgerBtn.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active');});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active');});</script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script><script src="~/lib/signalr/signalr.min.js"></script><script src="~/js/realtime.js"></script>@RenderSection("Scripts", required: false)</body></html>

@@ -131,12 +131,12 @@ namespace VoxAngelos.Pages.LGU
             TrendLabels = System.Text.Json.JsonSerializer.Serialize(labels);
             TrendData = System.Text.Json.JsonSerializer.Serialize(data);
 
-            // Recent Activity — latest 5 concern events
+            // Recent Activity — latest 4 concern events
             var recent = await concerns
                 .Include(c => c.Citizen)
                 .ThenInclude(u => u.UserProfile)
                 .OrderByDescending(c => c.UpdatedAt ?? c.SubmittedAt)
-                .Take(5)
+                .Take(4)
                 .ToListAsync();
 
             foreach (var c in recent)

@@ -34,13 +34,30 @@
         {
             var statusCss = concern.Status.ToLower().Replace(" ", "-"); var timeAgo = GetTimeAgo(concern.SubmittedAt);
             var selectableAttr = concern.Status == "Unresolved" ? "true" : "false";
+            var hasCoordinates = concern.Latitude.HasValue && concern.Longitude.HasValue;
+            var latitude = concern.Latitude.GetValueOrDefault();
+            var longitude = concern.Longitude.GetValueOrDefault();
+            var coordinatesText = hasCoordinates
+                ? FormattableString.Invariant($"{latitude:F6}, {longitude:F6}")
+                : string.Empty;
+            var hasReadableSavedLocation = !string.IsNullOrWhiteSpace(concern.LocationName)
+                && concern.LocationName != "No location provided"
+                && concern.LocationName.Any(char.IsLetter);
+            var locationHeading = !string.IsNullOrWhiteSpace(concern.BarangayName)
+                ? $"Barangay {concern.BarangayName}, Angeles City"
+                : hasReadableSavedLocation
+                    ? concern.LocationName
+                    : hasCoordinates ? "Exact map pin available" : "No location provided";
+            var mapUrl = hasCoordinates
+                ? $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(coordinatesText)}"
+                : null;
             <article class="concern-card" data-id="@concern.Id" data-selectable="@selectableAttr">
                 @if (concern.Status == "Unresolved") { <input type="checkbox" class="concern-select" data-id="@concern.Id" hidden /> }
                 <header class="card-header"><div class="author-info"><div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg></div><div><span class="lgu-record-label">Resident report</span><strong class="author-name">@concern.CitizenName</strong></div></div><div class="lgu-card-status"><span class="card-date">@timeAgo</span><span class="concern-status @statusCss">@concern.Status</span></div></header>
                 <div class="lgu-card-body"><div class="lgu-concern-summary"><div class="card-meta"><span class="meta-label">Classified category</span><span class="meta-value">@concern.Category</span></div><p class="concern-excerpt">@concern.Description</p></div>
                 @if (concern.FirstAttachmentPath != null) { <button class="concern-photo" type="button" aria-label="Open concern photo" onclick="openLightbox('@concern.FirstAttachmentPath', 'image')"><img src="@concern.FirstAttachmentPath" alt="Concern photo" /></button> }</div>
                 @if (concern.RawCategory != null) { <div class="classification-feedback"><span class="lgu-feedback-label">Routing review</span>@if (concern.HasFeedback) { <span class="feedback-logged">Classification reviewed</span> } else { <form method="post" asp-page="/LGU/Index" asp-page-handler="ConfirmCategory">@Html.AntiForgeryToken()<input type="hidden" name="concernId" value="@concern.Id" /><button type="submit" class="btn-feedback-correct">Category correct</button></form>@if (concern.Status == "Unresolved") { <button type="button" class="btn-feedback-wrong" data-bs-toggle="modal" data-bs-target="#reassignModal" onclick="openReassignModal(@concern.Id, true)">Wrong department</button> } }</div> } else if (concern.Status == "Unresolved") { <div class="classification-feedback"><span class="lgu-feedback-label">Routing review</span><span class="feedback-uncategorized">Not auto-classified</span><button type="button" class="btn-feedback-assign" data-bs-toggle="modal" data-bs-target="#reassignModal" onclick="openReassignModal(@concern.Id, false)">Assign department</button></div> }
-                <footer class="card-footer-lgu"><div class="lgu-card-metadata"><div class="concern-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 13 6 13s6-7.75 6-13c0-3.314-2.686-6-6-6z" /><circle cx="12" cy="8" r="2" /></svg><span>@concern.Latitude, @concern.Longitude</span></div>@if (concern.LocationDensityScore > 0) { <div class="concern-density-badge" title="Other unresolved concerns reported within 300m in the last 30 days">@concern.LocationDensityScore nearby report@(concern.LocationDensityScore == 1 ? "" : "s")</div> }</div>
+                <footer class="card-footer-lgu"><div class="lgu-card-metadata"><div class="concern-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 13 6 13s6-7.75 6-13c0-3.314-2.686-6-6-6z" /><circle cx="12" cy="8" r="2" /></svg><div><strong>@locationHeading</strong>@if (hasReadableSavedLocation && concern.LocationName != locationHeading) { <br /><span>@concern.LocationName</span> }@if (hasCoordinates) { <br /><small>Coordinates: @coordinatesText</small> }</div>@if (mapUrl != null) { <a class="btn-va-secondary" href="@mapUrl" target="_blank" rel="noopener noreferrer" aria-label="View concern location on Google Maps">View on map</a> }</div>@if (concern.LocationDensityScore > 0) { <div class="concern-density-badge" title="Other unresolved concerns reported within 300m in the last 30 days">@concern.LocationDensityScore nearby report@(concern.LocationDensityScore == 1 ? "" : "s")</div> }</div>
                 @if (concern.Status == "Unresolved") { <div class="action-container" style="display:flex; gap:8px;">@if (concern.RawCategory == Model.CurrentUserDepartment) { <button type="button" class="btn-va-secondary" data-bs-toggle="modal" data-bs-target="#closeInvalidModal" onclick="openCloseInvalidModal(@concern.Id)">Close as invalid</button> }<button type="button" class="btn-dark-pill" data-bs-toggle="modal" data-bs-target="#acceptConcernModal" onclick="openAcceptConcernModal(@concern.Id)">Accept concern</button></div> } else if (concern.Status == "Chosen" || concern.Status == "In Progress") { <div class="action-container"><button type="button" class="btn-dark-pill" data-bs-toggle="modal" data-bs-target="#statusModal" onclick="openStatusModal(@concern.Id, '@concern.CitizenName')">Update status</button></div> }</footer>
             </article>
         }

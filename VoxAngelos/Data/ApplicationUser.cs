@@ -22,6 +22,10 @@ namespace VoxAngelos.Data
         // Admin-curated keywords used to steer NLP concern routing toward this LGU's department
         public List<string> Tags { get; set; } = new();
 
+        // Optional citizen activity emails. Security and account-verification
+        // emails are always sent independently of this preference.
+        public bool EmailNotificationsEnabled { get; set; } = false;
+
         // Navigation properties
         public UserProfile? UserProfile { get; set; }
         public AccountApproval? AccountApproval { get; set; }

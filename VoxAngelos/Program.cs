@@ -70,7 +70,14 @@ builder.Services.AddScoped<CloudinaryAttachmentStorage>();
 builder.Services.AddScoped<PrivateIdentityMediaStorage>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString, o => o.UseNetTopologySuite()));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.UseNetTopologySuite();
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+    }));
 
 // Persist Data Protection keys (antiforgery tokens, auth cookies) to the shared
 // Postgres DB instead of local disk — Render's free-tier containers respin on a
