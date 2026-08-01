@@ -21,3 +21,168 @@
 
 /* Smooth the LGU-only department block so its navigation does not jump. */
 @media (min-width:769px) { .sidebar-dept { display:block; max-height:80px; overflow:hidden; opacity:1; transition:max-height .22s ease,margin .22s ease,padding .22s ease,border-color .16s ease,opacity .12s ease; }.sidebar-dept-label,.sidebar-dept-name { transition:opacity .12s ease,transform .22s ease; }.sidebar-divider { display:block; max-height:1px; overflow:hidden; opacity:1; transition:max-height .22s ease,margin .22s ease,border-color .16s ease,opacity .12s ease; }.layout-wrapper.sidebar-collapsed .sidebar-dept { display:block; max-height:0; margin:0; padding-top:0; padding-bottom:0; border-color:transparent; opacity:0; }.layout-wrapper.sidebar-collapsed .sidebar-dept-label,.layout-wrapper.sidebar-collapsed .sidebar-dept-name { opacity:0; transform:translateX(-6px); }.layout-wrapper.sidebar-collapsed .sidebar-divider { display:block; max-height:0; margin:0; border-top-color:transparent; opacity:0; } }
+
+
+/* ── LGU Notification Bell — matches the Citizen portal ─────── */
+.lgu-notification-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    min-height: 40px;
+    margin-bottom: 8px;
+}
+
+.lgu-notification-menu {
+    position: relative;
+    z-index: 110;
+}
+
+.lgu-notification-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #d4dbe8;
+    border-radius: 50%;
+    background: #fff;
+    color: #2b45b0;
+    box-shadow: 2px 2px 5px rgba(43, 69, 176, 0.16);
+    cursor: pointer;
+    list-style: none;
+}
+
+.lgu-notification-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.lgu-notification-trigger svg {
+    width: 21px;
+    height: 21px;
+}
+
+.lgu-notification-menu[open] .lgu-notification-trigger {
+    background: #2b45b0;
+    color: #fff;
+}
+
+.lgu-notification-count {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    width: 9px;
+    height: 9px;
+    overflow: hidden;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #e53e3e;
+    color: transparent;
+    font-size: 0;
+}
+
+.lgu-notification-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 340px;
+    max-height: 430px;
+    overflow-y: auto;
+    border: 1px solid #d4dbe8;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(27, 44, 108, 0.2);
+}
+
+.lgu-notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e3e7f0;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.lgu-notification-header > div,
+.lgu-notification-copy,
+.lgu-notification-empty {
+    display: block;
+}
+
+.lgu-notification-eyebrow,
+.lgu-notification-header > span,
+.lgu-notification-item-icon {
+    display: none;
+}
+
+.lgu-notification-empty {
+    padding: 22px 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.lgu-notification-empty strong,
+.lgu-notification-empty span,
+.lgu-notification-copy strong,
+.lgu-notification-copy span,
+.lgu-notification-copy small {
+    display: block;
+}
+
+.lgu-notification-empty strong {
+    margin-bottom: 3px;
+    color: var(--text-primary);
+}
+
+.lgu-notification-item {
+    display: block;
+    padding: 13px 16px;
+    border-bottom: 1px solid #edf0f5;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.18s ease;
+}
+
+.lgu-notification-item:last-child {
+    border-bottom: 0;
+}
+
+.lgu-notification-item:hover {
+    background: #f4f6fc;
+}
+
+.lgu-notification-item.unread {
+    border-left: 3px solid #2b45b0;
+    background: #f8f9ff;
+}
+
+.lgu-notification-copy strong {
+    margin-bottom: 3px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.lgu-notification-copy span {
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lgu-notification-copy small {
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+@media (max-width: 768px) {
+    .lgu-notification-dropdown {
+        width: min(340px, calc(100vw - 32px));
+    }
+}

@@ -277,9 +277,55 @@
     color: var(--text-secondary);
     margin-bottom: 4px;
     display: -webkit-box;
-    -webkit-line-clamp: 5;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.proposal-excerpt.is-expanded {
+    display: block;
+    overflow: visible;
+}
+
+.card-body > .proposal-text-toggle {
+    appearance: none;
+    display: none;
+    width: fit-content;
+    min-width: 0;
+    min-height: 0;
+    margin: 6px 0 3px;
+    padding: 4px 8px;
+    border: 1px solid #d7e2f5;
+    border-radius: 6px;
+    background: #f2f6ff;
+    color: var(--va-blue, #174bb5);
+    box-shadow: none;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: .01em;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.card-body > .proposal-text-toggle.is-visible {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-body > .proposal-text-toggle:hover {
+    border-color: #b9cae9;
+    background: #e8f0ff;
+    color: #0d3f9f;
+    text-decoration: none;
+}
+
+.card-body > .proposal-text-toggle:focus-visible {
+    outline: 2px solid rgba(23, 75, 181, .28);
+    outline-offset: 2px;
 }
 
 .view-more {

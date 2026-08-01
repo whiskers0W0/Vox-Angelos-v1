@@ -21,12 +21,19 @@ namespace VoxAngelos.Pages.User
 
         public string CitizenFullName { get; set; } = string.Empty;
         public string CurrentStatusFilter { get; private set; } = "All";
+        public bool EmailNotificationsEnabled { get; private set; }
+        public bool CanEnableEmailNotifications { get; private set; }
+        public string NotificationEmail { get; private set; } = string.Empty;
         public List<ConcernNotificationViewModel> Outbox { get; set; } = new();
 
         public async Task OnGetAsync(string status = "All")
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return;
+
+            EmailNotificationsEnabled = user.EmailNotificationsEnabled;
+            CanEnableEmailNotifications = user.EmailConfirmed && !string.IsNullOrWhiteSpace(user.Email);
+            NotificationEmail = user.Email ?? string.Empty;
 
             CurrentStatusFilter = status is "All" or "Unresolved" or "Chosen" or "In Progress" or "Resolved"
                 ? status
@@ -145,6 +152,42 @@ namespace VoxAngelos.Pages.User
             }
 
             return new JsonResult(new { success = true });
+        }
+
+        public async Task<IActionResult> OnPostSetEmailNotificationsAsync(bool enabled)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            if (enabled && (!user.EmailConfirmed || string.IsNullOrWhiteSpace(user.Email)))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Confirm your email address before enabling email updates."
+                });
+            }
+
+            user.EmailNotificationsEnabled = enabled;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    message = "We could not update your email preference. Please try again."
+                });
+            }
+
+            return new JsonResult(new
+            {
+                success = true,
+                enabled,
+                message = enabled
+                    ? $"Email updates will be sent to {user.Email}."
+                    : "Email updates have been turned off."
+            });
         }
 
         public string GetTimeAgo(DateTime dt)

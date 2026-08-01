@@ -448,50 +448,80 @@ namespace VoxAngelos.Services
         /// </summary>
         public async Task RecordCorrectionAsync(int concernId, string correctedCategory, bool wasCorrect, string reviewedByUserId)
         {
-            var concern = await _db.Concerns.FindAsync(concernId)
-                ?? throw new InvalidOperationException($"Concern {concernId} not found.");
+            var executionStrategy = _db.Database.CreateExecutionStrategy();
 
-            var previousCategory = concern.Category;
-
-            await using var transaction = await _db.Database.BeginTransactionAsync();
-
-            _db.ClassificationCorrections.Add(new ClassificationCorrection
+            await executionStrategy.ExecuteAsync(async () =>
             {
-                ConcernId = concernId,
-                PreviousCategory = previousCategory,
-                CorrectedCategory = correctedCategory,
-                WasCorrect = wasCorrect,
-                ReviewedByUserId = reviewedByUserId,
-                ReviewedAt = DateTime.UtcNow
+                // A retry must start with a clean tracker so it does not reuse entities
+                // left over from the failed database attempt.
+                _db.ChangeTracker.Clear();
+
+                var concern = await _db.Concerns.FindAsync(concernId)
+                    ?? throw new InvalidOperationException($"Concern {concernId} not found.");
+
+                // Most repeat requests can be rejected before attempting an INSERT. The
+                // database unique index remains the final guard for truly concurrent requests.
+                var alreadyReviewed = await _db.ClassificationCorrections
+                    .AsNoTracking()
+                    .AnyAsync(correction => correction.ConcernId == concernId);
+
+                if (alreadyReviewed)
+                {
+                    throw new ConcernAlreadyReviewedException(
+                        concernId,
+                        new InvalidOperationException("A classification review already exists for this concern."));
+                }
+
+                var previousCategory = concern.Category;
+
+                await using var transaction = await _db.Database.BeginTransactionAsync();
+
+                var correction = new ClassificationCorrection
+                {
+                    ConcernId = concernId,
+                    PreviousCategory = previousCategory,
+                    CorrectedCategory = correctedCategory,
+                    WasCorrect = wasCorrect,
+                    ReviewedByUserId = reviewedByUserId,
+                    ReviewedAt = DateTime.UtcNow
+                };
+                _db.ClassificationCorrections.Add(correction);
+
+                if (!wasCorrect)
+                {
+                    concern.Category = correctedCategory;
+                    concern.UpdatedAt = DateTime.UtcNow;
+                }
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+                {
+                    await transaction.RollbackAsync();
+
+                    // SaveChanges leaves failed entities in the change tracker. Without
+                    // detaching and reloading them, a later unrelated SaveChanges in the same
+                    // request retries this duplicate INSERT and produces another 23505 error.
+                    _db.Entry(correction).State = EntityState.Detached;
+                    await _db.Entry(concern).ReloadAsync();
+
+                    throw new ConcernAlreadyReviewedException(concernId, ex);
+                }
+
+                // Each upsert is a single atomic statement (INSERT ... ON CONFLICT), so two
+                // reviewers touching the same word/department at once can't race each other.
+                var words = ExtractKeywords(concern.Description);
+                foreach (var word in words)
+                {
+                    await UpsertLearnedWeightAsync(word, correctedCategory, +1);
+                    if (!wasCorrect && !string.IsNullOrEmpty(previousCategory) && previousCategory != correctedCategory)
+                        await UpsertLearnedWeightAsync(word, previousCategory, -1);
+                }
+
+                await transaction.CommitAsync();
             });
-
-            if (!wasCorrect)
-            {
-                concern.Category = correctedCategory;
-                concern.UpdatedAt = DateTime.UtcNow;
-            }
-
-            try
-            {
-                await _db.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
-            {
-                await transaction.RollbackAsync();
-                throw new ConcernAlreadyReviewedException(concernId, ex);
-            }
-
-            // Each upsert is a single atomic statement (INSERT ... ON CONFLICT), so two
-            // reviewers touching the same word/department at once can't race each other.
-            var words = ExtractKeywords(concern.Description);
-            foreach (var word in words)
-            {
-                await UpsertLearnedWeightAsync(word, correctedCategory, +1);
-                if (!wasCorrect && !string.IsNullOrEmpty(previousCategory) && previousCategory != correctedCategory)
-                    await UpsertLearnedWeightAsync(word, previousCategory, -1);
-            }
-
-            await transaction.CommitAsync();
         }
 
         private async Task UpsertLearnedWeightAsync(string word, string department, int delta)
