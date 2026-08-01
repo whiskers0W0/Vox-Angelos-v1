@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Configuration;
 using VoxAngelos.Data;
 
 namespace VoxAngelos.Areas.Identity.Pages.Account
@@ -17,13 +18,16 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
+        private readonly IConfiguration _configuration;
 
         public ForgotPasswordModel(
             UserManager<ApplicationUser> userManager,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _emailSender = emailSender;
+            _configuration = configuration;
         }
 
         [BindProperty]
@@ -55,11 +59,26 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             var code = await _userManager.GeneratePasswordResetTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
 
-            var callbackUrl = Url.Page(
+            var resetPath = Url.Page(
                 "/Account/ResetPassword",
                 pageHandler: null,
-                values: new { area = "Identity", code, email = user.Email }, // ← add email here
-                protocol: Request.Scheme);
+                values: new { area = "Identity", code, email = user.Email });
+
+            var publicBaseUrl = _configuration["App:PublicBaseUrl"];
+            var hasValidPublicBaseUrl = Uri.TryCreate(
+                publicBaseUrl,
+                UriKind.Absolute,
+                out var publicBaseUri) &&
+                (publicBaseUri.Scheme == Uri.UriSchemeHttps ||
+                 publicBaseUri.Scheme == Uri.UriSchemeHttp);
+
+            var callbackUrl = hasValidPublicBaseUrl && !string.IsNullOrWhiteSpace(resetPath)
+                ? new Uri(publicBaseUri!, resetPath).ToString()
+                : Url.Page(
+                    "/Account/ResetPassword",
+                    pageHandler: null,
+                    values: new { area = "Identity", code, email = user.Email },
+                    protocol: Request.Scheme);
 
             await _emailSender.SendEmailAsync(
                 Input.Email,
