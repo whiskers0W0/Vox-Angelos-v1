@@ -378,6 +378,44 @@
         stroke: #cbd5e1;
     }
 
+.document-attachment {
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    color: #64748b;
+    text-align: center;
+    text-decoration: none;
+    transition: border-color .18s ease, background-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.document-attachment svg {
+    width: 34px;
+    height: 34px;
+    stroke: #5d78bd;
+}
+
+.document-attachment strong {
+    color: #294b96;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.document-attachment small {
+    color: #71809a;
+    font-size: 10px;
+}
+
+.document-attachment:hover {
+    background: #eef3ff;
+    color: #294b96;
+    transform: translateY(-1px);
+}
+
+.document-attachment:focus-visible {
+    outline: 3px solid rgba(43, 69, 176, .3);
+    outline-offset: -3px;
+}
+
 .more-files {
     background: #abacae;
     display: flex;

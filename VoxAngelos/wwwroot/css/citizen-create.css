@@ -479,14 +479,16 @@
 .step-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 14px;
     margin-top: 23px;
     padding-top: 17px;
     border-top: 1px solid var(--va-line);
 }
-.step-counter { color: var(--va-muted); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.footer-actions { display: flex; align-items: center; gap: 8px; }
+.step-counter { margin-right: auto; color: var(--va-muted); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.footer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
+#recommendationStatus { flex-basis: 100%; margin: -6px 0 0; text-align: right; }
 
 .btn-back,
 .btn-new {
@@ -506,21 +508,24 @@
 .btn-back:hover,
 .btn-new:hover { border-color: #9eb0ca; background: var(--va-surface-subtle); }
 
-/* Recommendation action hierarchy: save progress, navigate, or continue. */
-#btnSaveDraft {
+/* Draft actions share one visual hierarchy across both submission flows. */
+#btnSaveDraft,
+#concernSaveDraftBtn {
     border-color: #e8cd8f;
     background: var(--va-amber-soft);
     color: var(--va-amber);
     font-weight: 800;
 }
 
-#btnSaveDraft:hover:not(:disabled) {
+#btnSaveDraft:hover:not(:disabled),
+#concernSaveDraftBtn:hover:not(:disabled) {
     border-color: #d5ad4c;
     background: #ffedbc;
     color: #795006;
 }
 
-#btnSaveDraft:disabled {
+#btnSaveDraft:disabled,
+#concernSaveDraftBtn:disabled {
     cursor: wait;
     opacity: .7;
 }
