@@ -461,14 +461,6 @@
     transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
-.discover-page .proposal-card:nth-child(3n + 2) {
-    border-top-color: var(--va-red);
-}
-
-.discover-page .proposal-card:nth-child(3n) {
-    border-top-color: var(--va-green);
-}
-
 .discover-page .proposal-card:hover {
     border-right-color: #b9c8df;
     border-bottom-color: #b9c8df;

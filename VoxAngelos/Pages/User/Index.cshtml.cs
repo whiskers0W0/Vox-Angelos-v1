@@ -79,6 +79,7 @@ namespace VoxAngelos.Pages.User
         {
             public int Id { get; set; }
             public string CitizenName { get; set; } = string.Empty;
+            public string? ProfileAvatarKey { get; set; }
             public string Category { get; set; } = string.Empty;
             public string AssignedOffice { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
@@ -164,6 +165,7 @@ namespace VoxAngelos.Pages.User
                     : r.Citizen.UserProfile != null
                         ? $"{r.Citizen.UserProfile.FirstName} {r.Citizen.UserProfile.LastName}"
                         : r.Citizen.Email ?? "Citizen",
+                ProfileAvatarKey = ResolveAnimalAvatarKey(r.Citizen.ProfilePhotoUrl),
                 Category = r.Category,
                 AssignedOffice = r.AssignedOffice ?? string.Empty,
                 Title = r.Title,
@@ -181,6 +183,24 @@ namespace VoxAngelos.Pages.User
                 HasRated = mine != null,
                 AttachmentPaths = availableAttachments.Select(a => a.FilePath).ToList(),
                 AttachmentTypes = availableAttachments.Select(a => a.FileType).ToList()
+            };
+        }
+
+        private static string? ResolveAnimalAvatarKey(string? profilePhotoUrl)
+        {
+            return profilePhotoUrl switch
+            {
+                "/images/avatars/philippine-eagle.png" => "philippine-eagle",
+                "/images/avatars/philippine-tarsier.png" => "philippine-tarsier",
+                "/images/avatars/carabao.png" => "carabao",
+                "/images/avatars/pawikan.png" => "pawikan",
+                "/images/avatars/owl.png" => "owl",
+                "/images/avatars/aspin.png" => "aspin",
+                "/images/avatars/puspin.png" => "puspin",
+                "/images/avatars/rabbit.png" => "rabbit",
+                "/images/avatars/dolphin.png" => "dolphin",
+                "/images/avatars/philippine-hornbill.png" => "philippine-hornbill",
+                _ => null
             };
         }
 

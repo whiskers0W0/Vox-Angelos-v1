@@ -14,7 +14,12 @@ namespace VoxAngelos.Services
 
     // Which tier of the classifier chain produced a result — surfaced to the LGU/citizen
     // UI (browser console) so it's obvious whether the HF model or a local fallback answered.
-    public record ClassificationResult(string? Department, string Tier);
+    // IsRejected means the submission should be blocked outright (profanity, too little
+    // content, or text that no tier could confidently tie to a real concern) — distinct from
+    // Department being null for a legitimate FUTURE_EXPANSION concern, which is still accepted.
+    // Confidence is only populated when the HF model actually produced the result (null for
+    // the local fallback tiers, which don't have a comparable numeric score).
+    public record ClassificationResult(string? Department, string Tier, bool IsRejected = false, string? RejectionReason = null, double? Confidence = null);
 
     public class ConcernClassificationService
     {
@@ -251,7 +256,81 @@ namespace VoxAngelos.Services
             ],
         };
 
+        // Multi-word vulgar phrases — checked as substrings since they're specific enough
+        // not to false-positive on legitimate text (unlike a single word such as "anak",
+        // which is itself a real SWDO keyword meaning "child").
+        private static readonly string[] ProfanityPhrases =
+        [
+            "anak ng tinapa", "anak ng puta", "putang ina", "putangina mo", "putang ina mo"
+        ];
+
+        // Standalone vulgar words — checked as whole tokens so they don't match as a
+        // substring of an unrelated word.
+        private static readonly HashSet<string> ProfanityWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Tagalog / Filipino
+            "putangina", "putanginamo", "puta", "gago", "gaga", "tangina", "tanginamo",
+            "ulol", "bobo", "tarantado", "leche", "punyeta", "peste", "hinayupak",
+            "buwisit", "kupal", "pakyu", "pakshet", "shet", "yawa", "punyemas", "putris",
+            // English
+            "fuck", "fucking", "shit", "bitch", "asshole", "bastard"
+        };
+
+        /// <summary>
+        /// Flags text that's vulgar/troll noise rather than a genuine concern or
+        /// recommendation description — used to reject a submission before it's
+        /// stored or sent to the classifier.
+        /// </summary>
+        public static bool ContainsProfanity(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            var lower = text.ToLowerInvariant();
+            if (ProfanityPhrases.Any(lower.Contains))
+                return true;
+
+            var words = lower.Split(
+                [' ', '\t', '\n', '\r', ',', '.', '!', '?', ';', ':', '"', '\'', '(', ')'],
+                StringSplitOptions.RemoveEmptyEntries);
+
+            return words.Any(ProfanityWords.Contains);
+        }
+
+        // A "hi", "hello", "test", or "asdf asdf asdf" should never reach the classifier —
+        // require at least this many distinct, non-trivial words before treating text as a
+        // real description. Distinct (not raw) count so "hi hi hi hi hi" doesn't pass.
+        private const int MinimumSubstantiveWords = 4;
+
+        /// <summary>
+        /// Flags text with too little distinct, meaningful content to plausibly be a real
+        /// concern/recommendation description — catches "hi", "hello", and repeated-word spam
+        /// for free, without any network call.
+        /// </summary>
+        public static bool IsLowSubstance(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return true;
+
+            var lower = text.ToLowerInvariant();
+            var words = lower.Split(
+                [' ', '\t', '\n', '\r', ',', '.', '!', '?', ';', ':', '"', '\'', '(', ')'],
+                StringSplitOptions.RemoveEmptyEntries);
+
+            var substantiveWordCount = words
+                .Where(w => w.Length >= 3 && !StopWords.Contains(w))
+                .Distinct()
+                .Count();
+
+            return substantiveWordCount < MinimumSubstantiveWords;
+        }
+
         // ── Public API ────────────────────────────────────────────────────────
+
+        // Below this, an HF prediction isn't trusted on its own — the description gets a
+        // second opinion from the local fallback tiers before either accepting or rejecting
+        // it. This is a raw softmax margin, not a calibrated probability (see
+        // HfClassificationResult.Confidence) — tune empirically against real submissions,
+        // not as an exact "% chance correct."
+        private const double MinHfConfidence = 0.35;
 
         // A department must clear this score, with no tie against the runner-up, before
         // a classifier result (learned weights, or the static keyword fallback) is
@@ -262,18 +341,34 @@ namespace VoxAngelos.Services
 
         /// <summary>
         /// Primary: our self-trained TF-IDF + SVM concern classifier (HF Space). Falls
-        /// back to local keyword scoring when the model is unavailable or predicts a
-        /// category with no real office yet (FUTURE_EXPANSION): LGU-verified corrections
-        /// win outright if they have a confident signal, otherwise local keyword scoring
-        /// blended with learned weights.
+        /// back to local keyword scoring when the model is unavailable, low-confidence, or
+        /// predicts a category with no real office yet (FUTURE_EXPANSION). Text that's
+        /// vulgar, too sparse to be a real description, or that no tier can confidently tie
+        /// to a real concern is rejected outright via IsRejected rather than silently
+        /// accepted as Uncategorized — the LGU "Close as Invalid" action remains the last
+        /// resort for anything that still slips past these checks.
         /// </summary>
         public async Task<ClassificationResult> ClassifyAsync(string description)
         {
             if (string.IsNullOrWhiteSpace(description))
-                return new ClassificationResult(null, "None");
+                return new ClassificationResult(null, "None", true, "Please describe your concern.");
+
+            if (ContainsProfanity(description))
+            {
+                return new ClassificationResult(null, "Rejected", true,
+                    "Please provide a genuine, respectful description — vulgar language isn't allowed.");
+            }
+
+            if (IsLowSubstance(description))
+            {
+                return new ClassificationResult(null, "Rejected", true,
+                    "Please provide more detail — describe what's happening and where, so we can route it to the right office.");
+            }
 
             var hfPrediction = await _hfClassifier.ClassifyAsync(description);
-            if (hfPrediction?.Category != null)
+            var hfIsConfident = hfPrediction?.Confidence == null || hfPrediction.Confidence >= MinHfConfidence;
+
+            if (hfPrediction?.Category != null && hfIsConfident)
             {
                 // Admin-assigned category→department mapping (Office Management) wins over
                 // the HF Space's own office_map.json — this is what lets a FUTURE_EXPANSION
@@ -282,23 +377,34 @@ namespace VoxAngelos.Services
                 if (categoryDepartments.TryGetValue(hfPrediction.Category, out var mappedDepartment))
                 {
                     _logger.LogInformation(
-                        "HF classifier CLASSIFIED: category={Category} department={Department} (admin mapping)",
-                        hfPrediction.Category, mappedDepartment);
-                    return new ClassificationResult(mappedDepartment, "HF Model");
+                        "HF classifier CLASSIFIED: category={Category} department={Department} confidence={Confidence} (admin mapping)",
+                        hfPrediction.Category, mappedDepartment, hfPrediction.Confidence);
+                    return new ClassificationResult(mappedDepartment, "HF Model", Confidence: hfPrediction.Confidence);
                 }
 
                 var office = hfPrediction.Office;
                 if (!string.IsNullOrWhiteSpace(office) && office != "FUTURE_EXPANSION" && Departments.Contains(office))
                 {
                     _logger.LogInformation(
-                        "HF classifier CLASSIFIED: category={Category} department={Department}",
-                        hfPrediction.Category, office);
-                    return new ClassificationResult(office, "HF Model");
+                        "HF classifier CLASSIFIED: category={Category} department={Department} confidence={Confidence}",
+                        hfPrediction.Category, office, hfPrediction.Confidence);
+                    return new ClassificationResult(office, "HF Model", Confidence: hfPrediction.Confidence);
                 }
 
+                // Confidently a real, known category — just no office mapped to it yet. This is
+                // a legitimate concern, not spam, so it's accepted as Uncategorized rather than
+                // rejected.
                 _logger.LogInformation(
-                    "HF classifier predicted category={Category} office={Office} — no usable department, falling back",
-                    hfPrediction.Category, office ?? "(none)");
+                    "HF classifier predicted category={Category} office={Office} confidence={Confidence} — no usable department, accepting as Uncategorized",
+                    hfPrediction.Category, office ?? "(none)", hfPrediction.Confidence);
+                return new ClassificationResult(null, "HF Model (Future Expansion)", Confidence: hfPrediction.Confidence);
+            }
+
+            if (hfPrediction != null && !hfIsConfident)
+            {
+                _logger.LogInformation(
+                    "HF classifier LOW CONFIDENCE: category={Category} confidence={Confidence} — getting a second opinion from local fallback",
+                    hfPrediction.Category ?? "(none)", hfPrediction.Confidence);
             }
 
             var learned = await LoadLearnedWeightsAsync();
@@ -313,9 +419,27 @@ namespace VoxAngelos.Services
 
             var departmentTags = await LoadDepartmentTagsAsync();
             var keywordResult = Classify(description, learned, departmentTags);
-            _logger.LogInformation(
-                "FALLBACK (keyword scoring) CLASSIFIED: department={Department}", keywordResult ?? "(Uncategorized)");
-            return new ClassificationResult(keywordResult, "Keyword Scoring");
+            if (keywordResult != null)
+            {
+                _logger.LogInformation(
+                    "FALLBACK (keyword scoring) CLASSIFIED: department={Department}", keywordResult);
+                return new ClassificationResult(keywordResult, "Keyword Scoring");
+            }
+
+            if (hfPrediction == null)
+            {
+                // The HF Space itself was unreachable — an infrastructure issue, not evidence
+                // this text is spam. Don't punish the citizen for an outage; accept it
+                // Uncategorized for manual LGU review, same as before this change.
+                _logger.LogInformation("HF classifier unavailable and local fallback found nothing — accepting as Uncategorized");
+                return new ClassificationResult(null, "Uncategorized (HF unavailable)");
+            }
+
+            // HF was reachable, wasn't confident this belongs to any known category, and local
+            // keyword/learned-weight scoring also found nothing — likely off-topic or troll text.
+            _logger.LogInformation("REJECTED: no tier could confidently tie this text to a real concern");
+            return new ClassificationResult(null, "Rejected", true,
+                "We couldn't confirm this is a specific local concern. Please add more detail — what's happening, and where — so we can route it to the right office.");
         }
 
         /// <summary>
