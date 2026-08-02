@@ -173,9 +173,29 @@ namespace VoxAngelos.Pages.User
                 return Page();
             }
 
-            var classifiedCategory = !string.IsNullOrWhiteSpace(ConfirmedCategory)
-                ? ConfirmedCategory
-                : (await _classifier.ClassifyAsync(Description)).Department;
+            string? classifiedCategory;
+            if (!string.IsNullOrWhiteSpace(ConfirmedCategory))
+            {
+                classifiedCategory = ConfirmedCategory;
+            }
+            else
+            {
+                var classification = await _classifier.ClassifyAsync(Description);
+                if (classification.IsRejected)
+                {
+                    var rejectionMessage = classification.RejectionReason
+                        ?? "Your concern could not be submitted. Please check the form and try again.";
+
+                    if (isAjaxRequest)
+                        return BadRequest(new { success = false, message = rejectionMessage });
+
+                    ModelState.AddModelError("Description", rejectionMessage);
+                    await OnGetAsync();
+                    return Page();
+                }
+
+                classifiedCategory = classification.Department;
+            }
 
             // Upload every attachment before writing the concern to the database.
             // A Cloudinary failure therefore cannot leave a submitted concern with
@@ -337,10 +357,33 @@ namespace VoxAngelos.Pages.User
         public async Task<IActionResult> OnPostClassifyAsync([FromBody] ClassifyRequest request)
         {
             var classification = await _classifier.ClassifyAsync(request.Description);
+
+            if (classification.IsRejected)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = classification.RejectionReason
+                });
+            }
+
             var category = classification.Department;
 
             if (category == null)
-                return new JsonResult(new { success = false });
+            {
+                // A legitimate concern — just not yet mapped to a real office (or the HF
+                // Space was unavailable) — is still submittable as Uncategorized for manual
+                // LGU triage, unlike an IsRejected result above.
+                return new JsonResult(new
+                {
+                    success = true,
+                    category = (string?)null,
+                    office = "Uncategorized — pending manual review",
+                    email = "",
+                    classifierTier = classification.Tier,
+                    confidence = classification.Confidence
+                });
+            }
 
             var officeNames = new Dictionary<string, string>
             {
@@ -364,7 +407,8 @@ namespace VoxAngelos.Pages.User
                 category,
                 office = officeNames.GetValueOrDefault(category, category),
                 email = officeEmail ?? "",
-                classifierTier = classification.Tier
+                classifierTier = classification.Tier,
+                confidence = classification.Confidence
             });
         }
 
@@ -400,6 +444,19 @@ namespace VoxAngelos.Pages.User
 
             var classificationText = $"{RecTitle} {RecDescription} {RecJustification}";
 
+            // Classify before uploading attachments (and outside the retryable database unit
+            // below) so a rejected submission fails fast without wasting a Cloudinary upload,
+            // and a transient DB retry never re-sends the same text to the classifier twice.
+            var recommendationClassification = await _classifier.ClassifyAsync(classificationText);
+            if (recommendationClassification.IsRejected)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = recommendationClassification.RejectionReason
+                });
+            }
+
             // Upload attachments before changing a draft into a submitted
             // recommendation. This makes Cloudinary failures visible to the client
             // and avoids saving a recommendation whose attachment rows are missing.
@@ -430,9 +487,6 @@ namespace VoxAngelos.Pages.User
                 };
             }
 
-            // Keep the external classification call outside the retryable database unit.
-            // A temporary database reconnect must not send the same text to the AI twice.
-            var recommendationClassification = await _classifier.ClassifyAsync(classificationText);
             var assignedOffice = recommendationClassification.Department;
             var executionStrategy = _db.Database.CreateExecutionStrategy();
 
@@ -506,7 +560,8 @@ namespace VoxAngelos.Pages.User
             {
                 success = true,
                 office = assignedOffice ?? "",
-                classifierTier = recommendationClassification.Tier
+                classifierTier = recommendationClassification.Tier,
+                confidence = recommendationClassification.Confidence
             });
         }
 

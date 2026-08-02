@@ -7,6 +7,12 @@ namespace VoxAngelos.Services
     {
         public string? Category { get; set; }
         public string? Office { get; set; }
+
+        // 0..1 softmax-normalized margin from the SVM's decision_function — a proxy for how
+        // sure the model is, not a calibrated probability. Null if the Space hasn't been
+        // updated to return it yet, in which case callers should treat the prediction as
+        // trusted (fail open) rather than reject it for a missing field.
+        public double? Confidence { get; set; }
     }
 
     // Calls the TF-IDF + SVM concern classifier hosted alongside the OCR/face

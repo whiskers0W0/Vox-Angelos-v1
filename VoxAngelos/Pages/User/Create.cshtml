@@ -757,7 +757,8 @@
 
                     if (data.success) {
                         if (isDevEnvironment) {
-                            console.log(`[VoxAngelos] Recommendation classified via ${data.classifierTier}: office=${data.office}`);
+                            const confidenceLabel = data.confidence != null ? `${(data.confidence * 100).toFixed(1)}%` : 'n/a';
+                            console.log(`[VoxAngelos] Recommendation classified via ${data.classifierTier}: office=${data.office}, confidence=${confidenceLabel}`);
                         }
                         setSubmissionInteractionLock(recommendationFormSurface, false);
                         stepFooter.style.display = 'none';
@@ -1312,14 +1313,15 @@
                 if (result.success) {
                     confirmedCategory = result.category;
                     if (isDevEnvironment) {
-                        console.log(`[VoxAngelos] Concern classified via ${result.classifierTier}: category=${result.category}, office=${result.office}`);
+                        const confidenceLabel = result.confidence != null ? `${(result.confidence * 100).toFixed(1)}%` : 'n/a';
+                        console.log(`[VoxAngelos] Concern classified via ${result.classifierTier}: category=${result.category}, office=${result.office}, confidence=${confidenceLabel}`);
                     }
 
                     submitBtn.textContent = 'Submitting...';
                     await submitConfirmedConcern();
                     submissionSucceeded = true;
                 } else {
-                    showClassificationError('The AI service could not categorize your concern right now. Please try again in a moment.');
+                    showClassificationError(result.message || 'The AI service could not categorize your concern right now. Please try again in a moment.');
                 }
             } catch (e) {
                 showClassificationError('We could not connect to the AI service. Please check your connection and try again.');
