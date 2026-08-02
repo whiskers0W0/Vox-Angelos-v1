@@ -31,6 +31,9 @@ namespace VoxAngelos.Data
         // emails are always sent independently of this preference.
         public bool EmailNotificationsEnabled { get; set; } = false;
 
+        // Local path of the citizen-selected built-in avatar.
+        public string? ProfilePhotoUrl { get; set; }
+
         // Navigation properties
         public UserProfile? UserProfile { get; set; }
         public AccountApproval? AccountApproval { get; set; }

@@ -10,6 +10,21 @@ namespace VoxAngelos.Pages.User
     [Authorize(Roles = "User")]
     public class ProfileModel : PageModel
     {
+        private static readonly IReadOnlyDictionary<string, string> AllowedAnimalAvatars =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["philippine-eagle"] = "/images/avatars/philippine-eagle.png",
+                ["philippine-tarsier"] = "/images/avatars/philippine-tarsier.png",
+                ["carabao"] = "/images/avatars/carabao.png",
+                ["pawikan"] = "/images/avatars/pawikan.png",
+                ["owl"] = "/images/avatars/owl.png",
+                ["aspin"] = "/images/avatars/aspin.png",
+                ["puspin"] = "/images/avatars/puspin.png",
+                ["rabbit"] = "/images/avatars/rabbit.png",
+                ["dolphin"] = "/images/avatars/dolphin.png",
+                ["philippine-hornbill"] = "/images/avatars/philippine-hornbill.png"
+            };
+
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
 
@@ -20,6 +35,24 @@ namespace VoxAngelos.Pages.User
         }
 
         public CitizenProfileViewModel Profile { get; private set; } = new();
+
+        [BindProperty]
+        public string? SelectedAvatar { get; set; }
+
+        public IReadOnlyList<AvatarOptionViewModel> AvatarOptions { get; } =
+            new List<AvatarOptionViewModel>
+            {
+                new("philippine-eagle", "Philippine Eagle", "/images/avatars/philippine-eagle.png"),
+                new("philippine-tarsier", "Philippine Tarsier", "/images/avatars/philippine-tarsier.png"),
+                new("carabao", "Carabao", "/images/avatars/carabao.png"),
+                new("pawikan", "Pawikan", "/images/avatars/pawikan.png"),
+                new("owl", "Owl", "/images/avatars/owl.png"),
+                new("aspin", "Aspin", "/images/avatars/aspin.png"),
+                new("puspin", "Puspin", "/images/avatars/puspin.png"),
+                new("rabbit", "Rabbit", "/images/avatars/rabbit.png"),
+                new("dolphin", "Dolphin", "/images/avatars/dolphin.png"),
+                new("philippine-hornbill", "Philippine Hornbill", "/images/avatars/philippine-hornbill.png")
+            };
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -64,10 +97,37 @@ namespace VoxAngelos.Pages.User
                 City = profile?.City ?? verifiedCity,
                 EmailAddress = user.Email,
                 BirthDate = storedBirthDate ?? detectedBirthDate,
-                IdType = idType
+                IdType = idType,
+                ProfilePhotoUrl = user.ProfilePhotoUrl
             };
 
             return Page();
+        }
+
+        public async Task<IActionResult> OnPostUpdateAvatarAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Challenge();
+
+            if (string.IsNullOrWhiteSpace(SelectedAvatar)
+                || !AllowedAnimalAvatars.TryGetValue(SelectedAvatar, out var avatarUrl))
+            {
+                TempData["ProfileAvatarError"] = "Please choose one of the available animal avatars.";
+                return RedirectToPage();
+            }
+
+            user.ProfilePhotoUrl = avatarUrl;
+            var updateResult = await _userManager.UpdateAsync(user);
+
+            if (!updateResult.Succeeded)
+            {
+                TempData["ProfileAvatarError"] = "Your avatar could not be updated. Please try again.";
+                return RedirectToPage();
+            }
+
+            TempData["ProfileAvatarSuccess"] = "Your profile avatar has been updated.";
+            return RedirectToPage();
         }
 
         private static bool IsPlausibleBirthDate(DateOnly? value)
@@ -89,6 +149,7 @@ namespace VoxAngelos.Pages.User
             public string? EmailAddress { get; set; }
             public DateOnly? BirthDate { get; set; }
             public string? IdType { get; set; }
+            public string? ProfilePhotoUrl { get; set; }
 
             public string DisplayName => string.Join(" ", new[] { FirstName, MiddleName, LastName }
                 .Where(value => !string.IsNullOrWhiteSpace(value)));
@@ -96,5 +157,7 @@ namespace VoxAngelos.Pages.User
                 ? "Identity verified"
                 : $"Verified using {IdType}";
         }
+
+        public record AvatarOptionViewModel(string Key, string Name, string ImageUrl);
     }
 }

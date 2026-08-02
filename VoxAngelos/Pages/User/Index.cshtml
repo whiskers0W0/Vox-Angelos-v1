@@ -11,6 +11,28 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/citizen-discover.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/citizen-dashboard.css" asp-append-version="true" />
+    <style>
+        .recommendation-animal-avatar {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: inherit;
+            background-image: url('@Url.Content("~/images/avatars/generated-animal-avatars.png")');
+            background-repeat: no-repeat;
+            background-size: 568% 284%;
+        }
+
+        .recommendation-animal-avatar--philippine-eagle { background-position: 4% 20%; }
+        .recommendation-animal-avatar--philippine-tarsier { background-position: 27% 20%; }
+        .recommendation-animal-avatar--carabao { background-position: 50% 20%; }
+        .recommendation-animal-avatar--pawikan { background-position: 73% 20%; }
+        .recommendation-animal-avatar--owl { background-position: 96% 20%; }
+        .recommendation-animal-avatar--aspin { background-position: 4% 80%; }
+        .recommendation-animal-avatar--puspin { background-position: 27% 80%; }
+        .recommendation-animal-avatar--rabbit { background-position: 50% 80%; }
+        .recommendation-animal-avatar--dolphin { background-position: 73% 80%; }
+        .recommendation-animal-avatar--philippine-hornbill { background-position: 96% 80%; }
+    </style>
 }
 
 <div class="discover-page civic-dashboard">
@@ -125,10 +147,17 @@
                 <div class="card-header">
                     <div class="author-info">
                         <div class="avatar" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <circle cx="12" cy="8" r="4" />
-                                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                            </svg>
+                            @if (!string.IsNullOrWhiteSpace(rec.ProfileAvatarKey))
+                            {
+                                <span class="recommendation-animal-avatar recommendation-animal-avatar--@rec.ProfileAvatarKey"></span>
+                            }
+                            else
+                            {
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="8" r="4" />
+                                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                                </svg>
+                            }
                         </div>
                         <div class="author-details">
                             <div class="author-name">@rec.CitizenName</div>
@@ -258,10 +287,17 @@
                         <div class="card-header">
                             <div class="author-info">
                                 <div class="avatar" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="currentColor">
-                                        <circle cx="12" cy="8" r="4" />
-                                        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                                    </svg>
+                                    @if (!string.IsNullOrWhiteSpace(rec.ProfileAvatarKey))
+                                    {
+                                        <span class="recommendation-animal-avatar recommendation-animal-avatar--@rec.ProfileAvatarKey"></span>
+                                    }
+                                    else
+                                    {
+                                        <svg viewBox="0 0 24 24" fill="currentColor">
+                                            <circle cx="12" cy="8" r="4" />
+                                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                                        </svg>
+                                    }
                                 </div>
                                 <div class="author-details">
                                     <div class="author-name">@rec.CitizenName</div>
