@@ -63,6 +63,7 @@ builder.Services.AddHttpClient(nameof(VoxAngelos.Services.EmailSender));
 builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, VoxAngelos.Services.EmailSender>();
 
 builder.Services.AddScoped<OcrService>();
+builder.Services.AddScoped<HfConcernClassifierService>();
 builder.Services.AddScoped<ConcernClassificationService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<RecommendationRatingService>();

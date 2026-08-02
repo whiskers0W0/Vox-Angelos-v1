@@ -17,12 +17,12 @@ namespace VoxAngelos.Pages.User
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
         private readonly ConcernClassificationService _classifier;
         private readonly UrgencyScoreService _urgencyScore;
         private readonly IHubContext<FeedHub> _feedHub;
         private readonly CloudinaryAttachmentStorage _attachmentStorage;
+        private readonly IWebHostEnvironment _env;
         private readonly ILogger<CreateModel> _logger;
         private const int MaximumAttachmentCount = 8;
         private static readonly HashSet<string> ConcernCategoryHints = new(StringComparer.Ordinal)
@@ -39,27 +39,28 @@ namespace VoxAngelos.Pages.User
 
         public CreateModel(ApplicationDbContext db,
                            UserManager<ApplicationUser> userManager,
-                           IWebHostEnvironment env,
                            IConfiguration configuration,
                            ConcernClassificationService classifier,
                            UrgencyScoreService urgencyScore,
                            IHubContext<FeedHub> feedHub,
                            CloudinaryAttachmentStorage attachmentStorage,
+                           IWebHostEnvironment env,
                            ILogger<CreateModel> logger)
         {
             _db = db;
             _userManager = userManager;
-            _env = env;
             _configuration = configuration;
             _classifier = classifier;
             _urgencyScore = urgencyScore;
             _feedHub = feedHub;
             _attachmentStorage = attachmentStorage;
+            _env = env;
             _logger = logger;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
         public string GoogleMapsApiKey => _configuration["GoogleMaps:ApiKey"] ?? "";
+        public bool IsDevelopmentEnvironment => _env.IsDevelopment();
         public Concern? SavedConcernDraft { get; private set; }
         public Recommendation? SavedRecommendationDraft { get; private set; }
 
@@ -86,13 +87,6 @@ namespace VoxAngelos.Pages.User
         [BindProperty] public int RecPeopleAffected { get; set; }
         [BindProperty] public bool RecIsAnonymous { get; set; }
         [BindProperty] public List<IFormFile> RecAttachments { get; set; } = new();
-
-        private string? ResolveCredentialsPath(string? path)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return null;
-            if (Path.IsPathRooted(path)) return path;
-            return Path.Combine(_env.ContentRootPath, path);
-        }
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -181,9 +175,7 @@ namespace VoxAngelos.Pages.User
 
             var classifiedCategory = !string.IsNullOrWhiteSpace(ConfirmedCategory)
                 ? ConfirmedCategory
-                : await _classifier.ClassifyAsync(
-                    Description,
-                    ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+                : (await _classifier.ClassifyAsync(Description)).Department;
 
             // Upload every attachment before writing the concern to the database.
             // A Cloudinary failure therefore cannot leave a submitted concern with
@@ -344,9 +336,8 @@ namespace VoxAngelos.Pages.User
 
         public async Task<IActionResult> OnPostClassifyAsync([FromBody] ClassifyRequest request)
         {
-            var category = await _classifier.ClassifyAsync(
-                request.Description,
-                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            var classification = await _classifier.ClassifyAsync(request.Description);
+            var category = classification.Department;
 
             if (category == null)
                 return new JsonResult(new { success = false });
@@ -372,7 +363,8 @@ namespace VoxAngelos.Pages.User
                 success = true,
                 category,
                 office = officeNames.GetValueOrDefault(category, category),
-                email = officeEmail ?? ""
+                email = officeEmail ?? "",
+                classifierTier = classification.Tier
             });
         }
 
@@ -440,9 +432,8 @@ namespace VoxAngelos.Pages.User
 
             // Keep the external classification call outside the retryable database unit.
             // A temporary database reconnect must not send the same text to the AI twice.
-            var assignedOffice = await _classifier.ClassifyAsync(
-                classificationText,
-                ResolveCredentialsPath(_configuration["GoogleCloud:CredentialsPath"]));
+            var recommendationClassification = await _classifier.ClassifyAsync(classificationText);
+            var assignedOffice = recommendationClassification.Department;
             var executionStrategy = _db.Database.CreateExecutionStrategy();
 
             await executionStrategy.ExecuteAsync(async () =>
@@ -511,7 +502,12 @@ namespace VoxAngelos.Pages.User
                     .SendAsync("RecommendationFeedChanged");
             }
 
-            return new JsonResult(new { success = true });
+            return new JsonResult(new
+            {
+                success = true,
+                office = assignedOffice ?? "",
+                classifierTier = recommendationClassification.Tier
+            });
         }
 
         private async Task AddLguSubmissionNotificationsAsync(

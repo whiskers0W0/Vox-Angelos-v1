@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.Admin
 {
@@ -25,6 +26,7 @@ namespace VoxAngelos.Pages.Admin
         [BindProperty] public string NewDepartment { get; set; } = string.Empty;
         [BindProperty] public string NewDepartmentFullName { get; set; } = string.Empty;
         [BindProperty] public string NewTags { get; set; } = string.Empty;
+        [BindProperty] public string NewCategories { get; set; } = string.Empty;
 
         [BindProperty] public string EditUserId { get; set; } = string.Empty;
         [BindProperty] public string EditEmployeeId { get; set; } = string.Empty;
@@ -33,6 +35,10 @@ namespace VoxAngelos.Pages.Admin
         [BindProperty] public string EditDepartment { get; set; } = string.Empty;
         [BindProperty] public string EditDepartmentFullName { get; set; } = string.Empty;
         [BindProperty] public string EditTags { get; set; } = string.Empty;
+        [BindProperty] public string EditCategories { get; set; } = string.Empty;
+
+        // The fine-grained HF classifier categories available to assign, in the dropdown.
+        public static readonly string[] AvailableCategories = ConcernClassificationService.Categories;
 
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
@@ -90,6 +96,7 @@ namespace VoxAngelos.Pages.Admin
                 Department = NewDepartment,
                 DepartmentFullName = string.IsNullOrWhiteSpace(NewDepartmentFullName) ? null : NewDepartmentFullName.Trim(),
                 Tags = ParseTags(NewTags),
+                Categories = ParseCategories(NewCategories),
                 ApprovalStatus = "Approved",
                 CreatedAt = DateTime.UtcNow,
                 TwoFactorEnabled = false
@@ -203,6 +210,7 @@ namespace VoxAngelos.Pages.Admin
             }
 
             user.Tags = ParseTags(EditTags);
+            user.Categories = ParseCategories(EditCategories);
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
@@ -282,6 +290,17 @@ namespace VoxAngelos.Pages.Admin
                 .ToList();
         }
 
+        private static List<string> ParseCategories(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return new List<string>();
+
+            return raw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(c => ConcernClassificationService.Categories.Contains(c, StringComparer.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         private async Task LoadAccountsAsync()
         {
             var lguUsers = await _userManager.GetUsersInRoleAsync("LGU");
@@ -295,6 +314,7 @@ namespace VoxAngelos.Pages.Admin
                     Department = user.Department ?? "N/A",
                     DepartmentFullName = user.DepartmentFullName ?? string.Empty,
                     Tags = user.Tags ?? new List<string>(),
+                    Categories = user.Categories ?? new List<string>(),
                     IsActive = user.LockoutEnd == null || user.LockoutEnd < DateTimeOffset.UtcNow,
                     CreatedAt = user.CreatedAt
                 });
@@ -310,6 +330,7 @@ namespace VoxAngelos.Pages.Admin
         public string Department { get; set; } = string.Empty;
         public string DepartmentFullName { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = new();
+        public List<string> Categories { get; set; } = new();
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
     }

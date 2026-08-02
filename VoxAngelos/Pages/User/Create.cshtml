@@ -420,6 +420,8 @@
 
 @section Scripts {
     <script>
+        const isDevEnvironment = @Html.Raw(Model.IsDevelopmentEnvironment ? "true" : "false");
+
         const savedConcernDraft = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
         {
             HasDraft = Model.SavedConcernDraft != null,
@@ -754,6 +756,9 @@
                     const data = await readRecommendationResponse(response);
 
                     if (data.success) {
+                        if (isDevEnvironment) {
+                            console.log(`[VoxAngelos] Recommendation classified via ${data.classifierTier}: office=${data.office}`);
+                        }
                         setSubmissionInteractionLock(recommendationFormSurface, false);
                         stepFooter.style.display = 'none';
                         steps.forEach(s => s.classList.remove('active'));
@@ -1306,6 +1311,9 @@
 
                 if (result.success) {
                     confirmedCategory = result.category;
+                    if (isDevEnvironment) {
+                        console.log(`[VoxAngelos] Concern classified via ${result.classifierTier}: category=${result.category}, office=${result.office}`);
+                    }
 
                     submitBtn.textContent = 'Submitting...';
                     await submitConfirmedConcern();

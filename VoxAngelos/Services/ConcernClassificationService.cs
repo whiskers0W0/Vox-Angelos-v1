@@ -1,4 +1,3 @@
-using Google.Cloud.Language.V1;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using VoxAngelos.Data;
@@ -13,20 +12,43 @@ namespace VoxAngelos.Services
         public int ConcernId { get; } = concernId;
     }
 
+    // Which tier of the classifier chain produced a result — surfaced to the LGU/citizen
+    // UI (browser console) so it's obvious whether the HF model or a local fallback answered.
+    public record ClassificationResult(string? Department, string Tier);
+
     public class ConcernClassificationService
     {
         private readonly ApplicationDbContext _db;
         private readonly ILogger<ConcernClassificationService> _logger;
+        private readonly HfConcernClassifierService _hfClassifier;
 
-        public ConcernClassificationService(ApplicationDbContext db, ILogger<ConcernClassificationService> logger)
+        public ConcernClassificationService(
+            ApplicationDbContext db,
+            ILogger<ConcernClassificationService> logger,
+            HfConcernClassifierService hfClassifier)
         {
             _db = db;
             _logger = logger;
+            _hfClassifier = hfClassifier;
         }
 
         // Departments this classifier can route to — used to validate corrections.
         public static readonly string[] Departments =
             ["SWDO", "CEO", "CENRO", "ACDO", "PTRO", "OSCA", "PWDAO"];
+
+        // The 17 fine-grained categories the HF model predicts. Which department (if any)
+        // each one routes to is admin-editable (Admin → Office Management → Categories) rather
+        // than fixed in the HF Space's office_map.json, so a category can be reassigned —
+        // including one with no real office yet — without touching the model or its host.
+        public static readonly string[] Categories =
+        [
+            "infrastructure", "urban_planning", "business_permits",
+            "environment", "sanitation", "waste_management",
+            "public_safety", "traffic",
+            "pwd_affairs", "senior_citizen", "social_services",
+            "health", "education", "employment", "animal_welfare",
+            "disaster_risk_reduction", "utilities"
+        ];
 
         // Read-only view of the built-in keyword lists, keyed by department — used to
         // seed an office's admin-editable NLP tags (Office Management) with a sensible
@@ -41,55 +63,7 @@ namespace VoxAngelos.Services
             "ang", "ng", "sa", "at", "na", "po", "ay", "mga", "ito", "yan", "yung", "dahil",
             "kasi", "para", "may", "wala", "din", "rin", "kami", "kayo", "sila", "ako", "ikaw"
         };
-        // Maps Google NLP category path segments → our 7 departments
-        private static readonly (string Keyword, string Department)[] GoogleCategoryMap =
-        [
-            // SWDO
-            ("Social",      "SWDO"),
-            ("Welfare",     "SWDO"),
-            ("Community",   "SWDO"),
-            ("Poverty",     "SWDO"),
-            ("Family",      "SWDO"),
-            ("Charity",     "SWDO"),
-            // Engineering Office
-            ("Infrastructure",  "CEO"),
-            ("Construction",    "CEO"),
-            ("Road",            "CEO"),
-            ("Building",        "CEO"),
-            ("Civil",           "CEO"),
-            ("Public Works",    "CEO"),
-            // Environment
-            ("CENRO",  "CENRO"),
-            ("Waste",        "CENRO"),
-            ("Nature",       "CENRO"),
-            ("Pollution",    "CENRO"),
-            ("Sanitation",   "CENRO"),
-            ("Ecology",      "CENRO"),
-            // ACDO
-            ("Planning",     "ACDO"),
-            ("Development",  "ACDO"),
-            ("Urban",        "ACDO"),
-            ("Economic",     "ACDO"),
-            ("Land Use",     "ACDO"),
-            // PTRO
-            ("Traffic",         "PTRO"),
-            ("Transportation",  "PTRO"),
-            ("Parking",         "PTRO"),
-            ("Vehicle",         "PTRO"),
-            ("Transit",         "PTRO"),
-            // OSCA
-            ("Senior",      "OSCA"),
-            ("Elderly",     "OSCA"),
-            ("Aging",       "OSCA"),
-            ("Retirement",  "OSCA"),
-            // PWDAO
-            ("Disability",      "PWDAO"),
-            ("Accessibility",   "PWDAO"),
-            ("Disabled",        "PWDAO"),
-            ("Inclusion",       "PWDAO"),
-        ];
-
-        // Local keyword lists — fallback when Google NLP is unavailable
+        // Local keyword lists — fallback when the HF classifier is unavailable
         private static readonly Dictionary<string, string[]> DepartmentKeywords =
             new(StringComparer.OrdinalIgnoreCase)
         {
@@ -287,34 +261,61 @@ namespace VoxAngelos.Services
         private const int MinConfidentClassificationScore = 2;
 
         /// <summary>
-        /// Primary: Google NLP (≥ 20 words, required by ClassifyText). Everything else
-        /// is a fallback for when Google isn't possible (too short, credentials/network
-        /// failure, or no confident category): LGU-verified corrections win outright if
-        /// they have a confident signal, otherwise local keyword scoring blended with
-        /// learned weights.
+        /// Primary: our self-trained TF-IDF + SVM concern classifier (HF Space). Falls
+        /// back to local keyword scoring when the model is unavailable or predicts a
+        /// category with no real office yet (FUTURE_EXPANSION): LGU-verified corrections
+        /// win outright if they have a confident signal, otherwise local keyword scoring
+        /// blended with learned weights.
         /// </summary>
-        public async Task<string?> ClassifyAsync(string description, string? credentialsPath = null)
+        public async Task<ClassificationResult> ClassifyAsync(string description)
         {
             if (string.IsNullOrWhiteSpace(description))
-                return null;
+                return new ClassificationResult(null, "None");
 
-            // Google NLP ClassifyText requires ≥ 20 tokens
-            var wordCount = description.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            if (wordCount >= 20)
+            var hfPrediction = await _hfClassifier.ClassifyAsync(description);
+            if (hfPrediction?.Category != null)
             {
-                var googleResult = await TryGoogleNlpAsync(description, credentialsPath, _logger);
-                if (googleResult != null)
-                    return googleResult;
+                // Admin-assigned category→department mapping (Office Management) wins over
+                // the HF Space's own office_map.json — this is what lets a FUTURE_EXPANSION
+                // category get a real office later without redeploying the Space.
+                var categoryDepartments = await LoadCategoryDepartmentsAsync();
+                if (categoryDepartments.TryGetValue(hfPrediction.Category, out var mappedDepartment))
+                {
+                    _logger.LogInformation(
+                        "HF classifier CLASSIFIED: category={Category} department={Department} (admin mapping)",
+                        hfPrediction.Category, mappedDepartment);
+                    return new ClassificationResult(mappedDepartment, "HF Model");
+                }
+
+                var office = hfPrediction.Office;
+                if (!string.IsNullOrWhiteSpace(office) && office != "FUTURE_EXPANSION" && Departments.Contains(office))
+                {
+                    _logger.LogInformation(
+                        "HF classifier CLASSIFIED: category={Category} department={Department}",
+                        hfPrediction.Category, office);
+                    return new ClassificationResult(office, "HF Model");
+                }
+
+                _logger.LogInformation(
+                    "HF classifier predicted category={Category} office={Office} — no usable department, falling back",
+                    hfPrediction.Category, office ?? "(none)");
             }
 
             var learned = await LoadLearnedWeightsAsync();
 
             var confidentLearnedResult = ClassifyFromLearnedWeightsOnly(description, learned);
             if (confidentLearnedResult != null)
-                return confidentLearnedResult;
+            {
+                _logger.LogInformation(
+                    "FALLBACK (learned weights only) CLASSIFIED: department={Department}", confidentLearnedResult);
+                return new ClassificationResult(confidentLearnedResult, "Learned Weights");
+            }
 
             var departmentTags = await LoadDepartmentTagsAsync();
-            return Classify(description, learned, departmentTags);
+            var keywordResult = Classify(description, learned, departmentTags);
+            _logger.LogInformation(
+                "FALLBACK (keyword scoring) CLASSIFIED: department={Department}", keywordResult ?? "(Uncategorized)");
+            return new ClassificationResult(keywordResult, "Keyword Scoring");
         }
 
         /// <summary>
@@ -429,6 +430,27 @@ namespace VoxAngelos.Services
                 .ToDictionary(
                     g => g.Key,
                     g => g.SelectMany(r => r.Tags).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+        }
+
+        /// <summary>
+        /// Loads the admin-assigned category→department mapping (Admin → Office Management →
+        /// Categories) — each LGU account's Categories list names the fine-grained HF categories
+        /// it should receive. If two accounts somehow claim the same category, the last one read
+        /// wins; the UI is expected to prevent that by hiding categories already assigned elsewhere.
+        /// </summary>
+        private async Task<Dictionary<string, string>> LoadCategoryDepartmentsAsync()
+        {
+            var rows = await _db.Users
+                .Where(u => u.Department != null && u.Categories.Count > 0)
+                .Select(u => new { u.Department, u.Categories })
+                .ToListAsync();
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in rows)
+                foreach (var category in row.Categories)
+                    map[category] = row.Department!;
+
+            return map;
         }
 
         private async Task<Dictionary<string, Dictionary<string, int>>> LoadLearnedWeightsAsync()
@@ -552,52 +574,5 @@ namespace VoxAngelos.Services
                 .ToList();
         }
 
-        // ── Private helpers ───────────────────────────────────────────────────
-
-        private static async Task<string?> TryGoogleNlpAsync(string description, string? credentialsPath, ILogger logger)
-        {
-            try
-            {
-                var builder = new LanguageServiceClientBuilder();
-
-                if (!string.IsNullOrWhiteSpace(credentialsPath) && File.Exists(credentialsPath))
-                    builder.CredentialsPath = credentialsPath;
-
-                var client = await builder.BuildAsync();
-
-                var doc = new Document
-                {
-                    Content = description,
-                    Type = Document.Types.Type.PlainText
-                };
-
-                var response = await client.ClassifyTextAsync(doc);
-                var best = response.Categories
-                    .OrderByDescending(c => c.Confidence)
-                    .FirstOrDefault();
-
-                var mapped = best == null ? null : MapGoogleCategory(best.Name);
-                logger.LogWarning(
-                    "TEMP-NLP-DEBUG: Google returned category={GoogleCategory} confidence={Confidence} mapped={Mapped}",
-                    best?.Name ?? "(none)", best?.Confidence, mapped ?? "(null)");
-
-                return mapped;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "TEMP-NLP-DEBUG: Google NLP call failed, falling back to local classifier");
-                return null; // silently fall back to local classifier
-            }
-        }
-
-        private static string? MapGoogleCategory(string googleCategory)
-        {
-            foreach (var (keyword, department) in GoogleCategoryMap)
-            {
-                if (googleCategory.Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                    return department;
-            }
-            return null;
-        }
     }
 }

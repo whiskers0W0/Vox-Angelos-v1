@@ -142,6 +142,7 @@
                                         data-department="@account.Department"
                                         data-fullname="@account.DepartmentFullName"
                                         data-tags="@string.Join(",", account.Tags)"
+                                        data-categories="@string.Join(",", account.Categories)"
                                         onclick="showEditModalFromBtn(this)">Edit</button>
                                 <form method="post" asp-page-handler="ToggleStatus" class="admin-offices-inline-form">
                                     <input type="hidden" name="userId" value="@account.UserId" />
@@ -194,6 +195,20 @@
                 </div>
                 <input type="hidden" id="newTags" name="NewTags" />
             </div>
+            <div class="form-group">
+                <label>Categories <span class="form-hint-inline">(HF classifier categories routed to this office)</span></label>
+                <select id="newCategoriesSelect" class="form-control" onchange="addCategory('new', this.value); this.value='';">
+                    <option value="">+ Add a category...</option>
+                    @foreach (var category in OfficeManagementModel.AvailableCategories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+                <div class="tag-input-wrap" id="newCategoriesWrap">
+                    <div class="tag-pills" id="newCategoriesPills"></div>
+                </div>
+                <input type="hidden" id="newCategories" name="NewCategories" />
+            </div>
             <p class="default-pass-note">Account will be created with the default password: <strong>Lgu@123456</strong></p>
             <div class="modal-actions">
                 <button type="button" onclick="closeMainModals()" class="btn-cancel">Cancel</button>
@@ -238,6 +253,20 @@
                            onkeydown="handleTagEntryKeydown('edit', event)" />
                 </div>
                 <input type="hidden" id="editTags" name="EditTags" />
+            </div>
+            <div class="form-group">
+                <label>Categories <span class="form-hint-inline">(HF classifier categories routed to this office)</span></label>
+                <select id="editCategoriesSelect" class="form-control" onchange="addCategory('edit', this.value); this.value='';">
+                    <option value="">+ Add a category...</option>
+                    @foreach (var category in OfficeManagementModel.AvailableCategories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+                <div class="tag-input-wrap" id="editCategoriesWrap">
+                    <div class="tag-pills" id="editCategoriesPills"></div>
+                </div>
+                <input type="hidden" id="editCategories" name="EditCategories" />
             </div>
             <div class="form-group">
                 <label>New Password <span class="form-hint-inline">(leave blank to keep current)</span></label>
@@ -292,6 +321,22 @@
         <div class="modal-actions">
             <button type="button" onclick="closeRemoveTagWarning()" class="btn-cancel">Cancel</button>
             <button type="button" onclick="confirmRemoveTag()" class="btn-danger">Remove Tag</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ WARNING: REMOVE CATEGORY ═══════════════════ -->
+<div id="removeCategoryWarningModal" class="modal-overlay" style="display:none;z-index:1010">
+    <div class="modal-box warning-modal">
+        <div class="modal-header">
+            <h3 class="warning-title">Remove Category</h3>
+        </div>
+        <div class="warning-body">
+            <p>Remove the category <strong id="removeCategoryName"></strong> from this office? Concerns classified under this category will no longer be routed here until it's reassigned.</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeRemoveCategoryWarning()" class="btn-cancel">Cancel</button>
+            <button type="button" onclick="confirmRemoveCategory()" class="btn-danger">Remove Category</button>
         </div>
     </div>
 </div>
@@ -415,6 +460,66 @@
         renderTags(key);
     }
 
+    // ── Category pill input ──
+    const categoryState = { new: [], edit: [] };
+
+    function renderCategories(key) {
+        const pillsEl = document.getElementById(key + 'CategoriesPills');
+        const hiddenEl = document.getElementById(key + 'Categories');
+        pillsEl.innerHTML = categoryState[key].map((category, idx) => `
+            <span class="tag-pill">
+                <span>${escapeHtml(category)}</span>
+                <button type="button" class="tag-pill-remove" aria-label="Remove category ${escapeHtml(category)}" onclick="removeCategory('${key}', ${idx}); event.stopPropagation();">×</button>
+            </span>
+        `).join('');
+        hiddenEl.value = categoryState[key].join(',');
+        updateCategorySelectOptions(key);
+    }
+
+    function updateCategorySelectOptions(key) {
+        const selectEl = document.getElementById(key + 'CategoriesSelect');
+        if (!selectEl) return;
+        [...selectEl.options].forEach(opt => {
+            if (opt.value) opt.hidden = categoryState[key].includes(opt.value);
+        });
+    }
+
+    function addCategory(key, value) {
+        if (!value) return;
+        if (!categoryState[key].includes(value)) {
+            categoryState[key].push(value);
+            renderCategories(key);
+        }
+    }
+
+    let pendingCategoryRemoval = null;
+
+    function removeCategory(key, idx) {
+        const category = categoryState[key][idx];
+        if (category === undefined) return;
+        pendingCategoryRemoval = { key, idx };
+        document.getElementById('removeCategoryName').textContent = category;
+        document.getElementById('removeCategoryWarningModal').style.display = 'flex';
+    }
+
+    function closeRemoveCategoryWarning() {
+        pendingCategoryRemoval = null;
+        document.getElementById('removeCategoryWarningModal').style.display = 'none';
+    }
+
+    function confirmRemoveCategory() {
+        if (!pendingCategoryRemoval) return;
+        const { key, idx } = pendingCategoryRemoval;
+        categoryState[key].splice(idx, 1);
+        renderCategories(key);
+        closeRemoveCategoryWarning();
+    }
+
+    function setCategories(key, categories) {
+        categoryState[key] = categories.filter(c => c.length > 0);
+        renderCategories(key);
+    }
+
     function handleTagEntryKeydown(key, event) {
         if (event.key === 'Enter' || event.key === ',') {
             event.preventDefault();
@@ -436,12 +541,14 @@
         document.getElementById('editPassword').value = '';
         document.getElementById('editTagsEntry').value = '';
         setTags('edit', btn.dataset.tags ? btn.dataset.tags.split(',') : []);
+        setCategories('edit', btn.dataset.categories ? btn.dataset.categories.split(',') : []);
         document.getElementById('editModal').style.display = 'flex';
     }
 
     function showCreateModal() {
         document.getElementById('newTagsEntry').value = '';
         setTags('new', []);
+        setCategories('new', []);
         document.getElementById('createModal').style.display = 'flex';
     }
 

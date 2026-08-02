@@ -49,6 +49,11 @@ namespace VoxAngelos.Data
                 .Property(u => u.Tags)
                 .HasDefaultValueSql("ARRAY[]::text[]");
 
+            // Same default-empty-array treatment for the HF classifier category assignments.
+            builder.Entity<ApplicationUser>()
+                .Property(u => u.Categories)
+                .HasDefaultValueSql("ARRAY[]::text[]");
+
             // Each department may have at most one LGU account.
             builder.Entity<ApplicationUser>()
                 .HasIndex(u => u.Department)
