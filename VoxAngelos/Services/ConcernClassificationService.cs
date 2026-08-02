@@ -327,10 +327,12 @@ namespace VoxAngelos.Services
 
         // Below this, an HF prediction isn't trusted on its own — the description gets a
         // second opinion from the local fallback tiers before either accepting or rejecting
-        // it. This is a raw softmax margin, not a calibrated probability (see
-        // HfClassificationResult.Confidence) — tune empirically against real submissions,
-        // not as an exact "% chance correct."
-        private const double MinHfConfidence = 0.35;
+        // it. This is a raw softmax margin over 17 classes, not a calibrated probability (see
+        // HfClassificationResult.Confidence) — with that many classes, even a correct
+        // prediction's margin sits well below 50%, so tune empirically against real
+        // submissions rather than as an exact "% chance correct." Observed in practice:
+        // genuine concerns land around 0.13-0.18, off-topic/spam text around 0.08.
+        private const double MinHfConfidence = 0.10;
 
         // A department must clear this score, with no tie against the runner-up, before
         // a classifier result (learned weights, or the static keyword fallback) is
