@@ -5,11 +5,37 @@
 body { min-height:100vh; margin:0; background:var(--page-bg); color:var(--text-main); font-family:var(--font); }
 .layout-wrapper { min-height:100vh; }
 .sidebar { position:fixed; inset:0 auto 0 0; z-index:100; display:flex; width:var(--sidebar-width); height:100vh; flex-direction:column; padding:24px 16px 18px; border-right:1px solid #e2e7ef; background:#fff; transition:transform .25s ease; }
-.sidebar-brand { display:flex; align-items:center; gap:10px; min-height:46px; margin:0 4px 28px; padding:0 8px; color:#0b2e6f; text-decoration:none; }
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    margin: 0 4px 28px;
+    padding: 0 8px;
+    color: #1646A0;
+    text-decoration: none;
+}
 .brand-logo,.brand-v { display:none; }
 .sidebar-brand::before,
-.mobile-brand::before { display:block; flex:0 0 32px; width:32px; height:32px; border-radius:50%; background-color:#2862cd; background-image:url("/assets/VoxAngelosLogo.png"); background-position:center; background-repeat:no-repeat; background-size:74%; content:""; }
-.brand-name { color:#0b2e6f; font-size:17px; font-weight:750; letter-spacing:-.02em; }
+.mobile-brand::before {
+    display: block;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #1646A0;
+    background-image: url("/assets/VoxAngelosLogo.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 74%;
+    content: "";
+}
+.brand-name {
+    color: #1646A0;
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: -.02em;
+}
 .sidebar-nav { display:flex; flex:1; flex-direction:column; gap:5px; padding:0; }
 .nav-item { display:flex; align-items:center; gap:12px; min-height:44px; padding:11px 12px; border-radius:9px; color:#5a6679; font-size:12.5px; font-weight:600; text-decoration:none; transition:background .16s ease,color .16s ease; }
 .nav-item svg { width:19px; height:19px; flex:0 0 19px; }

@@ -72,6 +72,7 @@ body {
     max-width: 31px;
     height: auto;
     object-fit: contain;
+    color: #1646A0;
 }
 
 .brand-name {
@@ -582,19 +583,19 @@ body {
     display: none;
 }
 
-.citizen-discover-shell .sidebar-brand::before {
-    display: block;
-    width: 32px;
-    height: 32px;
-    flex: 0 0 32px;
-    border-radius: 50%;
-    background-color: #2862cd;
-    background-image: url("/assets/VoxAngelosLogo.png");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 74%;
-    content: "";
-}
+    .citizen-discover-shell .sidebar-brand::before {
+        display: block;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        border-radius: 50%;
+        background-color: #1646A0;
+        background-image: url("/assets/VoxAngelosLogo.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 74%;
+        content: "";
+    }
 
 .citizen-discover-shell .brand-copy,
 .citizen-discover-shell .brand-copy strong,
@@ -811,19 +812,19 @@ body {
     margin-left: 0;
 }
 
-.citizen-discover-shell .mobile-brand::before {
-    display: block;
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    border-radius: 50%;
-    background-color: #2862cd;
-    background-image: url("/assets/VoxAngelosLogo.png");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 74%;
-    content: "";
-}
+    .citizen-discover-shell .mobile-brand::before {
+        display: block;
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        border-radius: 50%;
+        background-color: #1646A0;
+        background-image: url("/assets/VoxAngelosLogo.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 74%;
+        content: "";
+    }
 
 .citizen-discover-shell .mobile-brand > span {
     margin: 0;

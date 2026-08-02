@@ -23,7 +23,7 @@
             <section class="panel-left" aria-label="Citizen verification introduction">
                 <div class="portal-brand" aria-label="Vox Angelos citizen portal">
                     <img src="~/assets/VoxAngelosLogo.png" alt="" />
-                    <span><strong>Vox Angelos</strong><small>Citizen portal</small></span>
+                    <span><strong>Vox Angelos</strong><small>Access portal</small></span>
                 </div>
                 <span class="eyebrow">Secure verification</span>
                 <h1 class="title">One more step<br />to your city.</h1>
@@ -47,9 +47,60 @@
 
                         <div class="code-field">
                             <label asp-for="Input.TwoFactorCode" class="form-text-label">Verification code</label>
-                            <input asp-for="Input.TwoFactorCode" class="form-control otp-input" autocomplete="off" maxlength="6" placeholder="------" inputmode="numeric" />
+
+                            <!-- Hidden input that actually binds to the model and gets submitted -->
+                            <input asp-for="Input.TwoFactorCode" type="hidden" id="otpHiddenInput" />
+
+                            <!-- Visible 6-box UI -->
+                            <div class="otp-boxes" id="otpBoxes">
+                                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="off" />
+                                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="off" />
+                                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="off" />
+                                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="off" />
+                                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="off" />
+                                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="off" />
+                            </div>
+
                             <span asp-validation-for="Input.TwoFactorCode" class="tech-validation"></span>
                         </div>
+
+                        <script>
+                                                    (() => {
+                                                        const boxes = Array.from(document.querySelectorAll('.otp-box'));
+                                                        const hiddenInput = document.getElementById('otpHiddenInput');
+
+                                                        function syncHiddenInput() {
+                                                            hiddenInput.value = boxes.map(b => b.value).join('');
+                                                        }
+
+                                                        boxes.forEach((box, index) => {
+                                                            box.addEventListener('input', () => {
+                                                                box.value = box.value.replace(/[^0-9]/g, ''); // digits only
+                                                                if (box.value && index < boxes.length - 1) {
+                                                                    boxes[index + 1].focus();
+                                                                }
+                                                                syncHiddenInput();
+                                                            });
+
+                                                            box.addEventListener('keydown', (e) => {
+                                                                if (e.key === 'Backspace' && !box.value && index > 0) {
+                                                                    boxes[index - 1].focus();
+                                                                }
+                                                            });
+
+                                                            box.addEventListener('paste', (e) => {
+                                                                e.preventDefault();
+                                                                const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+                                                                pasted.split('').forEach((char, i) => {
+                                                                    if (boxes[i]) boxes[i].value = char;
+                                                                });
+                                                                const nextEmpty = boxes.findIndex(b => !b.value);
+                                                                (nextEmpty === -1 ? boxes[boxes.length - 1] : boxes[nextEmpty]).focus();
+                                                                syncHiddenInput();
+                                                            });
+                                                        });
+                                                    })();
+                        </script>
 
                         <button type="submit" class="cta">
                             Verify &amp; sign in

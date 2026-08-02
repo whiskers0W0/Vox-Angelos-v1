@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
 /* ── TOKENS ── */
 :root {
     --primary-blue: #2B45B0;
@@ -948,235 +950,599 @@ body {
     }
 
 /* ── HOME SUBMISSION HERO · UI-only draft surface ── */
-.stage { min-height:780px; padding:78px 20px 42px; justify-content:center; }
-.home-submission-hero { position:relative; z-index:15; display:flex; width:min(100%,760px); flex-direction:column; align-items:center; text-align:center; }
-.hero-brand { display:inline-flex; align-items:center; gap:9px; margin-bottom:24px; color:#1646a0; font-size:17px; font-weight:800; letter-spacing:-.04em; }.hero-brand img { width:34px; height:34px; object-fit:contain; }.hero-kicker { display:block; margin-bottom:10px; color:#1646a0; font-family:var(--font-stack); font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }.hero-copy h1 { max-width:700px; margin:0; color:#172033; font-family:var(--font-stack); font-size:clamp(34px,5vw,54px); font-weight:780; letter-spacing:-.055em; line-height:1; }.hero-copy p { max-width:590px; margin:13px auto 22px; color:#526076; font-size:14px; line-height:1.55; }
-.hero-mode-switcher { display:grid; width:min(100%,430px); grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; padding:4px; border:1px solid #cad9f3; border-radius:9px; background:#eaf0fc; }.hero-mode-button { min-height:36px; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#506079; font:750 10.5px var(--font-stack); cursor:pointer; transition:background .16s,color .16s,box-shadow .16s; }.hero-mode-button.is-active { background:#1646a0; box-shadow:0 5px 10px rgba(22,70,160,.18); color:#fff; }.hero-mode-button:focus-visible,.home-portal-link:focus-visible,#heroModeMessage:focus-visible { outline:3px solid rgba(22,70,160,.25); outline-offset:2px; }
-.hero-composer { width:100%; margin-top:12px; padding:16px; border:1px solid #d6e0ef; border-radius:12px; background:rgba(255,255,255,.94); box-shadow:0 14px 32px rgba(32,54,91,.12); text-align:left; transition:border-color .18s,box-shadow .18s; }.home-submission-hero[data-mode="recommendation"] .hero-composer { border-color:#bed5c8; }.hero-composer:focus-within { border-color:#1646a0; box-shadow:0 0 0 4px rgba(22,70,160,.1),0 14px 32px rgba(32,54,91,.12); }.hero-composer-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:9px; }.hero-composer label { color:#25334a; font-size:11px; font-weight:800; letter-spacing:.04em; }.hero-mode-badge { flex:0 0 auto; padding:4px 6px; border-radius:4px; background:#eaf0fc; color:#1646a0; font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }.home-submission-hero[data-mode="recommendation"] .hero-mode-badge { background:#e7f4ef; color:#197153; }.hero-composer textarea { display:block; width:100%; min-height:76px; padding:0; border:0; background:transparent; color:#25334a; font:13px/1.55 var(--font-stack); resize:vertical; }.hero-composer textarea::placeholder { color:#8390a4; opacity:1; }.hero-composer textarea:focus { outline:0; }.hero-composer-footer { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-top:11px; padding-top:10px; border-top:1px solid #e7edf5; color:#6c788c; font-size:10px; line-height:1.4; }.hero-composer-scope { flex:0 0 auto; color:#1646a0; font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }.hero-portal-row { display:flex; align-items:center; justify-content:center; gap:9px; margin-top:15px; color:#68758a; font-size:11px; }.home-portal-link { color:#1646a0; font-size:11px; font-weight:800; text-decoration:none; }.home-portal-link:hover { color:#0b2e6f; text-decoration:underline; }.home-proof-bar { margin-top:25px!important; }
-@media (max-width:768px) { .stage { min-height:780px!important; padding:68px 16px 32px; }.home-submission-hero { width:100%; }.hero-brand { margin-bottom:20px; }.hero-copy h1 { font-size:clamp(32px,10vw,43px); }.hero-copy p { margin-bottom:18px; font-size:12.5px; }.hero-composer { padding:13px; }.hero-composer-footer { flex-direction:column; gap:6px; }.hero-composer-scope { align-self:flex-end; }.home-submission-hero + .footer-bar { position:relative!important; bottom:auto!important; margin-top:20px!important; } }
-@media (max-width:440px) { .stage { min-height:760px!important; }.hero-kicker { font-size:9px; }.hero-composer-heading { align-items:flex-start; flex-direction:column; gap:5px; }.hero-mode-badge { align-self:flex-start; }.hero-portal-row { flex-direction:column; gap:4px; }.home-proof-bar .f-sep { display:none; } }
+.stage { 
+    min-height:840px; 
+    padding: 42px 20px 42px; 
+    justify-content:center; 
+}
+.home-submission-hero { 
+    position:relative; 
+    z-index:15; 
+    display:flex; 
+    width:min(100%,760px); 
+    flex-direction:column; 
+    align-items:center; 
+    text-align:center; 
+}
+.hero-brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 84px !important;
+    height: 84px !important;
+    margin-bottom: 22px !important;
+    padding: 0 !important;
+    border: 6.5px solid rgba(20, 70, 160) !important;
+    border-radius: 50% !important;
+    background: #1646A0 !important;
+    box-shadow: inset 4px 4px 8px rgba(10, 35, 85, 0.5), inset -4px -4px 8px rgba(45, 110, 240, 0.5), 0 10px 24px rgba(22, 70, 160, 0.35) !important;
+}
 
-/* Client refinement: crop the image at the measured focal point while always covering the full hero width—never expose side gutters. */
-.bg::before { background-position:18% 34%; background-size:cover; }
-.hero-brand { width:70px; height:70px; margin-bottom:19px; padding:6px; justify-content:center; border:1px solid rgba(255,255,255,.55); border-radius:50%; background:linear-gradient(145deg,#315cc9,#163e99); box-shadow:0 12px 25px rgba(22,70,160,.27),inset 0 1px 2px rgba(255,255,255,.28); }.hero-brand img { width:56px; height:56px; }.hero-copy h1 { margin-bottom:22px; }
-@media (max-width:768px) { .bg::before { background-position:37% 28%; background-size:cover; }.hero-brand { width:60px; height:60px; margin-bottom:17px; padding:5px; }.hero-brand img { width:48px; height:48px; } }
+    .hero-brand img {
+        width: 42px !important;
+        height: 42px !important;
+        object-fit: contain !important;
+        display: block !important;
+    }
+.hero-kicker {
+        display: block;
+        margin-bottom: 10px;
+        color: #1646a0;
+        font-family: var(--font-stack);
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
 
-/* Keep both mode headlines centered and balanced against the centered church focal point. */
-.hero-copy { width:min(100%,680px); display:flex; flex-direction:column; align-items:center; }
-.hero-copy h1 { width:100%; max-width:680px; text-wrap:balance; }
-@media (max-width:768px) { .hero-copy { width:100%; }.hero-copy h1 { max-width:620px; } }
+    .hero-copy h1 {
+        max-width: 700px;
+        margin: 0;
+        color: #172033;
+        font-family: var(--font-stack);
+        font-size: clamp(34px,5vw,54px);
+        font-weight: 720;
+        letter-spacing: -.055em;
+        line-height: 1;
+    }
 
-/* Prevent longer recommendation headlines from overwhelming the centered focal composition. */
-.hero-copy h1 { font-size:clamp(28px,3.5vw,44px); line-height:1.08; }
-@media (max-width:768px) { .hero-copy h1 { font-size:clamp(28px,8vw,38px); } }
+    .hero-copy p {
+        max-width: 590px;
+        margin: 13px auto 22px;
+        color: #526076;
+        font-size: 14px;
+        line-height: 1.55;
+    }
 
+    .hero-mode-switcher {
+        display: grid;
+        width: min(100%,430px);
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 5px;
+        padding: 4px;
+        border: 1px solid #cad9f3;
+        border-radius: 9px;
+        background: #eaf0fc;
+    }
 
-/* Keep the hero and its photograph on the same content-width coordinate system. */
-html,
-body {
+    .hero-mode-button {
+        min-height: 36px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #506079;
+        font: 650 10.5px var(--font-stack);
+        cursor: pointer;
+        transition: background .16s,color .16s,box-shadow .16s;
+    }
+
+        .hero-mode-button.is-active {
+            background: #1646a0;
+            box-shadow: 0 5px 10px rgba(22,70,160,.18);
+            color: #fff;
+        }
+
+        .hero-mode-button:focus-visible, .home-portal-link:focus-visible, #heroModeMessage:focus-visible {
+            outline: 3px solid rgba(22,70,160,.25);
+            outline-offset: 2px;
+        }
+
+.hero-composer {
     width: 100%;
-    min-width: 0;
+    margin-top: 12px;
+    padding: 16px;
+    border: 1px solid #d6e0ef;
+    border-radius: 12px;
+    background: rgba(255,255,255,.94);
+    box-shadow: 0 14px 32px rgba(32,54,91,.12);
+    text-align: left;
+    transition: border-color .18s,box-shadow .18s;
 }
 
-.stage {
-    width: 100% !important;
-    max-width: none;
-    align-self: stretch;
-}
-
-.stage > .bg {
-    right: 0;
-    left: 0;
-    width: 100% !important;
-    transform: none;
-    background-color: transparent;
-}
-
-
-/* Do not paint a second, differently cropped copy of the hero photo behind the stage. */
-body {
-    background-color: #eaecf5;
-    background-image: none;
-}
-
-
-/* Full-bleed safeguard: override every earlier height-based image size. */
-.stage > .bg::before {
-    background-size: cover !important;
-}
-
-
-/* Replace the image mask with a full-width fade overlay; masks can clip the photograph before the viewport edges. */
-.stage > .bg::before {
-    -webkit-mask-image: none !important;
-    mask-image: none !important;
-    background-image: linear-gradient(to bottom, rgba(234, 236, 245, 0.6) 0%, rgba(234, 236, 245, 0.64) 25%, rgba(234, 236, 245, 0.76) 50%, rgba(234, 236, 245, 0.92) 75%, #eaecf5 100%), url('/assets/Angeles.jpg');
-    background-size: 100% 100%, cover !important;
-    background-position: center, 18% 34%;
-    background-repeat: no-repeat;
-    opacity: 1;
-}
-
-@media (max-width: 768px) {
-    .stage > .bg::before {
-        background-position: center, 37% 28%;
+    .home-submission-hero[data-mode="recommendation"] .hero-composer {
+        border-color: #bed5c8;
     }
-}
 
-
-/* Crop away the photo's pale edge content without moving its centered focal point. */
-.stage > .bg {
-    --hero-background-x: 33px;
-    --hero-background-scale: 1.05;
-    overflow: hidden;
-}
-
-.stage > .bg::before {
-    transform: translateX(var(--hero-background-x)) scale(var(--hero-background-scale));
-    transform-origin: center top;
-}
-
-@media (max-width: 768px) {
-    .stage > .bg {
-        --hero-background-x: 0px;
-        --hero-background-scale: 1.06;
+    .hero-composer:focus-within {
+        border-color: #1646a0;
+        box-shadow: 0 0 0 4px rgba(22,70,160,.1),0 14px 32px rgba(32,54,91,.12);
     }
+
+    .hero-composer-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 9px;
+    }
+
+    .hero-composer label {
+        color: #25334a;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: -.01em;
+    }
+
+    .hero-mode-badge {
+        flex: 0 0 auto;
+        padding: 4px 6px;
+        border-radius: 4px;
+        background: #eaf0fc;
+        color: #1646a0;
+        font-size: 9px;
+        font-weight: 750;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+
+    .home-submission-hero[data-mode="recommendation"] .hero-mode-badge {
+        background: #e7f4ef;
+        color: #197153;
+    }
+
+    .hero-composer textarea {
+        display: block;
+        width: 100%;
+        min-height: 76px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #25334a;
+        font: 13px/1.55 var(--font-stack);
+        resize: vertical;
+    }
+
+        .hero-composer textarea::placeholder {
+            color: #8390a4;
+            opacity: 1;
+        }
+
+        .hero-composer textarea:focus {
+            outline: 0;
+        }
+
+    .hero-composer-footer {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        font: var(--font-stack);
+        gap: 14px;
+        margin-top: 11px;
+        padding-top: 10px;
+        border-top: 1px solid #e7edf5;
+        color: #6c788c;
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    .hero-composer-scope {
+        flex: 0 0 auto;
+        color: #1646a0;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .01em;
+        text-transform: uppercase;
+    }
+
+.hero-portal-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    text-align: center;
 }
 
+.portal-question {
+    color: #526076;
+    font-size: 11px;
+    font-weight: 400;
+    font-family: var(--font-stack);
+}
 
-/* Mobile: keep the submission workspace compact and avoid a large empty fade before the next section. */
-@media (max-width: 768px) {
-    .stage {
-        min-height: 680px !important;
-        padding: 60px 16px 24px;
+.portal-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: min(100%, 320px);
+    padding: 12px 24px;
+    color: #ffffff;
+    border-radius: 10px;
+    font-family: var(--font-stack);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    text-decoration: none;
+    background: #1646A0;
+    transition: all 0.3s ease;
+    box-shadow: inset 1px 2px 2px 0 #ffffff70, inset -1px -2px 2px 0 #00000030, 4px 4px 10px rgba(43, 69, 176, 0.3);
+}
+
+    .portal-action-btn:hover {
+        background: #1646a0;
+        color: #ffffff;
+        text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: inset 2px 2px 4px rgba(45, 110, 240, 0.4), inset -2px -2px 4px rgba(10, 35, 85, 0.5), 0 8px 20px rgba(22, 70, 160, 0.35);
+    }
+
+    .portal-action-btn:active {
+        transform: translateY(0);
+        box-shadow: inset 3px 3px 6px rgba(10, 35, 85, 0.6);
     }
 
     .home-proof-bar {
-        margin-top: 16px !important;
+        margin-top: 25px !important;
     }
-}
 
 
-/* Mobile: size the hero from its content instead of a fixed pixel height, so no dead fade area is left above the next section. */
-@media (max-width: 768px) {
+
+    @media (max-width:768px) {
+        .stage {
+            min-height: 780px !important;
+            padding: 68px 16px 32px;
+        }
+
+        .home-submission-hero {
+            width: 100%;
+        }
+
+        .hero-brand {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 17px;
+        }
+
+            .hero-brand img {
+                width: 34px;
+                height: 34px;
+            }
+
+        .hero-copy h1 {
+            font-size: clamp(32px,10vw,43px);
+            font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .hero-copy p {
+            margin-bottom: 18px;
+            font-size: 12.5px;
+        }
+
+        .hero-composer {
+            padding: 13px;
+        }
+
+        .hero-composer-footer {
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hero-composer-scope {
+            align-self: flex-end;
+        }
+
+        .home-submission-hero + .footer-bar {
+            position: relative !important;
+            bottom: auto !important;
+            margin-top: 20px !important;
+        }
+    }
+
+    @media (max-width:440px) {
+        .stage {
+            min-height: 760px !important;
+        }
+
+        .hero-kicker {
+            font-size: 9px;
+        }
+
+        .hero-composer-heading {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .hero-mode-badge {
+            align-self: flex-start;
+        }
+
+        .hero-portal-row {
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .home-proof-bar .f-sep {
+            display: none;
+        }
+    }
+    /* Client refinement: crop the image at the measured focal point while always covering the full hero width—never expose side gutters. */
+    .bg::before {
+        background-position: 18% 34%;
+        background-size: cover;
+    }
+
+    .hero-brand {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 19px;
+        padding: 6px;
+        justify-content: center;
+        border: 1px solid rgba(255,255,255,.55);
+        border-radius: 50%;
+        background: linear-gradient(145deg,#315cc9,#163e99);
+        box-shadow: 0 12px 25px rgba(22,70,160,.27),inset 0 1px 2px rgba(255,255,255,.28);
+    }
+
+        .hero-brand img {
+            width: 56px;
+            height: 56px;
+        }
+
+    .hero-copy h1 {
+        margin-bottom: 22px;
+    }
+
+    @media (max-width:768px) {
+        .bg::before {
+            background-position: 37% 28%;
+            background-size: cover;
+        }
+
+        .hero-brand {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 17px;
+            padding: 5px;
+        }
+
+            .hero-brand img {
+                width: 48px;
+                height: 48px;
+            }
+    }
+    /* Keep both mode headlines centered and balanced against the centered church focal point. */
+    .hero-copy {
+        width: min(100%,680px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+        .hero-copy h1 {
+            width: 100%;
+            max-width: 680px;
+            text-wrap: balance;
+        }
+
+    @media (max-width:768px) {
+        .hero-copy {
+            width: 100%;
+        }
+
+            .hero-copy h1 {
+                max-width: 620px;
+            }
+    }
+    /* Prevent longer recommendation headlines from overwhelming the centered focal composition. */
+    .hero-copy h1 {
+        font-size: clamp(28px,3.5vw,44px);
+        line-height: 1.08;
+    }
+
+    @media (max-width:768px) {
+        .hero-copy h1 {
+            font-size: clamp(28px,8vw,38px);
+        }
+    }
+    /* Keep the hero and its photograph on the same content-width coordinate system. */
+    html,
+    body {
+        width: 100%;
+        min-width: 0;
+    }
+
     .stage {
-        min-height: 0 !important;
-        height: auto !important;
-        padding: 56px 16px 30px !important;
-        justify-content: flex-start;
+        width: 100% !important;
+        max-width: none;
+        align-self: stretch;
     }
 
-    .info-sections {
-        margin-top: 0;
-        padding-top: 1.5rem;
+        .stage > .bg {
+            right: 0;
+            left: 0;
+            width: 100% !important;
+            transform: none;
+            background-color: transparent;
+        }
+    /* Do not paint a second, differently cropped copy of the hero photo behind the stage. */
+    body {
+        background-color: #eaecf5;
+        background-image: none;
+    }
+    /* Full-bleed safeguard: override every earlier height-based image size. */
+    .stage > .bg::before {
+        background-size: cover !important;
+    }
+    /* Replace the image mask with a full-width fade overlay; masks can clip the photograph before the viewport edges. */
+    .stage > .bg::before {
+        -webkit-mask-image: none !important;
+        mask-image: none !important;
+        background-image: linear-gradient(to bottom, rgba(234, 236, 245, 0.6) 0%, rgba(234, 236, 245, 0.64) 25%, rgba(234, 236, 245, 0.76) 50%, rgba(234, 236, 245, 0.92) 75%, #eaecf5 100%), url('/assets/Angeles.jpg');
+        background-size: 100% 100%, cover !important;
+        background-position: center, 18% 34%;
+        background-repeat: no-repeat;
+        opacity: 1;
     }
 
-    .home-submission-hero + .footer-bar {
-        margin-top: 14px !important;
+    @media (max-width: 768px) {
+        .stage > .bg::before {
+            background-position: center, 37% 28%;
+        }
     }
-}
-
-@media (max-width: 440px) {
-    .stage {
-        min-height: 0 !important;
-        height: auto !important;
+    /* Crop away the photo's pale edge content without moving its centered focal point. */
+    .stage > .bg {
+        --hero-background-x: 33px;
+        --hero-background-scale: 1.05;
+        overflow: hidden;
     }
-}
 
+        .stage > .bg::before {
+            transform: translateX(var(--hero-background-x)) scale(var(--hero-background-scale));
+            transform-origin: center top;
+        }
 
-/* Mobile: the spire tips sit at x=308 and x=553 of the 900px source, so their midpoint is 47.8% of the image.
+    @media (max-width: 768px) {
+        .stage > .bg {
+            --hero-background-x: 0px;
+            --hero-background-scale: 1.06;
+        }
+    }
+    /* Mobile: keep the submission workspace compact and avoid a large empty fade before the next section. */
+    @media (max-width: 768px) {
+        .stage {
+            min-height: 680px !important;
+            padding: 60px 16px 24px;
+        }
+
+        .home-proof-bar {
+            margin-top: 16px !important;
+        }
+    }
+    /* Mobile: size the hero from its content instead of a fixed pixel height, so no dead fade area is left above the next section. */
+    @media (max-width: 768px) {
+        .stage {
+            min-height: 0 !important;
+            height: auto !important;
+            padding: 56px 16px 30px !important;
+            justify-content: flex-start;
+        }
+
+        .info-sections {
+            margin-top: 0;
+            padding-top: 1.5rem;
+        }
+
+        .home-submission-hero + .footer-bar {
+            margin-top: 14px !important;
+        }
+    }
+
+    @media (max-width: 440px) {
+        .stage {
+            min-height: 0 !important;
+            height: auto !important;
+        }
+    }
+    /* Mobile: the spire tips sit at x=308 and x=553 of the 900px source, so their midpoint is 47.8% of the image.
    Because a cover-sized image overflows less as the viewport widens, the focal value is tuned per band so both
    towers stay symmetrical around the centered status text and hero content. */
-@media (max-width: 480px) {
-    .stage > .bg::before {
-        background-position: center, 46.3% 28%;
+    @media (max-width: 480px) {
+        .stage > .bg::before {
+            background-position: center, 46.3% 28%;
+        }
     }
-}
 
-@media (min-width: 481px) and (max-width: 620px) {
-    .stage > .bg::before {
-        background-position: center, 44.5% 28%;
+    @media (min-width: 481px) and (max-width: 620px) {
+        .stage > .bg::before {
+            background-position: center, 44.5% 28%;
+        }
     }
-}
 
-@media (min-width: 621px) and (max-width: 768px) {
-    .stage > .bg::before {
-        background-position: center, 34% 28%;
+    @media (min-width: 621px) and (max-width: 768px) {
+        .stage > .bg::before {
+            background-position: center, 34% 28%;
+        }
     }
-}
-
-
-/* UI-only submission affordance for the homepage composer. */
-.hero-composer-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 0 0 auto;
-}
-
-.hero-submit-button {
-    min-height: 32px;
-    padding: 0 12px;
-    border: 1px solid #1646a0;
-    border-radius: 6px;
-    background: #1646a0;
-    color: #fff;
-    font: 800 9px var(--font-stack);
-    letter-spacing: 0.045em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
-}
-
-.hero-submit-button:hover {
-    background: #0b2e6f;
-    box-shadow: 0 5px 12px rgba(22, 70, 160, .22);
-    transform: translateY(-1px);
-}
-
-.hero-submit-button:focus-visible {
-    outline: 3px solid rgba(22, 70, 160, .25);
-    outline-offset: 2px;
-}
-
-@media (max-width: 768px) {
+    /* UI-only submission affordance for the homepage composer. */
     .hero-composer-actions {
-        align-self: flex-end;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 0 0 auto;
     }
-}
 
+    .hero-submit-button {
+        min-height: 32px;
+        padding: 0 12px;
+        border: 1px solid #1646a0;
+        border-radius: 6px;
+        background: #1646a0;
+        color: #fff;
+        font: 700 9px var(--font-stack);
+        letter-spacing: 0.045em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
 
-/* Keep the UI-only composer action compact and right-aligned instead of a full-width bar. */
-.hero-composer-submit-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 10px;
-}
+        .hero-submit-button:hover {
+            background: #0b2e6f;
+            box-shadow: 0 5px 12px rgba(22, 70, 160, .22);
+            transform: translateY(-1px);
+        }
 
-.hero-composer-submit-row .hero-submit-button {
-    display: inline-flex;
-    width: auto;
-    min-height: 32px;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 0 14px;
-    border-radius: 6px;
-    font-size: 9px;
-}
+        .hero-submit-button:focus-visible {
+            outline: 3px solid rgba(22, 70, 160, .25);
+            outline-offset: 2px;
+        }
 
+    @media (max-width: 768px) {
+        .hero-composer-actions {
+            align-self: flex-end;
+        }
+    }
+    /* Keep the UI-only composer action compact and right-aligned instead of a full-width bar. */
+    .hero-composer-submit-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
 
-/* Final width safeguard: keep the hero aligned to the document content box. */
-.stage {
-    width: 100% !important;
-}
+        .hero-composer-submit-row .hero-submit-button {
+            display: inline-flex;
+            width: auto;
+            min-height: 32px;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 14px;
+            border-radius: 6px;
+            font-size: 9px;
+        }
+    /* Final width safeguard: keep the hero aligned to the document content box. */
+    .stage {
+        width: 100% !important;
+    }
 
-.stage > .bg {
-    left: 0;
-    width: 100% !important;
-    transform: none;
-}
+        .stage > .bg {
+            left: 0;
+            width: 100% !important;
+            transform: none;
+        }
 
-body {
-    overflow-x: hidden;
-}
+    body {
+        overflow-x: hidden;
+    }

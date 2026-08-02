@@ -1,7 +1,20 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 :root { --sidebar-width:244px; --sidebar-bg:#ffffff; --accent-blue:#1646a0; --accent-blue-dark:#0b2e6f; --accent-blue-soft:#eaf0fc; --text-primary:#172033; --text-secondary:#5c687b; --text-muted:#8994a6; --border:#dfe5ed; --page-bg:#f5f7fb; --topbar-height:58px; --font:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
 *,*::before,*::after { box-sizing:border-box; } body { min-height:100vh; margin:0; background:var(--page-bg); color:var(--text-primary); font-family:var(--font); }.layout-wrapper { display:flex; min-height:100vh; }
-.sidebar { position:fixed; top:0; left:0; z-index:110; display:flex; width:var(--sidebar-width); height:100vh; flex-direction:column; padding:26px 14px 18px; border-right:1px solid var(--border); background:var(--sidebar-bg); transition:transform .25s ease; }.sidebar-brand { display:flex; align-items:center; gap:10px; padding:0 10px 22px; }.sidebar-brand::before,.mobile-brand::before { display:block; flex:0 0 32px; width:32px; height:32px; border-radius:50%; background-color:#2862cd; background-image:url("/assets/VoxAngelosLogo.png"); background-position:center; background-repeat:no-repeat; background-size:74%; content:""; }.brand-name { display:block; color:var(--accent-blue); font-size:21px; font-weight:800; letter-spacing:-.045em; line-height:1; }
+.sidebar { position:fixed; top:0; left:0; z-index:110; display:flex; width:var(--sidebar-width); height:100vh; flex-direction:column; padding:26px 14px 18px; border-right:1px solid var(--border); background:var(--sidebar-bg); transition:transform .25s ease; }.sidebar-brand { display:flex; align-items:center; gap:10px; padding:0 10px 22px; }
+    .sidebar-brand::before, .mobile-brand::before {
+        display: block;
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #1646A0;
+        background-image: url("/assets/VoxAngelosLogo.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 74%;
+        content: "";
+    }.brand-name { display:block; color:var(--accent-blue); font-size:21px; font-weight:800; letter-spacing:-.045em; line-height:1; }
 .sidebar-dept { margin:0 0 17px; padding:13px; border:1px solid #cad9f3; border-radius:9px; background:var(--accent-blue-soft); }.sidebar-dept-label { color:var(--accent-blue); font-size:9px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; }.sidebar-dept-name { margin-top:4px; overflow:hidden; color:var(--accent-blue-dark); font-size:12px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }.sidebar-divider { width:100%; margin:0 0 12px; border:0; border-top:1px solid var(--border); }
 .sidebar-nav { display:flex; flex:1; flex-direction:column; gap:3px; }.nav-item { display:flex; align-items:center; gap:11px; min-height:42px; padding:0 11px; border:1px solid transparent; border-radius:7px; color:#46536a; font-size:12px; font-weight:650; text-decoration:none; transition:background .16s,color .16s,border-color .16s; }.nav-item svg { width:18px; height:18px; flex:0 0 auto; }.nav-item:hover { border-color:#d8e3f6; background:#f4f7fd; color:var(--accent-blue); }.nav-item.active { position:relative; border-color:#cad9f3; background:var(--accent-blue-soft); color:var(--accent-blue); font-weight:750; }.nav-item.active::before { position:absolute; top:10px; bottom:10px; left:-14px; width:3px; border-radius:0 3px 3px 0; background:var(--accent-blue); content:""; }.sidebar-footer { width:100%; padding-top:14px; border-top:1px solid var(--border); }.logout-btn { margin:0!important; border:1px solid #f0c9ce!important; background:#fff8f8!important; color:#b93644!important; cursor:pointer; }.logout-btn:hover { border-color:#df9ca5!important; background:#fbecef!important; color:#a72331!important; }
 .main-content { flex:1; min-width:0; margin-left:var(--sidebar-width); padding:32px 34px 48px; }.mobile-topbar { display:none; }.sidebar-overlay { display:none; }
