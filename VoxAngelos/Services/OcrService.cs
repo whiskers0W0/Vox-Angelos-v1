@@ -8,10 +8,18 @@ namespace VoxAngelos.Services
         public bool Success { get; set; }
         public string? RawFullText { get; set; }
         public string? DetectedBirthDate { get; set; }
+        public string? DetectedCardExpiration { get; set; }
         public string? DetectedAddress { get; set; }
+        public string? DetectedStreetAddress { get; set; }
         public string? DetectedLocality { get; set; }
+        public string? DetectedProvince { get; set; }
         public string? DetectedRegion { get; set; }
         public bool LocalityMatched { get; set; }
+
+        // The pass/fail signal for "is this ID from Angeles City, Pampanga" — checked
+        // against the literal city/province text, independent of barangay matching.
+        public bool CityProvinceMatched { get; set; }
+
         public decimal OcrConfidence { get; set; }
         public string? DetectionType { get; set; }
         public string? DetectedLanguageCode { get; set; }

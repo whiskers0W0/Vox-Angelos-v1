@@ -61,11 +61,12 @@ namespace VoxAngelos.Pages.User
 
             var profile = await _db.UserProfiles.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.UserId == user.Id);
-            var idType = await _db.UserIdentityDocuments.AsNoTracking()
+            var latestIdentityDocument = await _db.UserIdentityDocuments.AsNoTracking()
                 .Where(d => d.UserId == user.Id)
                 .OrderByDescending(d => d.UploadedAt)
-                .Select(d => d.IdType)
+                .Select(d => new { d.IdType, d.CardExpirationDate })
                 .FirstOrDefaultAsync();
+            var idType = latestIdentityDocument?.IdType;
             var ocrVerification = await _db.UserOcrVerifications.AsNoTracking()
                 .Where(verification => verification.UserId == user.Id)
                 .OrderByDescending(verification => verification.ProcessedAt)
@@ -86,6 +87,9 @@ namespace VoxAngelos.Pages.User
             var verifiedCity = ocrVerification?.LocalityMatched == true
                 ? "Angeles City"
                 : null;
+            var verifiedProvince = ocrVerification?.CityProvinceMatched == true
+                ? "Pampanga"
+                : null;
 
             Profile = new CitizenProfileViewModel
             {
@@ -93,11 +97,14 @@ namespace VoxAngelos.Pages.User
                 MiddleName = profile?.MiddleName,
                 LastName = profile?.LastName,
                 PhoneNumber = user.PhoneNumber,
+                StreetAddress = profile?.StreetAddress ?? ocrVerification?.DetectedStreetAddress,
                 Barangay = profile?.Barangay ?? verifiedBarangay,
                 City = profile?.City ?? verifiedCity,
+                Province = profile?.Province ?? verifiedProvince,
                 EmailAddress = user.Email,
                 BirthDate = storedBirthDate ?? detectedBirthDate,
                 IdType = idType,
+                CardExpirationDate = latestIdentityDocument?.CardExpirationDate,
                 ProfilePhotoUrl = user.ProfilePhotoUrl
             };
 
@@ -144,11 +151,14 @@ namespace VoxAngelos.Pages.User
             public string? MiddleName { get; set; }
             public string? LastName { get; set; }
             public string? PhoneNumber { get; set; }
+            public string? StreetAddress { get; set; }
             public string? Barangay { get; set; }
             public string? City { get; set; }
+            public string? Province { get; set; }
             public string? EmailAddress { get; set; }
             public DateOnly? BirthDate { get; set; }
             public string? IdType { get; set; }
+            public DateOnly? CardExpirationDate { get; set; }
             public string? ProfilePhotoUrl { get; set; }
 
             public string DisplayName => string.Join(" ", new[] { FirstName, MiddleName, LastName }
@@ -156,6 +166,18 @@ namespace VoxAngelos.Pages.User
             public string VerificationSummary => string.IsNullOrWhiteSpace(IdType)
                 ? "Identity verified"
                 : $"Verified using {IdType}";
+
+            // Computed from the scanned birthday rather than stored, so it's always
+            // current as of the day the profile is viewed.
+            public int? Age => BirthDate == null ? null : ComputeAge(BirthDate.Value);
+
+            private static int ComputeAge(DateOnly birthDate)
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var age = today.Year - birthDate.Year;
+                if (birthDate > today.AddYears(-age)) age--;
+                return age;
+            }
         }
 
         public record AvatarOptionViewModel(string Key, string Name, string ImageUrl);

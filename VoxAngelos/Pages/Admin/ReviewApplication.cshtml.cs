@@ -48,6 +48,17 @@ namespace VoxAngelos.Pages.Admin
         public UserOcrVerification? OcrVerification { get; set; }
         public bool IsDevelopmentMock { get; private set; }
 
+        // Computed from the scanned birthday rather than stored, so it stays current.
+        public static int? ComputeAge(DateOnly? birthDate)
+        {
+            if (birthDate == null) return null;
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var age = today.Year - birthDate.Value.Year;
+            if (birthDate.Value > today.AddYears(-age)) age--;
+            return age;
+        }
+
         public async Task<IActionResult> OnGetAsync(string userId)
         {
             if (string.IsNullOrEmpty(userId))

@@ -15,6 +15,10 @@ namespace VoxAngelos.Data
 
         public string? IdPhotoPath { get; set; }
 
+        // OCR-detected expiration date printed on the card itself, not the citizen's
+        // address — belongs here rather than on UserProfile.
+        public DateOnly? CardExpirationDate { get; set; }
+
         // Private Cloudinary asset details for newly submitted identity documents.
         // Existing records continue using IdPhotoPath until their normal retention purge.
         public string? IdPhotoCloudinaryPublicId { get; set; }

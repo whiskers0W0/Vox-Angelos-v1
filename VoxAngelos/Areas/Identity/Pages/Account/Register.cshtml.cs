@@ -440,9 +440,13 @@ if (savedFileName != null)
         IdentityDocumentId = identityDocument.Id,
         RawFullText = ocrResult.RawFullText,
         DetectedBirthDate = ocrResult.DetectedBirthDate,
+        DetectedCardExpirationDate = ocrResult.DetectedCardExpiration,
         DetectedAddress = ocrResult.DetectedAddress,
+        DetectedStreetAddress = ocrResult.DetectedStreetAddress,
         DetectedLocality = ocrResult.DetectedLocality,
+        DetectedProvince = ocrResult.DetectedProvince,
         LocalityMatched = ocrResult.LocalityMatched,
+        CityProvinceMatched = ocrResult.CityProvinceMatched,
         OcrConfidence = ocrResult.OcrConfidence,
         DetectionType = ocrResult.DetectionType,
         DetectedLanguageCode = ocrResult.DetectedLanguageCode ?? "en",
@@ -459,16 +463,62 @@ if (savedFileName != null)
         profile.BirthDate = detectedBirthDate;
     }
 
+    if (!string.IsNullOrWhiteSpace(ocrResult.DetectedStreetAddress))
+    {
+        profile.StreetAddress = ocrResult.DetectedStreetAddress;
+    }
+
     if (ocrResult.LocalityMatched && !string.IsNullOrWhiteSpace(ocrResult.DetectedLocality))
     {
         profile.Barangay = ocrResult.DetectedLocality;
         profile.City = "Angeles City";
     }
 
+    // The city/province match (not the barangay match) is the actual signal that this
+    // is an Angeles City ID — a barangay name is easy to OCR-misread across 33 similar
+    // options, while "Angeles City, Pampanga" printed on the card is a much more direct
+    // and reliable check for whether this application belongs on the platform at all.
+    if (ocrResult.CityProvinceMatched)
+    {
+        profile.Province = "Pampanga";
+    }
+
+    if (DateOnly.TryParse(ocrResult.DetectedCardExpiration, out var detectedCardExpiration))
+    {
+        identityDocument.CardExpirationDate = detectedCardExpiration;
+    }
+
     await _context.SaveChangesAsync();
 
-    _logger.LogInformation("OCR completed for user {UserId}. LocalityMatched: {Match}",
-        user.Id, ocrResult.LocalityMatched);
+    _logger.LogInformation(
+        "OCR completed for user {UserId}. LocalityMatched: {LocalityMatch} CityProvinceMatched: {CityMatch}",
+        user.Id, ocrResult.LocalityMatched, ocrResult.CityProvinceMatched);
+
+    // Vox Angelos is only for Angeles City, Pampanga residents — an ID that doesn't show
+    // that city/province gets auto-rejected rather than left Pending, so it doesn't sit
+    // in the admin queue looking like a normal application awaiting review. An admin can
+    // still override this from Review Application if the OCR match was a false negative
+    // (e.g. a blurry photo), same as any other rejection.
+    if (!ocrResult.CityProvinceMatched)
+    {
+        user.ApprovalStatus = "Rejected";
+        await _userManager.UpdateAsync(user);
+
+        await _emailSender.SendEmailAsync(
+            Input.Email,
+            "Your Vox Angelos Account Application",
+            $"<div style='font-family:Arial,sans-serif; max-width:480px; margin:0 auto;'>" +
+            $"<h2 style='color:#c62828;'>Application Update</h2>" +
+            $"<p>Hello,</p>" +
+            $"<p>We regret to inform you that your Vox Angelos citizen account has been <strong style='color:#c62828;'>rejected</strong>.</p>" +
+            $"<p><strong>Reason:</strong> We could not confirm that your ID shows an Angeles City, Pampanga address. Vox Angelos is currently only available to residents of Angeles City.</p>" +
+            $"<p>If you believe this is an error, please contact support.</p>" +
+            $"<p style='color:#888; font-size:0.85rem;'>— The Vox Angelos Team</p>" +
+            $"</div>");
+
+        _logger.LogInformation(
+            "Auto-rejected citizen {UserId} — ID did not show an Angeles City, Pampanga address.", user.Id);
+    }
 }
 
                     // Face verification

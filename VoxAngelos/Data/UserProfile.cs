@@ -19,8 +19,10 @@ namespace VoxAngelos.Data
         public DateOnly? BirthDate { get; set; }
 
         // For locality verification
+        public string? StreetAddress { get; set; }
         public string? Barangay { get; set; }
         public string? City { get; set; }
+        public string? Province { get; set; }
 
         [ForeignKey("UserId")]
         public ApplicationUser? User { get; set; }
