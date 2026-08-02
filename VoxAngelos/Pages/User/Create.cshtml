@@ -101,46 +101,6 @@
                 
                 <span class="text-danger small" id="err-description"></span>
 
-                <div class="concern-category-section">
-                    <p class="concern-category-question">Which category seems closest to your concern? <span class="concern-category-optional">Optional</span></p>
-                    <p class="concern-category-hint">Use these examples to help describe the concern clearly. The AI will use your description—not this choice—to determine the LGU office.</p>
-                    <div class="concern-category-grid" id="concernCategoryGrid">
-                        <button class="concern-category-btn" type="button" data-value="Infrastructure & Public Works">
-                            <span class="category-name">Infrastructure & Public Works</span>
-                            <span class="category-example">Example: roads, drainage, sidewalks, or streetlights</span>
-                        </button>
-                        <button class="concern-category-btn" type="button" data-value="Environment & Sanitation">
-                            <span class="category-name">Environment & Sanitation</span>
-                            <span class="category-example">Example: garbage collection, waste bins, flooding, or pollution</span>
-                        </button>
-                        <button class="concern-category-btn" type="button" data-value="Community & Social Welfare">
-                            <span class="category-name">Community & Social Welfare</span>
-                            <span class="category-example">Example: livelihood, youth activities, or family assistance</span>
-                        </button>
-                        <button class="concern-category-btn" type="button" data-value="Public Safety, Traffic & Transport">
-                            <span class="category-name">Public Safety, Traffic & Transport</span>
-                            <span class="category-example">Example: crosswalks, traffic flow, road safety, or lighting</span>
-                        </button>
-                        <button class="concern-category-btn" type="button" data-value="Urban Planning & Public Spaces">
-                            <span class="category-name">Urban Planning & Public Spaces</span>
-                            <span class="category-example">Example: parks, public spaces, zoning, or city planning</span>
-                        </button>
-                        <button class="concern-category-btn" type="button" data-value="Senior Citizen Support">
-                            <span class="category-name">Senior Citizen Support</span>
-                            <span class="category-example">Example: senior programs, facilities, or accessibility</span>
-                        </button>
-                        <button class="concern-category-btn" type="button" data-value="PWD Accessibility & Services">
-                            <span class="category-name">PWD Accessibility & Services</span>
-                            <span class="category-example">Example: ramps, accessible facilities, or disability support</span>
-                        </button>
-                        <button class="concern-category-btn concern-category-unsure" type="button" data-value="Unsure">
-                            <span class="category-name">Unsure</span>
-                            <span class="category-example">Describe your concern and we will classify it for you.</span>
-                        </button>
-                    </div>
-                </div>
-                <span class="text-danger small" id="err-category"></span>
-
                 <!-- Location -->
                 <div class="concern-location-row">
                     <label class="concern-form-label">Location:</label>
@@ -203,58 +163,8 @@
                 <p>Vox Angelos: Make your voice heard.</p>
             </div>
 
-            <!-- STEP 1: Project Type -->
+            <!-- STEP 1: Problem and Recommendation Details -->
             <div class="step-content active" id="step1">
-                <div class="form-group">
-                    <label class="form-label bilingual-question" for="projectJustification">
-                        <span><strong>What community problem are you trying to solve?</strong> Tell us what is happening, where it occurs, who is affected, and how it affects daily life, safety, health, or the environment.</span>
-                        <span>Anong problema sa komunidad ang nais ninyong maresolba? Ilarawan ang nangyayari, saan ito nagaganap, sino ang naaapektuhan, at paano nito naaapektuhan ang araw-araw na buhay, kaligtasan, kalusugan, o kapaligiran.</span>
-                    </label>
-                    <textarea class="form-textarea" id="projectJustification" placeholder="Example: Flooding near the public market affects commuters and vendors during heavy rain..."></textarea>
-                </div>
-
-                <p class="step-question bilingual-question">
-                    <span>What type of recommendation would you like to propose?</span>
-                    <span>Anong uri ng rekomendasyon ang nais ninyong ihain?</span>
-                </p>
-                <div class="category-grid">
-                    <button class="category-btn" type="button" data-value="Infrastructure & Public Works">
-                        <span class="category-name">Infrastructure & Public Works</span>
-                        <span class="category-example">Example: roads, drainage, sidewalks, or streetlights</span>
-                    </button>
-                    <button class="category-btn" type="button" data-value="Environment & Sanitation">
-                        <span class="category-name">Environment & Sanitation</span>
-                        <span class="category-example">Example: garbage collection, waste bins, flooding, or pollution</span>
-                    </button>
-                    <button class="category-btn" type="button" data-value="Community & Social Welfare">
-                        <span class="category-name">Community & Social Welfare</span>
-                        <span class="category-example">Example: livelihood, youth activities, or family assistance</span>
-                    </button>
-                    <button class="category-btn" type="button" data-value="Public Safety, Traffic & Transport">
-                        <span class="category-name">Public Safety, Traffic & Transport</span>
-                        <span class="category-example">Example: crosswalks, traffic flow, road safety, or lighting</span>
-                    </button>
-                    <button class="category-btn" type="button" data-value="Urban Planning & Public Spaces">
-                        <span class="category-name">Urban Planning & Public Spaces</span>
-                        <span class="category-example">Example: parks, public spaces, zoning, or city planning</span>
-                    </button>
-                    <button class="category-btn" type="button" data-value="Senior Citizen Support">
-                        <span class="category-name">Senior Citizen Support</span>
-                        <span class="category-example">Example: senior programs, facilities, or accessibility</span>
-                    </button>
-                    <button class="category-btn" type="button" data-value="PWD Accessibility & Services">
-                        <span class="category-name">PWD Accessibility & Services</span>
-                        <span class="category-example">Example: ramps, accessible facilities, or disability support</span>
-                    </button>
-                    <button class="category-btn category-unsure" type="button" data-value="Unsure">
-                        <span class="category-name">Unsure</span>
-                        <span class="category-example">Describe your recommendation and we will classify it for you.</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- STEP 2: Project Details -->
-            <div class="step-content" id="step2">
                 <div class="form-group">
                     <label class="form-label bilingual-question" for="projectTitle">
                         <span><strong>What is a clear title for your recommendation?</strong> Keep it short and specific.</span>
@@ -263,11 +173,11 @@
                     <input type="text" class="form-input" id="projectTitle" placeholder="Example: Improve drainage near the public market" />
                 </div>
                 <div class="form-group">
-                    <label class="form-label bilingual-question" for="projectLocation">
-                        <span><strong>Where should this recommendation be implemented?</strong> Include the barangay, street, facility, or nearby landmark.</span>
-                        <span><strong>Saan dapat ipatupad ang rekomendasyong ito?</strong> Isama ang barangay, kalye, pasilidad, o malapit na palatandaan.</span>
+                    <label class="form-label bilingual-question" for="projectJustification">
+                        <span><strong>What community problem are you trying to solve?</strong> Tell us what is happening, where it occurs, who is affected, and how it affects daily life, safety, health, or the environment.</span>
+                        <span>Anong problema sa komunidad ang nais ninyong maresolba? Ilarawan ang nangyayari, saan ito nagaganap, sino ang naaapektuhan, at paano nito naaapektuhan ang araw-araw na buhay, kaligtasan, kalusugan, o kapaligiran.</span>
                     </label>
-                    <input type="text" class="form-input" id="projectLocation" placeholder="Example: Sto. Rosario, near the public market" />
+                    <textarea class="form-textarea" id="projectJustification" placeholder="Example: Flooding near the public market affects commuters and vendors during heavy rain..."></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label bilingual-question" for="projectDescription">
@@ -276,10 +186,17 @@
                     </label>
                     <textarea class="form-textarea" id="projectDescription" placeholder="Example: Build covered drainage and add waste bins to reduce flooding and improve sanitation..."></textarea>
                 </div>
+                <div class="form-group">
+                    <label class="form-label bilingual-question" for="projectLocation">
+                        <span><strong>Where should this recommendation be implemented?</strong> Include the barangay, street, facility, or nearby landmark.</span>
+                        <span><strong>Saan dapat ipatupad ang rekomendasyong ito?</strong> Isama ang barangay, kalye, pasilidad, o malapit na palatandaan.</span>
+                    </label>
+                    <input type="text" class="form-input" id="projectLocation" placeholder="Example: Sto. Rosario, near the public market" />
+                </div>
             </div>
 
-            <!-- STEP 3: More Details -->
-            <div class="step-content" id="step3">
+            <!-- STEP 2: More Details -->
+            <div class="step-content" id="step2">
                 <p class="step-question bilingual-question">
                     <span><strong>Who will benefit most from this recommendation?</strong> Select all groups that may benefit.</span>
                     <span><strong>Sino ang pangunahing makikinabang sa rekomendasyong ito?</strong> Piliin ang lahat ng grupong maaaring makinabang.</span>
@@ -335,12 +252,11 @@
                 </div>
             </div>
 
-            <!-- STEP 4: Review -->
-            <div class="step-content" id="step4">
+            <!-- STEP 3: Review -->
+            <div class="step-content" id="step3">
                 <p class="review-section-title">Review Your Recommendation</p>
                 <div class="review-box" id="reviewBox">
                     <div><strong>Justification:</strong> <span id="r-justification"></span></div>
-                    <div><strong>Recommendation Type:</strong> <span id="r-type"></span></div>
                     <div><strong>Recommendation Title:</strong> <span id="r-title"></span></div>
                     <div><strong>Location:</strong> <span id="r-location"></span></div>
                     <div><strong>Description:</strong> <span id="r-description"></span></div>
@@ -366,7 +282,7 @@
 
             <!-- Footer -->
             <div class="step-footer" id="stepFooter">
-                <span class="step-counter" id="stepCounter">Step 1 of 4</span>
+                <span class="step-counter" id="stepCounter">Step 1 of 3</span>
                 <div class="footer-actions">
                     <button class="btn-back" id="btnSaveDraft" type="button">Save Draft</button>
                     <button class="btn-back" id="btnBack" style="display:none;">
@@ -470,7 +386,7 @@
                      
                /* ── Multi-step form ────────────────────────── */
         let currentStep = 1;
-        const totalSteps = 4;
+        const totalSteps = 3;
         const maximumAttachmentCount = 8;
         let selectedCategory = '';
         const recommendationFormSurface = projectView.querySelector('.proposal-card');
@@ -498,16 +414,6 @@
         const successState = document.getElementById('successState');
         const recommendationStatus = document.getElementById('recommendationStatus');
 
-        document.querySelectorAll('.category-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Remove 'selected' from all buttons and add to the clicked one
-                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-        
-                selectedCategory = btn.dataset.value;
-            });
-        });
-            
         // File upload
         const uploadBtn = document.getElementById('uploadBtn');
         const fileInput = document.getElementById('fileInput');
@@ -626,7 +532,6 @@
 
         function renderReview() {
             document.getElementById('r-justification').textContent = document.getElementById('projectJustification').value || '—';
-            document.getElementById('r-type').textContent = selectedCategory || '—';
             document.getElementById('r-title').textContent = document.getElementById('projectTitle').value || '—';
             document.getElementById('r-location').textContent = document.getElementById('projectLocation').value || '—';
             document.getElementById('r-description').textContent = document.getElementById('projectDescription').value || '—';
@@ -786,29 +691,18 @@
             document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
 
             if (step === 1) {
-                // Validate Justification - NEWLY ADDED
+                // Validate the combined problem and recommendation details.
                 const justification = document.getElementById('projectJustification');
-                if (!justification.value.trim()) {
-                    invalidate(justification);
-                }
-
-                // Validate Category Selection
-                if (!selectedCategory) {
-                    document.querySelector('.category-grid').classList.add('input-error');
-                    isValid = false;
-                }
-            }
-            else if (step === 2) {
-                // Validate Title, Location, and Description
                 const title = document.getElementById('projectTitle');
                 const loc = document.getElementById('projectLocation');
                 const desc = document.getElementById('projectDescription');
 
+                if (!justification.value.trim()) invalidate(justification);
                 if (!title.value.trim()) invalidate(title);
                 if (!loc.value.trim()) invalidate(loc);
                 if (!desc.value.trim()) invalidate(desc);
             }
-            else if (step === 3) {
+            else if (step === 2) {
                 // Validate Beneficiaries (at least one checked)
                 const checked = document.querySelectorAll('input[name="beneficiary"]:checked');
                 if (checked.length === 0) {
@@ -845,7 +739,6 @@
         document.getElementById('btnNewProposal').addEventListener('click', () => {
             currentStep = 1;
             selectedCategory = '';
-            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
             document.getElementById('projectJustification').value = '';
             document.getElementById('projectTitle').value = '';
             document.getElementById('projectLocation').value = '';
@@ -877,16 +770,6 @@
             document.querySelectorAll('input[name="beneficiary"]').forEach(checkbox => {
                 checkbox.checked = savedBeneficiaries.includes(checkbox.value);
             });
-
-            const categoryButton = Array.from(document.querySelectorAll('.category-btn'))
-                .find(button => button.dataset.value === savedRecommendationDraft.Category);
-            if (categoryButton) {
-                selectedCategory = savedRecommendationDraft.Category;
-                categoryButton.classList.add('selected');
-            } else if (savedRecommendationDraft.Category) {
-                selectedCategory = 'Unsure';
-                document.querySelector('.category-btn[data-value="Unsure"]').classList.add('selected');
-            }
 
             if (!savedConcernDraft.HasDraft) {
                 tabButtons.forEach(button => {
@@ -1041,6 +924,8 @@
                 document.getElementById('hdnLocationName').value = selectedAddress;
                 document.getElementById('hdnLatitude').value = selectedLat;
                 document.getElementById('hdnLongitude').value = selectedLng;
+                document.querySelector('.concern-location-row').classList.remove('input-error');
+                document.getElementById('err-location').textContent = '';
             }
             mapModalOverlay.classList.remove('active');
         });
@@ -1096,6 +981,10 @@
             document.getElementById('err-attachment').textContent = limitExceeded
                 ? `You can upload a maximum of ${maximumAttachmentCount} attachments.`
                 : '';
+
+            if (selectedConcernFiles.length > 0) {
+                concernUploadBtn.classList.remove('input-error');
+            }
         });
 
         function syncConcernFileInput() {
@@ -1207,13 +1096,6 @@
             document.getElementById('hdnLatitude').value = savedConcernDraft.Latitude ?? '';
             document.getElementById('hdnLongitude').value = savedConcernDraft.Longitude ?? '';
 
-            const savedCategoryButton = Array.from(document.querySelectorAll('.concern-category-btn'))
-                .find(button => button.dataset.value === savedConcernDraft.Category);
-            if (savedCategoryButton) {
-                selectedConcernCategory = savedConcernDraft.Category;
-                savedCategoryButton.classList.add('selected');
-            }
-
             if (savedConcernDraft.LocationName) {
                 selectedAddress = savedConcernDraft.LocationName;
                 concernLocationText.textContent = savedConcernDraft.LocationName;
@@ -1229,6 +1111,56 @@
 
         restoreSavedConcernDraft();
 
+        function restoreLandingDraft() {
+            const query = new URLSearchParams(window.location.search);
+            if (query.get('landingDraft') !== '1') return;
+
+            let landingDraft;
+            try {
+                landingDraft = JSON.parse(sessionStorage.getItem('voxAngelosLandingDraft'));
+            } catch {
+                sessionStorage.removeItem('voxAngelosLandingDraft');
+                return;
+            }
+
+            if (!landingDraft || !['concern', 'recommendation'].includes(landingDraft.mode)) {
+                sessionStorage.removeItem('voxAngelosLandingDraft');
+                return;
+            }
+
+            const isRecommendation = landingDraft.mode === 'recommendation';
+            const targetTab = Array.from(tabButtons)
+                .find(button => button.dataset.view === (isRecommendation ? 'project' : 'concern'));
+            const targetInput = document.getElementById(isRecommendation
+                ? 'projectJustification'
+                : 'concernDescription');
+            const targetStatus = isRecommendation ? recommendationStatus : concernDraftStatus;
+            const landingMessage = typeof landingDraft.message === 'string'
+                ? landingDraft.message.trim()
+                : '';
+
+            targetTab?.click();
+
+            if (landingMessage && targetInput && !targetInput.value.trim()) {
+                targetInput.value = landingMessage;
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                targetStatus.textContent = 'Your text from the home page has been restored. Complete the remaining details before submitting.';
+                sessionStorage.removeItem('voxAngelosLandingDraft');
+            } else if (landingMessage && targetInput?.value.trim()) {
+                targetStatus.textContent = 'Your existing saved draft was kept so it would not be overwritten.';
+            } else {
+                targetStatus.textContent = `Continue by completing your ${isRecommendation ? 'recommendation' : 'concern'} details.`;
+                sessionStorage.removeItem('voxAngelosLandingDraft');
+            }
+
+            query.delete('landingDraft');
+            const remainingQuery = query.toString();
+            history.replaceState(null, '', `${window.location.pathname}${remainingQuery ? `?${remainingQuery}` : ''}${window.location.hash}`);
+            targetInput?.focus();
+        }
+
+        restoreLandingDraft();
+
         // Concern submit
                 // Hidden fields for confirmed category
         let confirmedCategory = '';
@@ -1237,14 +1169,14 @@
         const classificationErrorMessage = document.getElementById('classificationErrorMessage');
         const concernForm = document.getElementById('concernForm');
         const concernSuccessState = document.getElementById('concernSuccessState');
+        const concernDescriptionInput = document.getElementById('concernDescription');
+        const concernLocationRow = document.querySelector('.concern-location-row');
 
-        document.querySelectorAll('.concern-category-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.concern-category-btn').forEach(item => item.classList.remove('selected'));
-                button.classList.add('selected');
-                selectedConcernCategory = button.dataset.value;
-                document.getElementById('err-category').textContent = '';
-            });
+        concernDescriptionInput.addEventListener('input', () => {
+            if (concernDescriptionInput.value.trim()) {
+                concernDescriptionInput.classList.remove('input-error');
+                document.getElementById('err-description').textContent = '';
+            }
         });
 
         function showClassificationError(message) {
@@ -1261,22 +1193,28 @@
             document.getElementById('err-description').textContent = '';
             document.getElementById('err-location').textContent = '';
             document.getElementById('err-attachment').textContent = '';
+            concernDescriptionInput.classList.remove('input-error');
+            concernLocationRow.classList.remove('input-error');
+            concernUploadBtn.classList.remove('input-error');
 
-            const desc = document.getElementById('concernDescription').value.trim();
+            const desc = concernDescriptionInput.value.trim();
             if (!desc) {
                 document.getElementById('err-description').textContent = 'Could you describe the concern? Every detail helps the city respond faster.';
+                concernDescriptionInput.classList.add('input-error');
                 valid = false;
             }
 
             const location = document.getElementById('hdnLocationName').value.trim();
             if (!location) {
                 document.getElementById('err-location').textContent = 'We need to know where this is happening. Please drop a pin on the map.';
+                concernLocationRow.classList.add('input-error');
                 valid = false;
             }
 
             const files = document.getElementById('concernFileInput').files;
             if (!files || files.length === 0) {
                 document.getElementById('err-attachment').textContent = 'A photo or video helps us verify the situation. Please attach at least one.';
+                concernUploadBtn.classList.add('input-error');
                 valid = false;
             }
 
@@ -1371,7 +1309,6 @@
             renderConcernAttachmentPreview();
             selectedConcernCategory = '';
             confirmedCategory = '';
-            document.querySelectorAll('.concern-category-btn').forEach(button => button.classList.remove('selected'));
             concernLocationText.textContent = 'No location selected';
             selectedAddress = '';
             selectedLat = null;

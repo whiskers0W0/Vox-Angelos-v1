@@ -8,6 +8,7 @@
     var currentUser = await UserManager.GetUserAsync(User);
 
     var firstName = "User";
+    string? sidebarAvatarKey = null;
     var hasUnreadNotifications = false;
     var recentNotifications = new List<UserNotification>();
 
@@ -17,6 +18,21 @@
             .Where(p => p.UserId == currentUser.Id)
             .Select(p => p.FirstName)
             .FirstOrDefaultAsync() ?? "User";
+
+        sidebarAvatarKey = currentUser.ProfilePhotoUrl switch
+        {
+            "/images/avatars/philippine-eagle.png" => "philippine-eagle",
+            "/images/avatars/philippine-tarsier.png" => "philippine-tarsier",
+            "/images/avatars/carabao.png" => "carabao",
+            "/images/avatars/pawikan.png" => "pawikan",
+            "/images/avatars/owl.png" => "owl",
+            "/images/avatars/aspin.png" => "aspin",
+            "/images/avatars/puspin.png" => "puspin",
+            "/images/avatars/rabbit.png" => "rabbit",
+            "/images/avatars/dolphin.png" => "dolphin",
+            "/images/avatars/philippine-hornbill.png" => "philippine-hornbill",
+            _ => null
+        };
 
         hasUnreadNotifications = await Db.UserNotifications
             .AnyAsync(n => n.RecipientUserId == currentUser.Id && !n.IsRead);
@@ -37,6 +53,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] | Vox Angelos</title>
     <link rel="stylesheet" href="~/css/citizen-layout.css" asp-append-version="true" />
+    <style>
+        .citizen-discover-shell .sidebar-animal-avatar {
+            display: block;
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            border: 1px solid #d7e1f2;
+            border-radius: 10px;
+            background-color: #eef3fb;
+            background-image: url('/images/avatars/generated-animal-avatars.png');
+            background-repeat: no-repeat;
+            background-size: 565.75% 282.5%;
+        }
+
+        .sidebar-animal-avatar.avatar-philippine-eagle { background-position: 3.83% 20.6%; }
+        .sidebar-animal-avatar.avatar-philippine-tarsier { background-position: 27.15% 20.6%; }
+        .sidebar-animal-avatar.avatar-carabao { background-position: 50.05% 20.6%; }
+        .sidebar-animal-avatar.avatar-pawikan { background-position: 72.94% 20.6%; }
+        .sidebar-animal-avatar.avatar-owl { background-position: 95.84% 20.6%; }
+        .sidebar-animal-avatar.avatar-aspin { background-position: 3.83% 79.9%; }
+        .sidebar-animal-avatar.avatar-puspin { background-position: 27.15% 79.9%; }
+        .sidebar-animal-avatar.avatar-rabbit { background-position: 50.05% 79.9%; }
+        .sidebar-animal-avatar.avatar-dolphin { background-position: 72.94% 79.9%; }
+        .sidebar-animal-avatar.avatar-philippine-hornbill { background-position: 95.84% 79.9%; }
+    </style>
     @RenderSection("Styles", required: false)
 </head>
 
@@ -95,7 +136,14 @@
 
                 <div class="user-profile">
                     <a asp-page="/User/Profile" class="profile-link @(path == "/user/profile" ? "active" : "")">
-                        <span class="sidebar-avatar-fallback" aria-hidden="true">@(firstName.Length > 0 ? firstName[0].ToString().ToUpperInvariant() : "U")</span>
+                        @if (sidebarAvatarKey != null)
+                        {
+                            <span class="sidebar-animal-avatar avatar-@sidebarAvatarKey" role="img" aria-label="Selected animal profile avatar"></span>
+                        }
+                        else
+                        {
+                            <span class="sidebar-avatar-fallback" aria-hidden="true">@(firstName.Length > 0 ? firstName[0].ToString().ToUpperInvariant() : "U")</span>
+                        }
                         <span class="profile-copy">
                             <strong>@firstName</strong>
                             <small>View profile</small>
