@@ -373,17 +373,20 @@ namespace VoxAngelos.Services
 
             if (hfPrediction?.Category != null)
             {
-                var hfIsConfident = hfPrediction.Confidence == null || hfPrediction.Confidence >= MinHfConfidence;
-
-                if (!hfIsConfident)
-                {
-                    _logger.LogInformation(
-                        "HF classifier LOW CONFIDENCE: category={Category} confidence={Confidence} — rejecting as likely off-topic",
-                        hfPrediction.Category, hfPrediction.Confidence);
-                    return new ClassificationResult(null, "Rejected", true,
-                        "We couldn't confirm this is a specific local concern. Please add more detail — what's happening, and where — so we can route it to the right office.",
-                        Confidence: hfPrediction.Confidence);
-                }
+                // Confidence-threshold rejection is disabled for now (pending panel review of
+                // where to set MinHfConfidence) — every HF prediction is accepted regardless of
+                // confidence. To re-enable, restore the block below.
+                // var hfIsConfident = hfPrediction.Confidence == null || hfPrediction.Confidence >= MinHfConfidence;
+                //
+                // if (!hfIsConfident)
+                // {
+                //     _logger.LogInformation(
+                //         "HF classifier LOW CONFIDENCE: category={Category} confidence={Confidence} — rejecting as likely off-topic",
+                //         hfPrediction.Category, hfPrediction.Confidence);
+                //     return new ClassificationResult(null, "Rejected", true,
+                //         "We couldn't confirm this is a specific local concern. Please add more detail — what's happening, and where — so we can route it to the right office.",
+                //         Confidence: hfPrediction.Confidence);
+                // }
 
                 // Admin-assigned category→department mapping (Office Management) wins over
                 // the HF Space's own office_map.json — this is what lets a FUTURE_EXPANSION
