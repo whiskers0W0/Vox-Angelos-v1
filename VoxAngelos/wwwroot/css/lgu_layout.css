@@ -130,6 +130,104 @@
     display: none;
 }
 
+.lgu-notification-email-preference {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 12px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e3e7f0;
+    background: #f8faff;
+}
+
+.lgu-notification-email-copy strong,
+.lgu-notification-email-copy span {
+    display: block;
+}
+
+.lgu-notification-email-copy strong {
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.lgu-notification-email-copy span {
+    margin-top: 2px;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lgu-notification-email-switch {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    margin: 0;
+}
+
+.lgu-notification-email-switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.lgu-notification-email-switch > span {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #c5ccda;
+    cursor: pointer;
+    transition: background 0.18s ease;
+}
+
+.lgu-notification-email-switch > span::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(23, 33, 58, 0.24);
+    content: "";
+    transition: transform 0.18s ease;
+}
+
+.lgu-notification-email-switch input:checked + span {
+    background: #2453bb;
+}
+
+.lgu-notification-email-switch input:checked + span::after {
+    transform: translateX(16px);
+}
+
+.lgu-notification-email-switch input:focus-visible + span {
+    outline: 2px solid #2453bb;
+    outline-offset: 2px;
+}
+
+.lgu-notification-email-switch input:disabled + span {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.lgu-notification-email-status {
+    grid-column: 1 / -1;
+    color: var(--text-muted);
+    font-size: 10.5px;
+}
+
+.lgu-notification-email-status:empty {
+    display: none;
+}
+
+.lgu-notification-email-status.is-success { color: #18734d; }
+.lgu-notification-email-status.is-error { color: #b42318; }
+
 .lgu-notification-empty {
     padding: 22px 16px;
     color: var(--text-muted);

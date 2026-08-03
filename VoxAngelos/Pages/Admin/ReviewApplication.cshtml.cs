@@ -24,6 +24,7 @@ namespace VoxAngelos.Pages.Admin
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<ReviewApplicationModel> _logger;
         private readonly Cloudinary _cloudinary;
+        private readonly SensitiveMediaRetentionService _mediaRetention;
 
         public ReviewApplicationModel(
             ApplicationDbContext context,
@@ -31,7 +32,8 @@ namespace VoxAngelos.Pages.Admin
             IEmailSender emailSender,
             IWebHostEnvironment environment,
             ILogger<ReviewApplicationModel> logger,
-            Cloudinary cloudinary)
+            Cloudinary cloudinary,
+            SensitiveMediaRetentionService mediaRetention)
         {
             _context = context;
             _userManager = userManager;
@@ -39,6 +41,7 @@ namespace VoxAngelos.Pages.Admin
             _environment = environment;
             _logger = logger;
             _cloudinary = cloudinary;
+            _mediaRetention = mediaRetention;
         }
 
         public ApplicationUser? Citizen { get; set; }
@@ -184,7 +187,7 @@ namespace VoxAngelos.Pages.Admin
             }
 
             var user = await _userManager.FindByIdAsync(userId);
-            if (user != null && user.ApprovalStatus != "Approved")
+            if (user != null && user.ApprovalStatus == "Pending")
             {
                 user.ApprovalStatus = "Approved";
                 var result = await _userManager.UpdateAsync(user);
@@ -193,6 +196,8 @@ namespace VoxAngelos.Pages.Admin
                     TempData["AdminError"] = "Could not approve this application — it may have just been changed by another admin.";
                     return RedirectToPage("/Admin/UserApplications");
                 }
+
+                await TryPurgeSensitiveMediaAsync(userId);
 
                 await _emailSender.SendEmailAsync(
                     user.Email!,
@@ -218,7 +223,7 @@ namespace VoxAngelos.Pages.Admin
             {
                 TempData["AdminError"] = user == null
                     ? "The citizen account could not be found."
-                    : "This citizen account is already approved.";
+                    : "This application has already received a final decision and cannot be changed.";
             }
             return RedirectToPage("/Admin/UserApplications");
         }
@@ -232,7 +237,7 @@ namespace VoxAngelos.Pages.Admin
             }
 
             var user = await _userManager.FindByIdAsync(userId);
-            if (user != null && user.ApprovalStatus != "Rejected")
+            if (user != null && user.ApprovalStatus == "Pending")
             {
                 user.ApprovalStatus = "Rejected";
                 var result = await _userManager.UpdateAsync(user);
@@ -241,6 +246,8 @@ namespace VoxAngelos.Pages.Admin
                     TempData["AdminError"] = "Could not reject this application — it may have just been changed by another admin.";
                     return RedirectToPage("/Admin/UserApplications");
                 }
+
+                await TryPurgeSensitiveMediaAsync(userId);
 
                 await _emailSender.SendEmailAsync(
                     user.Email!,
@@ -261,9 +268,31 @@ namespace VoxAngelos.Pages.Admin
             {
                 TempData["AdminError"] = user == null
                     ? "The citizen account could not be found."
-                    : "This citizen application is already rejected.";
+                    : "This application has already received a final decision and cannot be changed.";
             }
             return RedirectToPage("/Admin/UserApplications");
+        }
+
+        private async Task TryPurgeSensitiveMediaAsync(string userId)
+        {
+            try
+            {
+                var purgedCount = await _mediaRetention.PurgeUserMediaAsync(
+                    userId,
+                    HttpContext.RequestAborted);
+                _logger.LogInformation(
+                    "Immediate review cleanup purged {Count} protected media copy/copies for citizen {UserId}.",
+                    purgedCount,
+                    userId);
+            }
+            catch (Exception ex)
+            {
+                // Keep the account decision. The scheduled sweep retries cleanup.
+                _logger.LogWarning(
+                    ex,
+                    "Immediate protected-media cleanup failed for citizen {UserId}; the retention sweep will retry.",
+                    userId);
+            }
         }
     }
 }

@@ -21,6 +21,7 @@ namespace VoxAngelos.Pages.LGU
         private readonly IWebHostEnvironment _environment;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<ReviewRecommendationsModel> _logger;
+        private readonly IConfiguration _configuration;
 
         public ReviewRecommendationsModel(
             ApplicationDbContext db,
@@ -28,7 +29,8 @@ namespace VoxAngelos.Pages.LGU
             IHubContext<FeedHub> feedHub,
             IWebHostEnvironment environment,
             IEmailSender emailSender,
-            ILogger<ReviewRecommendationsModel> logger)
+            ILogger<ReviewRecommendationsModel> logger,
+            IConfiguration configuration)
         {
             _db = db;
             _userManager = userManager;
@@ -36,6 +38,7 @@ namespace VoxAngelos.Pages.LGU
             _environment = environment;
             _emailSender = emailSender;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public string[] Departments => ConcernClassificationService.Departments;
@@ -79,7 +82,9 @@ namespace VoxAngelos.Pages.LGU
             // Show recommendations whose classified office matches this LGU's department
             if (!string.IsNullOrEmpty(userDepartment))
             {
-                query = query.Where(r => r.AssignedOffice == userDepartment || r.AssignedOffice == null);
+                query = _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized")
+                    ? query.Where(r => r.AssignedOffice == userDepartment)
+                    : query.Where(r => r.AssignedOffice == userDepartment || r.AssignedOffice == null);
             }
 
             if (filter != "All")
@@ -315,6 +320,9 @@ namespace VoxAngelos.Pages.LGU
 
             // Unassigned recommendations (AssignedOffice == null) are open to any LGU
             // office to claim and route — only block hijacking one another office already owns.
+            if (recommendation.AssignedOffice == null &&
+                _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized"))
+                return ReassignOutcome.Forbidden;
             if (recommendation.AssignedOffice != null && user.Department != recommendation.AssignedOffice)
                 return ReassignOutcome.Forbidden;
 

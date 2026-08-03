@@ -93,43 +93,36 @@
 
     <section class="admin-dashboard-section" aria-labelledby="officesHeading">
         <div class="admin-section-heading">
-            <div><span>Office access</span><h2 id="officesHeading">LGU account operations</h2></div>
+            <div><span>Office management</span><h2 id="officesHeading">LGU office readiness</h2></div>
             <a asp-page="/Admin/OfficeManagement">Manage office accounts</a>
         </div>
-        <div class="admin-kpi-grid" aria-label="LGU account summary">
-            <article class="admin-kpi"><strong>@Model.TotalLguAccounts</strong><span>Total LGU accounts</span></article>
-            <article class="admin-kpi"><strong class="text-success">@Model.ActiveLguAccounts</strong><span>Active accounts</span></article>
-            <article class="admin-kpi"><strong class="text-danger">@Model.DisabledLguAccounts</strong><span>Disabled accounts</span></article>
-        </div>
-        <div class="admin-dashboard-grid admin-dashboard-grid--two admin-dashboard-grid--spaced">
-            <article class="admin-panel">
-                <header class="admin-panel-header"><h3>Accounts by department</h3><span>Coverage</span></header>
+        <div class="admin-dashboard-grid admin-dashboard-grid--spaced">
+            <article class="admin-panel admin-panel--wide">
+                <header class="admin-panel-header"><h3>Office status</h3><span>One account per office</span></header>
                 @if (Model.AccountsByDepartment.Count == 0)
                 {
                     <p class="admin-empty-state">No LGU accounts yet.</p>
                 }
                 else
                 {
-                    <div class="admin-table-wrap"><table class="admin-data-table"><thead><tr><th scope="col">Department</th><th scope="col">Total</th><th scope="col">Active</th><th scope="col">Disabled</th></tr></thead><tbody>
+                    <div class="admin-table-wrap"><table class="admin-data-table"><thead><tr><th scope="col">Office</th><th scope="col">Account</th><th scope="col">Routing setup</th></tr></thead><tbody>
                     @foreach (var dept in Model.AccountsByDepartment)
                     {
-                        <tr><td><strong>@dept.Department</strong></td><td>@dept.Total</td><td class="text-success">@dept.Active</td><td class="text-danger">@dept.Disabled</td></tr>
-                    }
-                    </tbody></table></div>
-                }
-            </article>
-            <article class="admin-panel">
-                <header class="admin-panel-header"><h3>Recently created accounts</h3><span>Latest</span></header>
-                @if (Model.RecentLguAccounts.Count == 0)
-                {
-                    <p class="admin-empty-state">No accounts created yet.</p>
-                }
-                else
-                {
-                    <div class="admin-table-wrap"><table class="admin-data-table"><thead><tr><th scope="col">Department</th><th scope="col">Employee ID</th><th scope="col">Created</th></tr></thead><tbody>
-                    @foreach (var acct in Model.RecentLguAccounts)
-                    {
-                        <tr><td><strong>@acct.Label</strong></td><td>@acct.SubLabel</td><td>@acct.Timestamp.ToString("MM/dd/yyyy")</td></tr>
+                        <tr>
+                            <td><strong>@dept.Department</strong><small>@dept.DepartmentFullName</small></td>
+                            <td><strong class="@(dept.Active > 0 ? "text-success" : "text-danger")">@(dept.Active > 0 ? "Enabled" : "Disabled")</strong></td>
+                            <td>
+                                @if (dept.RoutingReady)
+                                {
+                                    <strong class="text-success">Ready</strong><small>@dept.CategoryCount categories · @dept.KeywordCount keywords</small>
+                                }
+                                else
+                                {
+                                    <strong class="text-danger">Needs configuration</strong>
+                                    <small>@(dept.Active == 0 ? "Enable the office account" : dept.CategoryCount == 0 && dept.KeywordCount == 0 ? "Add categories and keywords" : dept.CategoryCount == 0 ? "Add routing categories" : "Add NLP keywords")</small>
+                                }
+                            </td>
+                        </tr>
                     }
                     </tbody></table></div>
                 }
@@ -139,21 +132,51 @@
 
     <section class="admin-dashboard-section" aria-labelledby="nlpHeading">
         <div class="admin-section-heading">
-            <div><span>Classification quality</span><h2 id="nlpHeading">NLP performance</h2></div>
-            <a asp-page="/Admin/NlpAccuracy">Open NLP accuracy review</a>
+            <div><span>Classification operations</span><h2 id="nlpHeading">NLP and submission routing</h2></div>
+            <a asp-page="/Admin/NlpAccuracy">Open routing queue</a>
         </div>
-        <div class="admin-kpi-grid" aria-label="NLP performance summary">
-            <article class="admin-kpi"><strong class="@(Model.NlpThresholdMet ? "text-success" : "text-danger")">@Model.NlpAccuracyPercent.ToString("0.0")%</strong><span>Overall accuracy@(Model.NlpTotalReviewed > 0 ? " · target 75%" : "")</span></article>
-            <article class="admin-kpi"><strong>@(Model.WorstDepartment ?? "—")</strong><span>Weakest department@(Model.WorstDepartment != null ? $" · {Model.WorstDepartmentAccuracy:0.0}% accurate" : "")</span></article>
-            <article class="admin-kpi"><strong class="@(Model.RecentMisclassificationCount > 0 ? "text-danger" : "")">@Model.RecentMisclassificationCount</strong><span>Misclassified in the last 7 days</span></article>
-        </div>
-        @if (Model.NlpTotalReviewed == 0)
+        @if (Model.AdminTriageEnabled)
         {
-            <p class="admin-empty-state admin-empty-state--inline">No classification feedback is logged yet. These quality indicators will populate once LGU staff confirm or reassign concern categories.</p>
+            <div class="admin-kpi-grid admin-kpi-grid--four" aria-label="Admin routing queue summary">
+                <article class="admin-kpi"><strong class="@(Model.TotalAwaitingRouting > 0 ? "text-danger" : "text-success")">@Model.TotalAwaitingRouting</strong><span>Total submissions awaiting Admin routing</span></article>
+                <article class="admin-kpi"><strong>@Model.UncategorizedConcernCount</strong><span>Uncategorized concerns</span></article>
+                <article class="admin-kpi"><strong>@Model.UncategorizedRecommendationCount</strong><span>Unassigned recommendations</span></article>
+                <article class="admin-kpi"><strong>@Model.OldestRoutingAge</strong><span>@(Model.OldestUncategorizedSubmittedAt.HasValue ? $"Oldest item · submitted {Model.OldestUncategorizedSubmittedAt:MMM dd, yyyy}" : "No submissions currently waiting")</span></article>
+            </div>
         }
+        else
+        {
+            <div class="admin-kpi-grid" aria-label="NLP performance summary">
+                <article class="admin-kpi"><strong class="@(Model.NlpThresholdMet ? "text-success" : "text-danger")">@Model.NlpAccuracyPercent.ToString("0.0")%</strong><span>Overall accuracy@(Model.NlpTotalReviewed > 0 ? " · target 75%" : "")</span></article>
+                <article class="admin-kpi"><strong>@(Model.WorstDepartment ?? "—")</strong><span>Weakest department@(Model.WorstDepartment != null ? $" · {Model.WorstDepartmentAccuracy:0.0}% accurate" : "")</span></article>
+                <article class="admin-kpi"><strong class="@(Model.RecentMisclassificationCount > 0 ? "text-danger" : "")">@Model.RecentMisclassificationCount</strong><span>Misclassified in the last 7 days</span></article>
+            </div>
+        }
+        <article class="admin-panel admin-panel--wide admin-dashboard-grid--spaced">
+            <header class="admin-panel-header"><h3>Classification accuracy by department</h3><span>@Model.NlpTotalReviewed reviewed</span></header>
+            @if (Model.NlpByDepartment.Count == 0)
+            {
+                <p class="admin-empty-state">No classification reviews have been recorded yet. A department appears here after an LGU confirms or corrects an NLP assignment.</p>
+            }
+            else
+            {
+                <div class="admin-table-wrap">
+                    <table class="admin-data-table">
+                        <thead><tr><th scope="col">Department</th><th scope="col">Reviewed</th><th scope="col">Correct</th><th scope="col">Accuracy</th></tr></thead>
+                        <tbody>
+                        @foreach (var department in Model.NlpByDepartment)
+                        {
+                            <tr><td><strong>@department.Department</strong></td><td>@department.Total</td><td>@department.Correct</td><td><strong class="@(department.AccuracyPercent >= 75 ? "text-success" : "text-danger")">@department.AccuracyPercent.ToString("0.0")%</strong></td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </article>
     </section>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const ctx = document.getElementById("applicationsTrendChart");

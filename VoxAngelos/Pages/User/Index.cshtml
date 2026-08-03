@@ -896,6 +896,8 @@
                 formData.append('__RequestVerificationToken', token);
 
                 btn.disabled = true;
+                widget.setAttribute('inert', '');
+                widget.setAttribute('aria-busy', 'true');
                 feedback.textContent = 'Submitting…';
 
                 try {
@@ -923,6 +925,8 @@
                     widget.querySelector('.btn-cancel-rating')?.remove();
                     feedback.textContent = 'Thanks for rating! You can only rate a recommendation once.';
                 } finally {
+                    widget.removeAttribute('inert');
+                    widget.removeAttribute('aria-busy');
                     if (btn.isConnected) btn.disabled = false;
                 }
             });

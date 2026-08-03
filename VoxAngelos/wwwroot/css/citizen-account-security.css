@@ -437,3 +437,28 @@
         grid-column: auto;
     }
 }
+.citizen-shell .security-password-input { position: relative; }
+.citizen-shell .security-password-input input { width: 100%; padding-right: 44px; }
+.citizen-shell .security-password-input input::-ms-reveal,
+.citizen-shell .security-password-input input::-ms-clear { display: none; }
+.citizen-shell .security-password-toggle {
+    display: grid;
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #718096;
+    transform: translateY(-50%);
+}
+.citizen-shell .security-password-toggle:hover { background: var(--va-blue-soft); color: var(--va-blue); }
+.citizen-shell .security-password-toggle:focus-visible { outline: 2px solid var(--va-blue); outline-offset: 1px; }
+.citizen-shell .security-password-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.citizen-shell .security-password-toggle .eye-closed { display: none; }
+.citizen-shell .security-password-toggle.is-visible .eye-open { display: none; }
+.citizen-shell .security-password-toggle.is-visible .eye-closed { display: block; }

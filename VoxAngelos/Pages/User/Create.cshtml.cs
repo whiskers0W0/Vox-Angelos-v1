@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -8,6 +9,8 @@ using VoxAngelos.Data;
 using VoxAngelos.Hubs;
 using VoxAngelos.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
 
 namespace VoxAngelos.Pages.User
 {
@@ -24,6 +27,7 @@ namespace VoxAngelos.Pages.User
         private readonly CloudinaryAttachmentStorage _attachmentStorage;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<CreateModel> _logger;
+        private readonly IEmailSender _emailSender;
         private const int MaximumAttachmentCount = 8;
         private static readonly HashSet<string> ConcernCategoryHints = new(StringComparer.Ordinal)
         {
@@ -45,7 +49,8 @@ namespace VoxAngelos.Pages.User
                            IHubContext<FeedHub> feedHub,
                            CloudinaryAttachmentStorage attachmentStorage,
                            IWebHostEnvironment env,
-                           ILogger<CreateModel> logger)
+                           ILogger<CreateModel> logger,
+                           IEmailSender emailSender)
         {
             _db = db;
             _userManager = userManager;
@@ -56,6 +61,7 @@ namespace VoxAngelos.Pages.User
             _attachmentStorage = attachmentStorage;
             _env = env;
             _logger = logger;
+            _emailSender = emailSender;
         }
 
         public string CitizenFullName { get; set; } = string.Empty;
@@ -145,6 +151,8 @@ namespace VoxAngelos.Pages.User
                 ModelState.AddModelError("Description", "Description is required.");
             if (string.IsNullOrWhiteSpace(LocationName) || Latitude == null || Longitude == null)
                 ModelState.AddModelError("LocationName", "Please pin your location using the map.");
+            else if (!await IsWithinAngelesCityAsync(Latitude.Value, Longitude.Value))
+                ModelState.AddModelError("LocationName", "Please select a location within Angeles City only.");
             if (Attachments == null || Attachments.Count == 0)
                 ModelState.AddModelError("Attachments", "Please upload at least one image or video.");
             if (Attachments != null && Attachments.Count > MaximumAttachmentCount)
@@ -282,12 +290,13 @@ namespace VoxAngelos.Pages.User
                 }
                 await _db.SaveChangesAsync();
 
-                // Push the LGU dashboard(s) that will show this concern (LGU/Index.cshtml.cs
-                // lists a department's own concerns plus any still-unclassified ones, so an
-                // unclassified submission needs to reach every department's group).
+                // When Admin triage is enabled, unclassified submissions stay in the
+                // Admin routing queue until an office has deliberately assigned them.
                 notifyDepartments = concern.Category != null
                     ? new[] { concern.Category }
-                    : ConcernClassificationService.Departments;
+                    : _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized")
+                        ? Array.Empty<string>()
+                        : ConcernClassificationService.Departments;
 
                 await AddLguSubmissionNotificationsAsync(
                     notifyDepartments,
@@ -301,6 +310,13 @@ namespace VoxAngelos.Pages.User
                 await _urgencyScore.ApplyLocationAsync(concern);
                 await submissionTransaction.CommitAsync();
             });
+
+            await SendLguSubmissionEmailsAsync(
+                notifyDepartments,
+                subject: "New citizen concern assigned",
+                heading: "New concern received",
+                message: "A new citizen concern has been assigned to your office for review.",
+                linkUrl: "/LGU/Index?filter=Unresolved");
 
             foreach (var dept in notifyDepartments)
                 await _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(dept)).SendAsync("ConcernFeedChanged");
@@ -347,6 +363,30 @@ namespace VoxAngelos.Pages.User
                 success = true,
                 message = "Your concern draft has been saved."
             });
+        }
+
+        public async Task<IActionResult> OnPostDeleteConcernDraftAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return new JsonResult(new { success = false, message = "Your session has expired. Please sign in again." })
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized
+                };
+            }
+
+            var drafts = await _db.Concerns
+                .Where(concern => concern.CitizenId == user.Id && concern.Status == "Draft")
+                .ToListAsync();
+
+            if (drafts.Count > 0)
+            {
+                _db.Concerns.RemoveRange(drafts);
+                await _db.SaveChangesAsync();
+            }
+
+            return new JsonResult(new { success = true, message = "Your concern draft has been deleted." });
         }
 
         public class ClassifyRequest
@@ -551,6 +591,16 @@ namespace VoxAngelos.Pages.User
 
             if (!string.IsNullOrWhiteSpace(assignedOffice))
             {
+                await SendLguSubmissionEmailsAsync(
+                    new[] { assignedOffice },
+                    subject: "New citizen recommendation assigned",
+                    heading: "New recommendation received",
+                    message: $"A new citizen recommendation, “{RecTitle},” is ready for your office to review.",
+                    linkUrl: "/LGU/ReviewRecommendations");
+            }
+
+            if (!string.IsNullOrWhiteSpace(assignedOffice))
+            {
                 await _feedHub.Clients
                     .Group(FeedHub.LguDepartmentGroup(assignedOffice))
                     .SendAsync("RecommendationFeedChanged");
@@ -606,6 +656,132 @@ namespace VoxAngelos.Pages.User
             }
         }
 
+        private async Task<bool> IsWithinAngelesCityAsync(double latitude, double longitude)
+        {
+            var geoJsonPath = Path.Combine(
+                _env.WebRootPath,
+                "geojson",
+                "angeles-city-barangays.geojson");
+
+            if (!System.IO.File.Exists(geoJsonPath))
+            {
+                _logger.LogError("Angeles City barangay boundary file was not found at {GeoJsonPath}.", geoJsonPath);
+                return false;
+            }
+
+            await using var stream = System.IO.File.OpenRead(geoJsonPath);
+            using var document = await JsonDocument.ParseAsync(stream);
+
+            foreach (var feature in document.RootElement.GetProperty("features").EnumerateArray())
+            {
+                var geometry = feature.GetProperty("geometry");
+                var geometryType = geometry.GetProperty("type").GetString();
+                var coordinates = geometry.GetProperty("coordinates");
+
+                var containsPoint = geometryType switch
+                {
+                    "Polygon" => IsPointInPolygon(longitude, latitude, coordinates),
+                    "MultiPolygon" => coordinates.EnumerateArray()
+                        .Any(polygon => IsPointInPolygon(longitude, latitude, polygon)),
+                    _ => false
+                };
+
+                if (containsPoint) return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsPointInPolygon(double longitude, double latitude, JsonElement polygon)
+        {
+            if (polygon.GetArrayLength() == 0 || !IsPointInRing(longitude, latitude, polygon[0]))
+                return false;
+
+            return !polygon.EnumerateArray().Skip(1)
+                .Any(hole => IsPointInRing(longitude, latitude, hole));
+        }
+
+        private static bool IsPointInRing(double longitude, double latitude, JsonElement ring)
+        {
+            var inside = false;
+            var pointCount = ring.GetArrayLength();
+            if (pointCount < 3) return false;
+
+            for (int current = 0, previous = pointCount - 1;
+                 current < pointCount;
+                 previous = current++)
+            {
+                var currentLongitude = ring[current][0].GetDouble();
+                var currentLatitude = ring[current][1].GetDouble();
+                var previousLongitude = ring[previous][0].GetDouble();
+                var previousLatitude = ring[previous][1].GetDouble();
+
+                var crossesLatitude = (currentLatitude > latitude) != (previousLatitude > latitude);
+                if (crossesLatitude && longitude <
+                    (previousLongitude - currentLongitude) * (latitude - currentLatitude) /
+                    (previousLatitude - currentLatitude) + currentLongitude)
+                {
+                    inside = !inside;
+                }
+            }
+
+            return inside;
+        }
+
+        private async Task SendLguSubmissionEmailsAsync(
+            IEnumerable<string> departments,
+            string subject,
+            string heading,
+            string message,
+            string linkUrl)
+        {
+            var departmentCodes = departments
+                .Where(department => !string.IsNullOrWhiteSpace(department))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (departmentCodes.Count == 0) return;
+
+            var recipients = await _userManager.Users
+                .AsNoTracking()
+                .Where(account => account.Department != null &&
+                    departmentCodes.Contains(account.Department!) &&
+                    account.EmailNotificationsEnabled &&
+                    account.EmailConfirmed &&
+                    account.Email != null &&
+                    (account.LockoutEnd == null || account.LockoutEnd < DateTimeOffset.UtcNow))
+                .Select(account => new { account.Id, account.Email })
+                .ToListAsync();
+
+            var destinationUrl = $"{Request.Scheme}://{Request.Host}{linkUrl}";
+            var htmlMessage =
+                "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#17213a;'>" +
+                $"<h2 style='color:#1746b1;'>{WebUtility.HtmlEncode(heading)}</h2>" +
+                $"<p style='line-height:1.6;'>{WebUtility.HtmlEncode(message)}</p>" +
+                "<p style='margin:28px 0;'>" +
+                $"<a href='{WebUtility.HtmlEncode(destinationUrl)}' style='background:#1746b1;color:#fff;padding:11px 18px;text-decoration:none;border-radius:7px;font-weight:700;'>Open LGU review queue</a>" +
+                "</p>" +
+                "<p style='color:#718096;font-size:12px;'>You received this because email alerts are enabled in your Vox Angelos LGU notifications.</p>" +
+                "</div>";
+
+            foreach (var recipient in recipients)
+            {
+                try
+                {
+                    await _emailSender.SendEmailAsync(recipient.Email!, subject, htmlMessage);
+                }
+                catch (Exception exception)
+                {
+                    // Email is supplementary; the saved submission and in-app
+                    // notification must remain successful if the provider is down.
+                    _logger.LogWarning(
+                        exception,
+                        "Could not send an optional LGU assignment email to user {UserId}.",
+                        recipient.Id);
+                }
+            }
+        }
+
         public async Task<IActionResult> OnPostSaveRecommendationDraftAsync()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -641,6 +817,30 @@ namespace VoxAngelos.Pages.User
                 success = true,
                 message = "Your recommendation draft has been saved."
             });
+        }
+
+        public async Task<IActionResult> OnPostDeleteRecommendationDraftAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return new JsonResult(new { success = false, message = "Your session has expired. Please sign in again." })
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized
+                };
+            }
+
+            var drafts = await _db.Recommendations
+                .Where(recommendation => recommendation.CitizenId == user.Id && recommendation.Status == "Draft")
+                .ToListAsync();
+
+            if (drafts.Count > 0)
+            {
+                _db.Recommendations.RemoveRange(drafts);
+                await _db.SaveChangesAsync();
+            }
+
+            return new JsonResult(new { success = true, message = "Your recommendation draft has been deleted." });
         }
     }
 }

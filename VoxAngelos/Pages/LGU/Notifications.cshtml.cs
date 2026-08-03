@@ -53,5 +53,40 @@ namespace VoxAngelos.Pages.LGU
 
             return new JsonResult(new { success = true });
         }
+
+        public async Task<IActionResult> OnPostSetEmailNotificationsAsync(bool enabled)
+        {
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null) return Unauthorized();
+
+            if (enabled && (!lguUser.EmailConfirmed || string.IsNullOrWhiteSpace(lguUser.Email)))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "A confirmed office email is required before enabling email alerts."
+                });
+            }
+
+            lguUser.EmailNotificationsEnabled = enabled;
+            var result = await _userManager.UpdateAsync(lguUser);
+            if (!result.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    message = "We could not update your email preference. Please try again."
+                });
+            }
+
+            return new JsonResult(new
+            {
+                success = true,
+                enabled,
+                message = enabled
+                    ? $"LGU alerts will be sent to {lguUser.Email}."
+                    : "LGU email alerts have been turned off."
+            });
+        }
     }
 }
