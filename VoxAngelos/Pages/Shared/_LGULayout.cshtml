@@ -56,6 +56,14 @@
 </summary>
 <div class="lgu-notification-dropdown">
 <div class="lgu-notification-header"><div><span class="lgu-notification-eyebrow">LGU ALERTS</span><strong>Notifications</strong></div>@if (unreadLguNotificationCount > 0){<span>@unreadLguNotificationCount unread</span>}</div>
+@if (currentLguUser != null)
+{
+<div class="lgu-notification-email-preference">
+<div class="lgu-notification-email-copy"><strong>Email alerts</strong><span>@(currentLguUser.EmailConfirmed ? $"Send new assignment alerts to {currentLguUser.Email}" : "A confirmed office email is required.")</span></div>
+<label class="lgu-notification-email-switch" for="lguEmailNotificationsToggle"><input type="checkbox" id="lguEmailNotificationsToggle" checked="@currentLguUser.EmailNotificationsEnabled" disabled="@(!currentLguUser.EmailConfirmed)" aria-label="Receive LGU assignment alerts by email" /><span aria-hidden="true"></span></label>
+<small id="lguEmailNotificationsStatus" class="lgu-notification-email-status" aria-live="polite"></small>
+</div>
+}
 @if (recentLguNotifications.Count == 0)
 {
 <div class="lgu-notification-empty"><strong>No notifications yet</strong><span>New assigned concerns and recommendations will appear here.</span></div>
@@ -115,6 +123,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const bindEmailNotificationToggle = (root = document) => {
+        const toggle = root.querySelector('#lguEmailNotificationsToggle');
+        const status = root.querySelector('#lguEmailNotificationsStatus');
+        if (!toggle || !status || toggle.dataset.preferenceHandlerAttached === 'true') return;
+        toggle.dataset.preferenceHandlerAttached = 'true';
+
+        toggle.addEventListener('change', async () => {
+            const requestedState = toggle.checked;
+            toggle.disabled = true;
+            status.textContent = 'Saving preference...';
+            status.classList.remove('is-success', 'is-error');
+
+            try {
+                const response = await fetch('/LGU/Notifications?handler=SetEmailNotifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `enabled=${encodeURIComponent(requestedState)}&__RequestVerificationToken=${encodeURIComponent(notificationRequestToken ?? '')}`
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Unable to update your email preference.');
+                status.textContent = result.message;
+                status.classList.add('is-success');
+            } catch (error) {
+                toggle.checked = !requestedState;
+                status.textContent = error.message || 'Unable to update your email preference.';
+                status.classList.add('is-error');
+            } finally {
+                toggle.disabled = false;
+            }
+        });
+    };
+
     const refreshNotificationBell = async () => {
         try {
             const response = await fetch(window.location.href, {
@@ -132,14 +172,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             currentToolbar.replaceWith(updatedToolbar);
             bindNotificationClickHandlers(updatedToolbar);
+            bindEmailNotificationToggle(updatedToolbar);
         } catch (error) {
             console.warn('Unable to refresh LGU notifications:', error);
         }
     };
 
     bindNotificationClickHandlers();
+    bindEmailNotificationToggle();
     window.addEventListener('voxangelos:lgu-notification', refreshNotificationBell);
 });
 </script>
 <script>const hamburgerBtn=document.getElementById('hamburgerBtn');const sidebar=document.querySelector('.sidebar');const overlay=document.getElementById('sidebarOverlay');hamburgerBtn.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('active');});overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('active');});</script>
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script><script src="~/lib/signalr/signalr.min.js"></script><script src="~/js/realtime.js"></script>@RenderSection("Scripts", required: false)</body></html>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script><script src="~/lib/signalr/signalr.min.js"></script><script src="~/js/realtime.js"></script><script src="~/js/form-submit-lock.js" asp-append-version="true"></script>@RenderSection("Scripts", required: false)</body></html>

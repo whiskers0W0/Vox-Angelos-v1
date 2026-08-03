@@ -91,6 +91,13 @@
                 @foreach (var concern in Model.Outbox)
                 {
                     var statusCss = concern.Status.ToLowerInvariant().Replace(" ", "-");
+                    var mapQuery = concern.Latitude.HasValue && concern.Longitude.HasValue
+                        ? FormattableString.Invariant($"{concern.Latitude.Value},{concern.Longitude.Value}")
+                        : concern.LocationName;
+                    var hasMapLocation = !string.IsNullOrWhiteSpace(mapQuery) && mapQuery != "No location provided";
+                    var mapUrl = hasMapLocation
+                        ? $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(mapQuery)}"
+                        : null;
                     <article class="concern-card concern-record">
                         <header class="record-header">
                             <div class="record-identity">
@@ -193,6 +200,18 @@
                                         </div>
                                     }
                                 </dl>
+                                @if (mapUrl != null)
+                                {
+                                <a class="concern-location concern-location-link" href="@mapUrl" target="_blank" rel="noopener noreferrer" title="Open this location in Google Maps" aria-label="Open concern location in Google Maps">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 13 6 13s6-7.75 6-13c0-3.314-2.686-6-6-6z" />
+                                        <circle cx="12" cy="8" r="2" />
+                                    </svg>
+                                    <div><span>Location</span><strong>@concern.LocationName</strong></div>
+                                </a>
+                                }
+                                else
+                                {
                                 <div class="concern-location">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 13 6 13s6-7.75 6-13c0-3.314-2.686-6-6-6z" />
@@ -200,6 +219,7 @@
                                     </svg>
                                     <div><span>Location</span><strong>@concern.LocationName</strong></div>
                                 </div>
+                                }
                             </aside>
                         </div>
 

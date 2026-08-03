@@ -132,6 +132,8 @@
 
                 <!-- Submit -->
                 <div class="concern-submit-row">
+                    <button class="btn-submit draft-delete-btn" id="concernDeleteDraftBtn" type="button"
+                            style="@(Model.SavedConcernDraft == null ? "display:none;" : "display:inline-flex;")">Delete Draft</button>
                     <button class="btn-submit btn-draft" id="concernSaveDraftBtn" type="button">Save Draft</button>
                     <button class="btn-submit" id="concernSubmitBtn" type="button">Submit</button>
                 </div>
@@ -284,6 +286,8 @@
             <div class="step-footer" id="stepFooter">
                 <span class="step-counter" id="stepCounter">Step 1 of 3</span>
                 <div class="footer-actions">
+                    <button class="btn-back draft-delete-btn" id="btnDeleteRecommendationDraft" type="button"
+                            style="@(Model.SavedRecommendationDraft == null ? "display:none;" : "display:inline-flex;")">Delete Draft</button>
                     <button class="btn-back" id="btnSaveDraft" type="button">Save Draft</button>
                     <button class="btn-back" id="btnBack" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -312,11 +316,51 @@
         <div class="map-search-row">
             <div id="mapAutocompleteHost" style="flex: 1; min-width: 0;"></div>
         </div>
+        <div class="map-boundary-notice" id="mapBoundaryNotice" role="alert" hidden>
+            <div class="map-boundary-notice-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 9v4" />
+                    <path d="M12 17h.01" />
+                    <path d="M10.3 3.7 2.2 18a2 2 0 0 0 1.8 3h16a2 2 0 0 0 1.8-3L13.7 3.7a2 2 0 0 0-3.4 0Z" />
+                </svg>
+            </div>
+            <div class="map-boundary-notice-copy">
+                <strong>Outside the service area</strong>
+                <span>Please place the pin inside the blue Angeles City boundary.</span>
+            </div>
+            <button class="map-boundary-notice-close" id="mapBoundaryNoticeClose" type="button" aria-label="Dismiss location warning">&times;</button>
+        </div>
         <div id="googleMap" class="google-map"></div>
         <div class="map-modal-footer">
             <span class="map-coord-label">Location/Coordinate:</span>
             <span class="map-coord-value" id="mapCoordDisplay"></span>
             <button class="btn-submit" id="mapConfirmBtn" type="button">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div class="draft-action-toast" id="draftActionToast" role="status" aria-live="polite" hidden>
+    <span id="draftActionToastMessage">Draft saved successfully.</span>
+    <div class="draft-action-toast-progress" aria-hidden="true"></div>
+</div>
+
+<!-- Delete Draft Confirmation -->
+<div class="map-modal-overlay" id="deleteDraftModal" role="dialog" aria-modal="true" aria-labelledby="deleteDraftTitle">
+    <div class="map-modal draft-delete-modal">
+        <div class="draft-delete-modal-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="m19 6-1 14H6L5 6" />
+                <path d="M10 11v5M14 11v5" />
+            </svg>
+        </div>
+        <span class="draft-delete-modal-eyebrow">Saved draft</span>
+        <h3 id="deleteDraftTitle">Delete this draft?</h3>
+        <p id="deleteDraftMessage">This removes the unfinished draft permanently. Submitted records will not be affected.</p>
+        <div class="draft-delete-modal-actions">
+            <button id="deleteDraftCancelBtn" type="button" class="btn-back">Keep Draft</button>
+            <button id="deleteDraftConfirmBtn" type="button" class="btn-submit draft-delete-confirm-btn">Delete Draft</button>
         </div>
     </div>
 </div>
@@ -411,10 +455,42 @@
         const btnBack = document.getElementById('btnBack');
         const btnNext = document.getElementById('btnNext');
         const btnSaveDraft = document.getElementById('btnSaveDraft');
+        const btnDeleteRecommendationDraft = document.getElementById('btnDeleteRecommendationDraft');
         const stepCounter = document.getElementById('stepCounter');
         const stepFooter = document.getElementById('stepFooter');
         const successState = document.getElementById('successState');
         const recommendationStatus = document.getElementById('recommendationStatus');
+        const draftActionToast = document.getElementById('draftActionToast');
+        const draftActionToastMessage = document.getElementById('draftActionToastMessage');
+        let draftActionToastTimer = null;
+
+        function hideDraftActionToast() {
+            window.clearTimeout(draftActionToastTimer);
+            draftActionToast.hidden = true;
+        }
+
+        function showDraftActionToast(title, message) {
+            window.clearTimeout(draftActionToastTimer);
+            draftActionToastMessage.textContent = `${title}. ${message}`;
+            draftActionToast.hidden = false;
+            draftActionToastTimer = window.setTimeout(hideDraftActionToast, 5000);
+        }
+
+        function restoreDraftActionNotice() {
+            const rawNotice = sessionStorage.getItem('voxAngelosDraftActionNotice');
+            if (!rawNotice) return;
+            sessionStorage.removeItem('voxAngelosDraftActionNotice');
+
+            try {
+                const notice = JSON.parse(rawNotice);
+                const draftLabel = notice.draftType === 'recommendation' ? 'Recommendation' : 'Concern';
+                if (notice.action === 'deleted') {
+                    showDraftActionToast(`${draftLabel} draft deleted`, 'The Create page is ready for a new submission.');
+                }
+            } catch { }
+        }
+
+        restoreDraftActionNotice();
 
         // File upload
         const uploadBtn = document.getElementById('uploadBtn');
@@ -613,6 +689,7 @@
 
         btnSaveDraft.addEventListener('click', async () => {
             recommendationStatus.textContent = '';
+            setSubmissionInteractionLock(recommendationFormSurface, true);
             btnSaveDraft.disabled = true;
             btnSaveDraft.textContent = 'Saving...';
 
@@ -623,10 +700,13 @@
                 });
                 const data = await readRecommendationResponse(response);
                 recommendationStatus.textContent = `${data.message} Attachments will be uploaded when you submit.`;
+                btnDeleteRecommendationDraft.style.display = 'inline-flex';
+                showDraftActionToast('Recommendation draft saved', 'Your progress is safe. You can return and continue it later.');
             } catch (error) {
                 recommendationStatus.textContent = error.message;
                 console.error('Draft save error:', error);
             } finally {
+                setSubmissionInteractionLock(recommendationFormSurface, false);
                 btnSaveDraft.disabled = false;
                 btnSaveDraft.textContent = 'Save Draft';
             }
@@ -798,11 +878,29 @@
         const mapConfirmBtn = document.getElementById('mapConfirmBtn');
         const concernLocationText = document.getElementById('concernLocationText');
         const mapCoordDisplay = document.getElementById('mapCoordDisplay');
+        const mapBoundaryNotice = document.getElementById('mapBoundaryNotice');
+        const mapBoundaryNoticeClose = document.getElementById('mapBoundaryNoticeClose');
 
         let selectedLat = null;
         let selectedLng = null;
         let selectedAddress = '';
         let map, marker, autocompleteEl;
+        let locationValidationPending = false;
+        let hasValidMapSelection = false;
+        let lastValidPosition = null;
+        let angelesBoundaryFeatures = [];
+        let angelesBoundaryGeoJson = null;
+        let mapBoundaryNoticeTimer = null;
+        const angelesBoundaryPromise = fetch('/geojson/angeles-city-barangays.geojson')
+            .then(response => {
+                if (!response.ok) throw new Error('Boundary file unavailable.');
+                return response.json();
+            })
+            .then(geoJson => {
+                angelesBoundaryGeoJson = geoJson;
+                angelesBoundaryFeatures = geoJson.features || [];
+                return angelesBoundaryFeatures;
+            });
 
 
         useMapBtn.addEventListener('click', () => {
@@ -819,19 +917,38 @@
                 : defaultCenter;
 
             // Angeles City bounds
-            const angelsesBounds = new google.maps.LatLngBounds(
-                new google.maps.LatLng(15.1000, 120.5400), // SW corner
-                new google.maps.LatLng(15.1900, 120.6400)  // NE corner
+            const angelesBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(15.1084, 120.4491), // SW edge of saved barangay polygons
+                new google.maps.LatLng(15.2226, 120.6427)  // NE edge of saved barangay polygons
             );
 
             map = new google.maps.Map(document.getElementById('googleMap'), {
                 center: initialCenter,
                 zoom: 14,
                 restriction: {
-                    latLngBounds: angelsesBounds,
+                    latLngBounds: angelesBounds,
                     strictBounds: true  // hard lock — cannot pan outside
                 }
             });
+
+            angelesBoundaryPromise.then(() => {
+                map.data.addGeoJson(angelesBoundaryGeoJson);
+                map.data.setStyle({
+                    fillColor: '#1d4ed8',
+                    fillOpacity: 0.04,
+                    strokeColor: '#1d4ed8',
+                    strokeOpacity: 0.65,
+                    strokeWeight: 1,
+                    clickable: true
+                });
+
+                // Google Maps sends clicks on GeoJSON features to the Data layer
+                // instead of the base map. Route those clicks through the same pin
+                // selection flow so citizens can click anywhere inside a barangay.
+                map.data.addListener('click', event => {
+                    validateAndApplyLocation(event.latLng);
+                });
+            }).catch(() => { });
 
             marker = new google.maps.Marker({
                 position: initialCenter,
@@ -839,44 +956,38 @@
                 draggable: true
             });
 
+            lastValidPosition = new google.maps.LatLng(defaultCenter);
+
             // Click on map to move marker
             map.addListener('click', (e) => {
-                marker.setPosition(e.latLng);
-                selectedLat = e.latLng.lat();
-                selectedLng = e.latLng.lng();
-                reverseGeocode(selectedLat, selectedLng);
+                validateAndApplyLocation(e.latLng);
             });
 
             // Drag marker
             marker.addListener('dragend', (e) => {
-                selectedLat = e.latLng.lat();
-                selectedLng = e.latLng.lng();
-                reverseGeocode(selectedLat, selectedLng);
+                validateAndApplyLocation(e.latLng);
             });
 
             // Set initial values when there is no saved concern location.
             if (selectedLat === null || selectedLng === null) {
-                selectedLat = defaultCenter.lat;
-                selectedLng = defaultCenter.lng;
-                reverseGeocode(selectedLat, selectedLng);
+                selectedAddress = '';
+                mapConfirmBtn.disabled = true;
+                mapCoordDisplay.textContent = 'Click or drag the pin to choose a location within Angeles City.';
             } else {
-                mapCoordDisplay.textContent = selectedAddress;
+                const savedPosition = new google.maps.LatLng(selectedLat, selectedLng);
+                selectedLat = null;
+                selectedLng = null;
+                selectedAddress = '';
+                validateAndApplyLocation(savedPosition, false);
             }
 
-            function applySelectedLocation(latLng, address) {
-                if (!angelsesBounds.contains(latLng)) {
-                    alert('Location is outside Angeles City. Please pin a location within Angeles City, Pampanga.');
+            async function applySelectedLocation(latLng) {
+                if (!angelesBounds.contains(latLng)) {
+                    showOutsideAngelesMessage();
                     return false;
                 }
 
-                map.panTo(latLng);
-                map.setZoom(16);
-                marker.setPosition(latLng);
-                selectedLat = latLng.lat();
-                selectedLng = latLng.lng();
-                selectedAddress = address;
-                mapCoordDisplay.textContent = selectedAddress;
-                return true;
+                return validateAndApplyLocation(latLng);
             }
 
             // Use the current Places API (New) autocomplete widget. The older
@@ -888,7 +999,7 @@
                 autocompleteEl = new PlaceAutocompleteElement();
                 autocompleteEl.placeholder = 'Start typing a street, barangay, landmark, or establishment...';
                 autocompleteEl.includedRegionCodes = ['ph'];
-                autocompleteEl.locationRestriction = angelsesBounds;
+                autocompleteEl.locationRestriction = angelesBounds;
                 autocompleteEl.style.width = '100%';
 
                 autocompleteHost.replaceChildren(autocompleteEl);
@@ -901,8 +1012,7 @@
                         return;
                     }
 
-                    const address = place.formattedAddress || place.displayName || 'Selected location';
-                    applySelectedLocation(place.location, address);
+                    await applySelectedLocation(place.location);
                 });
             }
 
@@ -911,28 +1021,120 @@
             });
         }
 
-        function reverseGeocode(lat, lng) {
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    selectedAddress = results[0].formatted_address;
-                    mapCoordDisplay.textContent = selectedAddress;
-                } else {
-                    selectedAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                    mapCoordDisplay.textContent = selectedAddress;
+        function isPointInRing(longitude, latitude, ring) {
+            let inside = false;
+            for (let current = 0, previous = ring.length - 1;
+                 current < ring.length;
+                 previous = current++) {
+                const [currentLongitude, currentLatitude] = ring[current];
+                const [previousLongitude, previousLatitude] = ring[previous];
+                const crossesLatitude = (currentLatitude > latitude) !== (previousLatitude > latitude);
+
+                if (crossesLatitude && longitude <
+                    (previousLongitude - currentLongitude) * (latitude - currentLatitude) /
+                    (previousLatitude - currentLatitude) + currentLongitude) {
+                    inside = !inside;
                 }
+            }
+            return inside;
+        }
+
+        function isPointInPolygon(longitude, latitude, polygon) {
+            if (!polygon.length || !isPointInRing(longitude, latitude, polygon[0])) return false;
+            return !polygon.slice(1).some(hole => isPointInRing(longitude, latitude, hole));
+        }
+
+        function isWithinAngelesBoundary(latitude, longitude) {
+            return angelesBoundaryFeatures.some(feature => {
+                const { type, coordinates } = feature.geometry || {};
+                if (type === 'Polygon') return isPointInPolygon(longitude, latitude, coordinates);
+                if (type === 'MultiPolygon') {
+                    return coordinates.some(polygon => isPointInPolygon(longitude, latitude, polygon));
+                }
+                return false;
             });
         }
 
-        mapConfirmBtn.addEventListener('click', () => {
-            if (selectedLat && selectedLng) {
-                concernLocationText.textContent = selectedAddress;
-                document.getElementById('hdnLocationName').value = selectedAddress;
-                document.getElementById('hdnLatitude').value = selectedLat;
-                document.getElementById('hdnLongitude').value = selectedLng;
-                document.querySelector('.concern-location-row').classList.remove('input-error');
-                document.getElementById('err-location').textContent = '';
+        function showOutsideAngelesMessage() {
+            marker.setPosition(lastValidPosition);
+            mapCoordDisplay.textContent = 'Outside Angeles City. Please choose a location within Angeles City only.';
+            window.clearTimeout(mapBoundaryNoticeTimer);
+            mapBoundaryNotice.hidden = false;
+            mapBoundaryNotice.classList.remove('is-visible');
+            requestAnimationFrame(() => mapBoundaryNotice.classList.add('is-visible'));
+            mapBoundaryNoticeTimer = window.setTimeout(hideMapBoundaryNotice, 6500);
+        }
+
+        function hideMapBoundaryNotice() {
+            window.clearTimeout(mapBoundaryNoticeTimer);
+            mapBoundaryNotice.classList.remove('is-visible');
+            window.setTimeout(() => {
+                if (!mapBoundaryNotice.classList.contains('is-visible')) {
+                    mapBoundaryNotice.hidden = true;
+                }
+            }, 180);
+        }
+
+        mapBoundaryNoticeClose.addEventListener('click', hideMapBoundaryNotice);
+
+        async function validateAndApplyLocation(latLng, focusMap = true) {
+            if (locationValidationPending) return Promise.resolve(false);
+
+            locationValidationPending = true;
+            mapConfirmBtn.disabled = true;
+            mapCoordDisplay.textContent = 'Checking location...';
+
+            try {
+                await angelesBoundaryPromise;
+            } catch {
+                locationValidationPending = false;
+                mapConfirmBtn.disabled = !hasValidMapSelection;
+                marker.setPosition(lastValidPosition);
+                mapCoordDisplay.textContent = 'The Angeles City boundary could not be loaded. Please reopen the map and try again.';
+                return false;
             }
+
+            if (!isWithinAngelesBoundary(latLng.lat(), latLng.lng())) {
+                locationValidationPending = false;
+                mapConfirmBtn.disabled = !hasValidMapSelection;
+                showOutsideAngelesMessage();
+                return false;
+            }
+
+            const geocoder = new google.maps.Geocoder();
+            return new Promise(resolve => geocoder.geocode({ location: latLng }, (results, status) => {
+                locationValidationPending = false;
+                hasValidMapSelection = true;
+                mapConfirmBtn.disabled = false;
+
+                marker.setPosition(latLng);
+                lastValidPosition = latLng;
+                selectedLat = latLng.lat();
+                selectedLng = latLng.lng();
+                selectedAddress = status === 'OK' && results[0]
+                    ? results[0].formatted_address
+                    : `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+                mapCoordDisplay.textContent = selectedAddress;
+
+                if (focusMap) {
+                    map.panTo(latLng);
+                    map.setZoom(16);
+                }
+
+                resolve(true);
+            }));
+        }
+
+        mapConfirmBtn.addEventListener('click', () => {
+            if (locationValidationPending || !hasValidMapSelection ||
+                selectedLat === null || selectedLng === null || !selectedAddress) return;
+
+            concernLocationText.textContent = selectedAddress;
+            document.getElementById('hdnLocationName').value = selectedAddress;
+            document.getElementById('hdnLatitude').value = selectedLat;
+            document.getElementById('hdnLongitude').value = selectedLng;
+            document.querySelector('.concern-location-row').classList.remove('input-error');
+            document.getElementById('err-location').textContent = '';
             mapModalOverlay.classList.remove('active');
         });
 
@@ -956,6 +1158,7 @@
         const concernFileNames = document.getElementById('concernFileNames');
         const concernAttachmentPreview = document.getElementById('concernAttachmentPreview');
         const concernSaveDraftBtn = document.getElementById('concernSaveDraftBtn');
+        const concernDeleteDraftBtn = document.getElementById('concernDeleteDraftBtn');
         const concernDraftStatus = document.getElementById('concernDraftStatus');
         let selectedConcernFiles = [];
         let selectedConcernCategory = '';
@@ -1071,6 +1274,7 @@
 
         concernSaveDraftBtn.addEventListener('click', async () => {
             concernDraftStatus.textContent = '';
+            setSubmissionInteractionLock(concernForm, true);
             concernSaveDraftBtn.disabled = true;
             concernSaveDraftBtn.textContent = 'Saving...';
 
@@ -1085,10 +1289,13 @@
                 }
 
                 concernDraftStatus.textContent = `${data.message} Attachments will be uploaded when you submit.`;
+                concernDeleteDraftBtn.style.display = 'inline-flex';
+                showDraftActionToast('Concern draft saved', 'Your progress is safe. You can return and continue it later.');
             } catch (error) {
                 concernDraftStatus.textContent = error.message;
                 console.error('Concern draft save error:', error);
             } finally {
+                setSubmissionInteractionLock(concernForm, false);
                 concernSaveDraftBtn.disabled = false;
                 concernSaveDraftBtn.textContent = 'Save Draft';
             }
@@ -1116,6 +1323,74 @@
         }
 
         restoreSavedConcernDraft();
+
+        const deleteDraftModal = document.getElementById('deleteDraftModal');
+        const deleteDraftMessage = document.getElementById('deleteDraftMessage');
+        const deleteDraftCancelBtn = document.getElementById('deleteDraftCancelBtn');
+        const deleteDraftConfirmBtn = document.getElementById('deleteDraftConfirmBtn');
+        let pendingDraftType = null;
+
+        function openDeleteDraftModal(draftType) {
+            pendingDraftType = draftType;
+            deleteDraftMessage.textContent = draftType === 'recommendation'
+                ? 'This permanently removes your unfinished recommendation. Submitted recommendations will not be affected.'
+                : 'This permanently removes your unfinished concern. Submitted concerns will not be affected.';
+            deleteDraftModal.classList.add('active');
+            deleteDraftCancelBtn.focus();
+        }
+
+        function closeDeleteDraftModal() {
+            if (deleteDraftConfirmBtn.disabled) return;
+            pendingDraftType = null;
+            deleteDraftModal.classList.remove('active');
+        }
+
+        btnDeleteRecommendationDraft.addEventListener('click', () => openDeleteDraftModal('recommendation'));
+        concernDeleteDraftBtn.addEventListener('click', () => openDeleteDraftModal('concern'));
+        deleteDraftCancelBtn.addEventListener('click', closeDeleteDraftModal);
+        deleteDraftModal.addEventListener('click', event => {
+            if (event.target === deleteDraftModal) closeDeleteDraftModal();
+        });
+
+        deleteDraftConfirmBtn.addEventListener('click', async () => {
+            if (!pendingDraftType || deleteDraftConfirmBtn.disabled) return;
+
+            const draftType = pendingDraftType;
+            const handler = draftType === 'recommendation'
+                ? 'DeleteRecommendationDraft'
+                : 'DeleteConcernDraft';
+
+            deleteDraftConfirmBtn.disabled = true;
+            deleteDraftCancelBtn.disabled = true;
+            deleteDraftConfirmBtn.textContent = 'Deleting...';
+
+            try {
+                const response = await fetch(`?handler=${handler}`, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json().catch(() => null);
+                if (!response.ok || !data?.success) {
+                    throw new Error(data?.message || 'The draft could not be deleted. Please try again.');
+                }
+
+                sessionStorage.setItem('voxAngelosDraftActionNotice', JSON.stringify({
+                    action: 'deleted',
+                    draftType
+                }));
+                window.location.replace(window.location.pathname);
+            } catch (error) {
+                const statusElement = draftType === 'recommendation' ? recommendationStatus : concernDraftStatus;
+                statusElement.textContent = error.message;
+                deleteDraftModal.classList.remove('active');
+                deleteDraftConfirmBtn.disabled = false;
+                deleteDraftCancelBtn.disabled = false;
+                deleteDraftConfirmBtn.textContent = 'Delete Draft';
+            }
+        });
 
         function restoreLandingDraft() {
             const query = new URLSearchParams(window.location.search);

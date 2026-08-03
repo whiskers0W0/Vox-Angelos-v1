@@ -51,7 +51,7 @@
             var mapUrl = hasCoordinates
                 ? $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(coordinatesText)}"
                 : null;
-            <article class="concern-card" data-id="@concern.Id" data-selectable="@selectableAttr">
+            <article class="concern-card" id="concern-@concern.Id" data-id="@concern.Id" data-selectable="@selectableAttr">
                 @if (concern.Status == "Unresolved") { <input type="checkbox" class="concern-select" data-id="@concern.Id" hidden /> }
                 <header class="card-header"><div class="author-info"><div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg></div><div><span class="lgu-record-label">Resident report</span><strong class="author-name">@concern.CitizenName</strong></div></div><div class="lgu-card-status"><span class="card-date">@timeAgo</span><span class="concern-status @statusCss">@concern.Status</span></div></header>
                 <div class="lgu-card-body"><div class="lgu-concern-summary"><div class="card-meta"><span class="meta-label">Classified category</span><span class="meta-value">@concern.Category</span></div><p class="concern-excerpt">@concern.Description</p></div>
@@ -90,8 +90,17 @@ document.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', () => sessionStorage.setItem(CONCERN_SCROLL_KEY, String(window.scrollY)));
 });
 window.addEventListener('load', () => {
+    const focusedConcernId = new URLSearchParams(window.location.search).get('concernId');
     const savedScrollY = sessionStorage.getItem(CONCERN_SCROLL_KEY);
-    if (savedScrollY !== null) {
+    if (focusedConcernId) {
+        sessionStorage.removeItem(CONCERN_SCROLL_KEY);
+        const focusedCard = document.querySelector(`.concern-card[data-id="${CSS.escape(focusedConcernId)}"]`);
+        if (focusedCard) {
+            focusedCard.classList.add('concern-card-focused');
+            focusedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            window.setTimeout(() => focusedCard.classList.remove('concern-card-focused'), 3500);
+        }
+    } else if (savedScrollY !== null) {
         sessionStorage.removeItem(CONCERN_SCROLL_KEY);
         window.scrollTo(0, parseInt(savedScrollY, 10));
     }

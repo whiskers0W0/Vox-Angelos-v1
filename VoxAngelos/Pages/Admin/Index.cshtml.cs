@@ -12,11 +12,16 @@ namespace VoxAngelos.Pages.Admin
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IConfiguration _configuration;
 
-        public IndexModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public IndexModel(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration)
         {
             _context = context;
             _userManager = userManager;
+            _configuration = configuration;
         }
 
         public int UnreviewedProjects { get; set; }
@@ -39,8 +44,9 @@ namespace VoxAngelos.Pages.Admin
         public int TotalLguAccounts { get; set; }
         public int ActiveLguAccounts { get; set; }
         public int DisabledLguAccounts { get; set; }
+        public int ConfiguredDepartmentCount { get; set; }
+        public int RoutingGapCount { get; set; }
         public List<DepartmentAccountViewModel> AccountsByDepartment { get; set; } = new();
-        public List<QueueItemViewModel> RecentLguAccounts { get; set; } = new();
 
         public int NlpTotalReviewed { get; set; }
         public double NlpAccuracyPercent { get; set; }
@@ -48,6 +54,24 @@ namespace VoxAngelos.Pages.Admin
         public string? WorstDepartment { get; set; }
         public double WorstDepartmentAccuracy { get; set; }
         public int RecentMisclassificationCount { get; set; }
+        public List<DepartmentAccuracyViewModel> NlpByDepartment { get; set; } = new();
+        public bool AdminTriageEnabled =>
+            _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized");
+        public int UncategorizedConcernCount { get; set; }
+        public int UncategorizedRecommendationCount { get; set; }
+        public int TotalAwaitingRouting => UncategorizedConcernCount + UncategorizedRecommendationCount;
+        public DateTime? OldestUncategorizedSubmittedAt { get; set; }
+        public string OldestRoutingAge
+        {
+            get
+            {
+                if (!OldestUncategorizedSubmittedAt.HasValue) return "—";
+                var age = DateTime.UtcNow - OldestUncategorizedSubmittedAt.Value;
+                if (age.TotalDays >= 1) return $"{Math.Max(1, (int)age.TotalDays)}d";
+                if (age.TotalHours >= 1) return $"{Math.Max(1, (int)age.TotalHours)}h";
+                return $"{Math.Max(1, (int)age.TotalMinutes)}m";
+            }
+        }
 
         public async Task OnGetAsync()
         {
@@ -142,59 +166,83 @@ namespace VoxAngelos.Pages.Admin
                 .Select(g => new DepartmentAccountViewModel
                 {
                     Department = g.Key,
+                    DepartmentFullName = g.Select(user => user.DepartmentFullName)
+                        .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? "Office name not provided",
                     Total = g.Count(),
                     Active = g.Count(IsActive),
-                    Disabled = g.Count(u => !IsActive(u))
+                    Disabled = g.Count(u => !IsActive(u)),
+                    CategoryCount = g.SelectMany(user => user.Categories ?? new List<string>())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Count(),
+                    KeywordCount = g.SelectMany(user => user.Tags ?? new List<string>())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Count()
                 })
-                .OrderByDescending(d => d.Total)
+                .OrderBy(department => department.Department)
                 .ToList();
-
-            RecentLguAccounts = lguUsers
-                .OrderByDescending(u => u.CreatedAt)
-                .Take(5)
-                .Select(u => new QueueItemViewModel
-                {
-                    UserId = u.Id,
-                    Label = u.Department ?? "Unassigned",
-                    SubLabel = u.EmployeeId ?? "N/A",
-                    Timestamp = u.CreatedAt
-                })
-                .ToList();
+            ConfiguredDepartmentCount = AccountsByDepartment.Count(department => department.Department != "Unassigned");
+            RoutingGapCount = AccountsByDepartment.Count(department =>
+                department.Active == 0 || department.CategoryCount == 0 || department.KeywordCount == 0);
         }
 
         private async Task LoadNlpWidgetsAsync()
         {
-            var corrections = await _context.ClassificationCorrections.ToListAsync();
+            var corrections = await _context.ClassificationCorrections
+                .AsNoTracking()
+                .ToListAsync();
 
             NlpTotalReviewed = corrections.Count;
-            var correctCount = corrections.Count(c => c.WasCorrect);
+            var correctCount = corrections.Count(correction => correction.WasCorrect);
             NlpAccuracyPercent = NlpTotalReviewed == 0
                 ? 0
                 : Math.Round(correctCount * 100.0 / NlpTotalReviewed, 1);
             NlpThresholdMet = NlpAccuracyPercent >= NlpAccuracyModel.TargetAccuracyPercent;
-
-            if (NlpTotalReviewed > 0)
-            {
-                var worst = corrections
-                    .GroupBy(c => c.CorrectedCategory)
-                    .Select(g => new
-                    {
-                        Department = g.Key,
-                        Accuracy = Math.Round(g.Count(c => c.WasCorrect) * 100.0 / g.Count(), 1)
-                    })
-                    .OrderBy(d => d.Accuracy)
-                    .FirstOrDefault();
-
-                if (worst != null)
+            NlpByDepartment = corrections
+                .GroupBy(correction => correction.CorrectedCategory)
+                .Select(group => new DepartmentAccuracyViewModel
                 {
-                    WorstDepartment = worst.Department;
-                    WorstDepartmentAccuracy = worst.Accuracy;
-                }
+                    Department = group.Key,
+                    Total = group.Count(),
+                    Correct = group.Count(correction => correction.WasCorrect),
+                    AccuracyPercent = Math.Round(group.Count(correction => correction.WasCorrect) * 100.0 / group.Count(), 1)
+                })
+                .OrderBy(department => department.Department)
+                .ToList();
+
+            if (NlpByDepartment.Count > 0)
+            {
+                var worst = NlpByDepartment.OrderBy(department => department.AccuracyPercent).First();
+                WorstDepartment = worst.Department;
+                WorstDepartmentAccuracy = worst.AccuracyPercent;
             }
 
             var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
             RecentMisclassificationCount = corrections
-                .Count(c => !c.WasCorrect && c.ReviewedAt >= sevenDaysAgo);
+                .Count(correction => !correction.WasCorrect && correction.ReviewedAt >= sevenDaysAgo);
+
+            if (AdminTriageEnabled)
+            {
+                var concernDates = await _context.Concerns
+                    .AsNoTracking()
+                    .Where(concern => concern.Status == "Unresolved" &&
+                        (concern.Category == null || concern.Category == ""))
+                    .Select(concern => concern.SubmittedAt)
+                    .ToListAsync();
+                var recommendationDates = await _context.Recommendations
+                    .AsNoTracking()
+                    .Where(recommendation => recommendation.Status == "Pending" &&
+                        (recommendation.AssignedOffice == null || recommendation.AssignedOffice == ""))
+                    .Select(recommendation => recommendation.SubmittedAt)
+                    .ToListAsync();
+
+                UncategorizedConcernCount = concernDates.Count;
+                UncategorizedRecommendationCount = recommendationDates.Count;
+                OldestUncategorizedSubmittedAt = concernDates
+                    .Concat(recommendationDates)
+                    .OrderBy(date => date)
+                    .Cast<DateTime?>()
+                    .FirstOrDefault();
+            }
         }
     }
 
@@ -219,5 +267,9 @@ namespace VoxAngelos.Pages.Admin
         public int Total { get; set; }
         public int Active { get; set; }
         public int Disabled { get; set; }
+        public string DepartmentFullName { get; set; } = string.Empty;
+        public int CategoryCount { get; set; }
+        public int KeywordCount { get; set; }
+        public bool RoutingReady => Active > 0 && CategoryCount > 0 && KeywordCount > 0;
     }
 }

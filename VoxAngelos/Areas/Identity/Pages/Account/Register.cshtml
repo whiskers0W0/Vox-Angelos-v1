@@ -344,12 +344,20 @@
         });
 
         // ── Step navigation ───────────────────────────────────────────
+        function setRegistrationInteractionLock(locked) {
+        const form = document.getElementById('registerForm');
+        form.inert = locked;
+        if (locked) form.setAttribute('aria-busy', 'true');
+        else form.removeAttribute('aria-busy');
+        }
+
         async function goToStep2() {
         let isValid = true;
         ['#Input_FirstName','#Input_LastName','#Input_Email','#Input_PhoneNumber'].forEach(f => { if (!$(f).valid()) isValid = false; });
         if (!isValid) return;
 
         const btn = document.getElementById('nextStepButton');
+        setRegistrationInteractionLock(true);
         btn.disabled = true; btn.innerHTML = 'Validating...';
         const email = $('#Input_Email').val();
         const phone = '+63' + $('#Input_PhoneNumber').val();
@@ -364,7 +372,7 @@
         $(`#${id}`).after(`<span class="text-danger custom-duplicate-error tech-validation">${msg}</span>`);
         }
         }
-        } finally { btn.disabled = false; btn.innerHTML = 'Next Step <span class="cta-arr ms-2"></span>'; }
+        } finally { setRegistrationInteractionLock(false); btn.disabled = false; btn.innerHTML = 'Next Step <span class="cta-arr ms-2"></span>'; }
         }
 
         document.getElementById('nextStepButton').addEventListener('click', goToStep2);
@@ -399,6 +407,7 @@
         if (!dimensionOk) return;
 
         $('#loadingModal').css('display', 'flex');
+        setRegistrationInteractionLock(true);
         const formData = new FormData();
         formData.append('idPhoto', normalizedIdPhoto);
         formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
@@ -412,13 +421,14 @@
         });
         const data = await res.json();
         $('#loadingModal').hide();
+        setRegistrationInteractionLock(false);
         if (data.success) {
         stopCamera();
         showResultModal('success', 'Verified', 'Identity check successful.', () => showStep(2, 3));
         } else {
         showResultModal('error', 'Failed', data.error || 'Identity could not be confirmed.');
         }
-        } catch(e) { $('#loadingModal').hide(); showResultModal('error', 'Error', 'Connection error.'); }
+        } catch(e) { $('#loadingModal').hide(); setRegistrationInteractionLock(false); showResultModal('error', 'Error', 'Connection error.'); }
         }
 
         function normalizeImageOrientation(file) {
@@ -475,7 +485,9 @@
 
         const btn = document.getElementById('registerSubmit');
         const originalText = btn.textContent;
+        setRegistrationInteractionLock(true);
         btn.disabled = true; btn.textContent = 'Creating Account...';
+        let registrationSucceeded = false;
 
         // Re-check email/phone duplicates right before the real submit — Step 1
         // already checked these, but time has passed (ID/selfie verification in
@@ -489,6 +501,7 @@
         const dupRes = await fetch(`?handler=CheckDuplicates&email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
         const dupData = await dupRes.json().catch(() => null);
         if (dupData && !dupData.success) {
+        setRegistrationInteractionLock(false);
         btn.disabled = false; btn.textContent = originalText;
         $('.custom-duplicate-error').remove();
         for (const [id, msg] of Object.entries(dupData.errors)) {
@@ -517,6 +530,7 @@
         const data = await res.json().catch(() => null);
 
         if (data?.success) {
+        registrationSucceeded = true;
         window.location.href = data.redirectUrl;
         return;
         }
@@ -572,6 +586,7 @@
         } catch (e) {
         showResultModal('error', 'Error', 'Connection error. Please try again.');
         } finally {
+        if (!registrationSucceeded) setRegistrationInteractionLock(false);
         btn.disabled = false; btn.textContent = originalText;
         }
         }
@@ -663,5 +678,6 @@
         window.addEventListener('load', () => { setTimeout(() => { document.querySelectorAll('input:not([type="hidden"])').forEach(i => i.value = ''); }, 100); });
         window.addEventListener('beforeunload', stopCamera);
     </script>
+    <script src="~/js/form-submit-lock.js" asp-append-version="true"></script>
 </body>
 </html>

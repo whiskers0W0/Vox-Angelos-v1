@@ -53,6 +53,24 @@ namespace VoxAngelos.Services
 
         private async Task PurgeExpiredMediaAsync(CancellationToken ct)
         {
+            await PurgeReviewedMediaAsync(userId: null, ct);
+        }
+
+        /// <summary>
+        /// Immediately removes the protected ID and selfie media for one reviewed
+        /// account. The scheduled sweep remains responsible for retrying any
+        /// Cloudinary deletion that does not complete.
+        /// </summary>
+        public async Task<int> PurgeUserMediaAsync(string userId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("A user ID is required.", nameof(userId));
+
+            return await PurgeReviewedMediaAsync(userId, ct);
+        }
+
+        private async Task<int> PurgeReviewedMediaAsync(string? userId, CancellationToken ct)
+        {
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
@@ -61,7 +79,8 @@ namespace VoxAngelos.Services
 
             var reviewedIds = await db.UserIdentityDocuments
                 .Where(d => (d.IdPhotoPath != null || d.IdPhotoCloudinaryPublicId != null) &&
-                            d.User != null && d.User.ApprovalStatus != "Pending")
+                            d.User != null && d.User.ApprovalStatus != "Pending" &&
+                            (userId == null || d.UserId == userId))
                 .ToListAsync(ct);
 
             foreach (var doc in reviewedIds)
@@ -83,7 +102,8 @@ namespace VoxAngelos.Services
 
             var reviewedSelfies = await db.UserFaceVerifications
                 .Where(f => (f.LiveSelfiePath != null || f.LiveSelfieCloudinaryPublicId != null) &&
-                            f.User != null && f.User.ApprovalStatus != "Pending")
+                            f.User != null && f.User.ApprovalStatus != "Pending" &&
+                            (userId == null || f.UserId == userId))
                 .ToListAsync(ct);
 
             foreach (var selfie in reviewedSelfies)
@@ -110,6 +130,8 @@ namespace VoxAngelos.Services
                     "Sensitive media retention sweep purged {Count} protected media copy/copies for reviewed accounts.",
                     purgedCount);
             }
+
+            return purgedCount;
         }
 
         private async Task<bool> DeletePrivateCloudinaryAssetAsync(string? publicId)

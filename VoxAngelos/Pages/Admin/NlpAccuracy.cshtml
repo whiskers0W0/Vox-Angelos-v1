@@ -2,7 +2,7 @@
 @model VoxAngelos.Pages.Admin.NlpAccuracyModel
 @{
     Layout = "_AdminLayout";
-    ViewData["Title"] = "NLP Accuracy";
+    ViewData["Title"] = "NLP Performance";
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
@@ -13,59 +13,25 @@
     <header class="admin-nlp-header">
         <div>
             <span class="admin-nlp-eyebrow">Classification quality control</span>
-            <h1>NLP classification accuracy</h1>
-            <p>Track LGU feedback to understand how reliably incoming concerns are routed to the correct department.</p>
-        </div>
-        <div class="admin-nlp-target" aria-label="Accuracy target">
-            <span>Accuracy target</span>
-            <strong>@VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%</strong>
-            <small>Minimum reviewed accuracy</small>
+            <h1>NLP Performance</h1>
+            <p>Review classification outcomes and route submissions the model could not assign to an LGU department.</p>
         </div>
     </header>
 
-    <section class="admin-nlp-threshold @(Model.ThresholdMet ? "admin-nlp-threshold--met" : "admin-nlp-threshold--unmet")" aria-live="polite">
-        <div>
-            <span>Threshold status</span>
-            <strong>@(Model.TotalReviewed == 0 ? "Awaiting feedback" : Model.ThresholdMet ? "Target reached" : "Below target")</strong>
+    @if (TempData["RoutingSuccess"] is string successMessage)
+    {
+        <div class="admin-action-toast admin-action-toast--success" role="status" aria-live="polite">
+            <span>@successMessage</span>
+            <div class="admin-action-toast-progress" aria-hidden="true"></div>
         </div>
-        <p>
-            @if (Model.TotalReviewed == 0)
-            {
-                <text>No classification feedback logged yet. Accuracy will appear once LGU staff start confirming/reassigning concern categories.</text>
-            }
-            else if (Model.ThresholdMet)
-            {
-                <text>✓ Target reached — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</text>
-            }
-            else
-            {
-                <text>Below target — @Model.AccuracyPercent% accuracy (target: @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent%)</text>
-            }
-        </p>
-    </section>
-
-    <section class="admin-nlp-summary-grid" aria-label="Classification accuracy summary">
-        <article class="admin-nlp-summary-card admin-nlp-summary-card--primary">
-            <span>Total Reviewed</span>
-            <strong>@Model.TotalReviewed</strong>
-            <p>LGU classification decisions</p>
-        </article>
-        <article class="admin-nlp-summary-card">
-            <span>Correct on First Try</span>
-            <strong class="admin-nlp-good">@Model.CorrectCount</strong>
-            <p>Matched without reassignment</p>
-        </article>
-        <article class="admin-nlp-summary-card">
-            <span>Misclassified</span>
-            <strong class="admin-nlp-bad">@Model.IncorrectCount</strong>
-            <p>Require category correction</p>
-        </article>
-        <article class="admin-nlp-summary-card">
-            <span>Overall Accuracy</span>
-            <strong class="@(Model.ThresholdMet ? "admin-nlp-good" : "admin-nlp-bad")">@Model.AccuracyPercent%</strong>
-            <p>Against the @VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent% review target</p>
-        </article>
-    </section>
+    }
+    @if (TempData["RoutingError"] is string errorMessage)
+    {
+        <div class="admin-action-toast admin-action-toast--error" role="alert" aria-live="assertive">
+            <span>@errorMessage</span>
+            <div class="admin-action-toast-progress" aria-hidden="true"></div>
+        </div>
+    }
 
     <section class="admin-nlp-panel" aria-labelledby="departmentAccuracyHeading">
         <header class="admin-nlp-panel-header">
@@ -77,28 +43,19 @@
         </header>
         <div class="admin-nlp-table-wrap">
             <table class="admin-nlp-table">
-                <thead>
-                    <tr>
-                        <th scope="col">Department</th>
-                        <th scope="col">Reviewed</th>
-                        <th scope="col">Correct</th>
-                        <th scope="col">Accuracy</th>
-                    </tr>
-                </thead>
+                <thead><tr><th scope="col">Department</th><th scope="col">Reviewed</th><th scope="col">Correct</th><th scope="col">Accuracy</th></tr></thead>
                 <tbody>
                     @if (!Model.ByDepartment.Any())
                     {
-                        <tr><td colspan="4" class="admin-nlp-empty">No data yet.</td></tr>
+                        <tr><td colspan="4" class="admin-nlp-empty">No reviewed classifications yet.</td></tr>
                     }
-                    @foreach (var dept in Model.ByDepartment)
+                    @foreach (var department in Model.ByDepartment)
                     {
                         <tr>
-                            <td data-label="Department"><strong>@dept.Department</strong></td>
-                            <td data-label="Reviewed">@dept.Total</td>
-                            <td data-label="Correct">@dept.Correct</td>
-                            <td data-label="Accuracy">
-                                <span class="admin-nlp-accuracy @(dept.AccuracyPercent >= VoxAngelos.Pages.Admin.NlpAccuracyModel.TargetAccuracyPercent ? "admin-nlp-accuracy--good" : "admin-nlp-accuracy--bad")">@dept.AccuracyPercent%</span>
-                            </td>
+                            <td data-label="Department"><strong>@department.Department</strong></td>
+                            <td data-label="Reviewed">@department.Total</td>
+                            <td data-label="Correct">@department.Correct</td>
+                            <td data-label="Accuracy"><span class="admin-nlp-accuracy @(department.AccuracyPercent >= 75 ? "admin-nlp-accuracy--good" : "admin-nlp-accuracy--bad")">@department.AccuracyPercent%</span></td>
                         </tr>
                     }
                 </tbody>
@@ -106,42 +63,119 @@
         </div>
     </section>
 
-    <section class="admin-nlp-panel admin-nlp-panel--spaced" aria-labelledby="misclassificationHeading">
-        <header class="admin-nlp-panel-header">
-            <div>
-                <span>Review audit</span>
-                <h2 id="misclassificationHeading">Recent misclassifications</h2>
+    @if (Model.AdminTriageEnabled)
+    {
+        <section class="admin-nlp-panel admin-nlp-panel--spaced" aria-labelledby="uncategorizedHeading">
+            <header class="admin-nlp-panel-header">
+                <div>
+                    <span>Admin routing queue</span>
+                    <h2 id="uncategorizedHeading">Uncategorized concerns and recommendations</h2>
+                </div>
+                <p>Review the full submission and its evidence before choosing the responsible office.</p>
+            </header>
+            <form method="get" class="admin-nlp-filters" aria-label="Filter Admin routing queue">
+                <label><span>Submission type</span><select name="submissionType"><option value="All" selected="@(Model.CurrentType == "All")">All submissions</option><option value="Concern" selected="@(Model.CurrentType == "Concern")">Concerns only</option><option value="Recommendation" selected="@(Model.CurrentType == "Recommendation")">Recommendations only</option></select></label>
+                <label><span>Sort by date</span><select name="sortOrder"><option value="Oldest" selected="@(Model.CurrentSort == "Oldest")">Oldest first</option><option value="Newest" selected="@(Model.CurrentSort == "Newest")">Newest first</option></select></label>
+                <button type="submit">Apply filters</button>
+                <span class="admin-nlp-result-count">@Model.UncategorizedSubmissions.Count result@(Model.UncategorizedSubmissions.Count == 1 ? "" : "s")</span>
+            </form>
+            <div class="admin-nlp-table-wrap">
+                <table class="admin-nlp-table admin-nlp-table--routing">
+                    <thead><tr><th scope="col">Type and status</th><th scope="col">Details</th><th scope="col">Waiting since</th><th scope="col">Assign office</th></tr></thead>
+                    <tbody>
+                        @if (!Model.UncategorizedSubmissions.Any())
+                        {
+                            <tr><td colspan="4" class="admin-nlp-empty">No uncategorized submissions are waiting for routing.</td></tr>
+                        }
+                        @foreach (var submission in Model.UncategorizedSubmissions)
+                        {
+                            <tr>
+                                <td data-label="Type and status"><span class="admin-nlp-type">@submission.Type</span><strong>@submission.Status</strong><small>@submission.Attachments.Count attachment@(submission.Attachments.Count == 1 ? "" : "s")</small></td>
+                                <td class="admin-nlp-summary" data-label="Details">
+                                    <div class="admin-nlp-details-body admin-nlp-details-body--inline">
+                                        @if (submission.Type == "Recommendation")
+                                        {
+                                            <div><span>Title</span><p>@submission.Title</p></div>
+                                            <div><span>Community problem / justification</span><p>@submission.Justification</p></div>
+                                            <div><span>Proposed improvement</span><p>@submission.Description</p></div>
+                                            <div class="admin-nlp-detail-facts"><div><span>Location</span><p>@submission.Location</p></div><div><span>Beneficiaries</span><p>@submission.Beneficiaries</p></div><div><span>People affected</span><p>@submission.EstimatedPeopleAffected</p></div></div>
+                                        }
+                                        else
+                                        {
+                                            <div><span>Concern description</span><p>@submission.Description</p></div>
+                                            <div><span>Location</span><p>@submission.Location</p></div>
+                                        }
+                                        <div class="admin-nlp-evidence">
+                                            <span>Attachments</span>
+                                            @if (!submission.Attachments.Any())
+                                            {
+                                                <p>No attachments provided.</p>
+                                            }
+                                            else
+                                            {
+                                                <div class="admin-nlp-attachments">
+                                                    @for (var attachmentIndex = 0; attachmentIndex < submission.Attachments.Count; attachmentIndex++)
+                                                    {
+                                                        var attachment = submission.Attachments[attachmentIndex];
+                                                        var isImage = attachment.Type == "image" || attachment.Type.StartsWith("image/");
+                                                        var isVideo = attachment.Type == "video" || attachment.Type.StartsWith("video/");
+                                                        <a href="@attachment.Path" target="_blank" rel="noopener" class="admin-nlp-attachment" aria-label="Open attachment @(attachmentIndex + 1)">
+                                                            @if (isImage) { <img src="@attachment.Path" alt="Submission attachment @(attachmentIndex + 1)" loading="lazy" /> }
+                                                            else if (isVideo) { <video src="@attachment.Path" muted preload="metadata"></video><strong>Open video</strong> }
+                                                            else { <strong>Open document @(attachmentIndex + 1)</strong> }
+                                                        </a>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td data-label="Waiting since"><time datetime="@submission.SubmittedAt.ToString("O")">@submission.SubmittedAt.ToString("MMM dd, yyyy h:mm tt")</time></td>
+                                <td data-label="Assign office">
+                                    <form method="post" asp-page-handler="Assign" class="admin-nlp-route-form">
+                                        <input type="hidden" name="submissionType" value="@submission.Type" />
+                                        <input type="hidden" name="submissionId" value="@submission.Id" />
+                                        <input type="hidden" name="currentType" value="@Model.CurrentType" />
+                                        <input type="hidden" name="currentSort" value="@Model.CurrentSort" />
+                                        <select name="department" aria-label="Department for @submission.Type #@submission.Id" required>
+                                            <option value="">Select office…</option>
+                                            @foreach (var department in Model.Departments)
+                                            {
+                                                <option value="@department">@department</option>
+                                            }
+                                        </select>
+                                        <button type="submit">Assign</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
-            <p>Latest reassignments requiring model-quality attention.</p>
-        </header>
-        <div class="admin-nlp-table-wrap">
-            <table class="admin-nlp-table admin-nlp-table--audit">
-                <thead>
-                    <tr>
-                        <th scope="col">Concern</th>
-                        <th scope="col">Guessed</th>
-                        <th scope="col">Actual</th>
-                        <th scope="col">Reviewed by</th>
-                        <th scope="col">When</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.RecentMisclassifications.Any())
-                    {
-                        <tr><td colspan="5" class="admin-nlp-empty">No misclassifications logged yet.</td></tr>
-                    }
-                    @foreach (var m in Model.RecentMisclassifications)
-                    {
-                        <tr>
-                            <td class="admin-nlp-concern" data-label="Concern" title="@m.Description">#@m.ConcernId — @(m.Description.Length > 60 ? m.Description[..60] + "…" : m.Description)</td>
-                            <td data-label="Guessed">@m.GuessedCategory</td>
-                            <td data-label="Actual"><strong>@m.ActualCategory</strong></td>
-                            <td data-label="Reviewed by">@m.ReviewedByEmail</td>
-                            <td data-label="When"><time datetime="@m.ReviewedAt.ToString("O")">@m.ReviewedAt.ToString("MMM dd, yyyy h:mm tt")</time></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
+        </section>
+    }
+    else
+    {
+        <section class="admin-nlp-panel admin-nlp-panel--spaced" aria-labelledby="misclassificationHeading">
+            <header class="admin-nlp-panel-header"><div><span>Review audit</span><h2 id="misclassificationHeading">Recent misclassifications</h2></div><p>Latest reassignments requiring model-quality attention.</p></header>
+            <div class="admin-nlp-table-wrap">
+                <table class="admin-nlp-table admin-nlp-table--audit">
+                    <thead><tr><th scope="col">Concern</th><th scope="col">Guessed</th><th scope="col">Actual</th><th scope="col">Reviewed by</th><th scope="col">When</th></tr></thead>
+                    <tbody>
+                        @if (!Model.RecentMisclassifications.Any()) { <tr><td colspan="5" class="admin-nlp-empty">No misclassifications logged yet.</td></tr> }
+                        @foreach (var item in Model.RecentMisclassifications)
+                        {
+                            <tr><td class="admin-nlp-concern" data-label="Concern">#@item.ConcernId — @item.Description</td><td data-label="Guessed">@item.GuessedCategory</td><td data-label="Actual"><strong>@item.ActualCategory</strong></td><td data-label="Reviewed by">@item.ReviewedByEmail</td><td data-label="When">@item.ReviewedAt.ToString("MMM dd, yyyy h:mm tt")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
 </div>
+
+<script>
+    window.setTimeout(() => {
+        document.querySelectorAll('.admin-action-toast').forEach(toast => toast.remove());
+    }, 5000);
+</script>

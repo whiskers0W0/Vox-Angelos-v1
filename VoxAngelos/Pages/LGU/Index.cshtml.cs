@@ -23,6 +23,7 @@ namespace VoxAngelos.Pages.LGU
         private readonly IWebHostEnvironment _environment;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<IndexModel> _logger;
+        private readonly IConfiguration _configuration;
         private static readonly IReadOnlyDictionary<string, string> DepartmentDisplayNames =
             new Dictionary<string, string>
             {
@@ -38,7 +39,7 @@ namespace VoxAngelos.Pages.LGU
         public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
             ConcernClassificationService classifier, IHubContext<FeedHub> feedHub,
             IWebHostEnvironment environment, IEmailSender emailSender,
-            ILogger<IndexModel> logger)
+            ILogger<IndexModel> logger, IConfiguration configuration)
         {
             _db = db;
             _userManager = userManager;
@@ -47,6 +48,7 @@ namespace VoxAngelos.Pages.LGU
             _environment = environment;
             _emailSender = emailSender;
             _logger = logger;
+            _configuration = configuration;
         }
 
         // Notifies every LGU dashboard that could be displaying this concern — its
@@ -136,7 +138,9 @@ namespace VoxAngelos.Pages.LGU
             // Show concerns whose classified category matches this LGU's department
             if (!string.IsNullOrEmpty(userDepartment))
             {
-                query = query.Where(c => c.Category == userDepartment || c.Category == null);
+                query = _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized")
+                    ? query.Where(c => c.Category == userDepartment)
+                    : query.Where(c => c.Category == userDepartment || c.Category == null);
             }
 
             if (CurrentFilter != "All")
@@ -435,6 +439,9 @@ namespace VoxAngelos.Pages.LGU
 
             // Uncategorized concerns (Category == null) are open to any LGU office to
             // claim and route — only block hijacking a concern another office already owns.
+            if (concern.Category == null &&
+                _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized"))
+                return ReassignOutcome.Forbidden;
             if (concern.Category != null && user.Department != concern.Category) return ReassignOutcome.Forbidden;
 
             if (concern.Status != "Unresolved") return ReassignOutcome.NotEligible;

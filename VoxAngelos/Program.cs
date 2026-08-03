@@ -143,7 +143,9 @@ builder.Services.AddScoped<IdValidationService>();
 builder.Services.AddSignalR();
 
 // 5b. Background purge of sensitive ID/selfie images (Data Privacy Act retention).
-builder.Services.AddHostedService<SensitiveMediaRetentionService>();
+builder.Services.AddSingleton<SensitiveMediaRetentionService>();
+builder.Services.AddHostedService(services =>
+    services.GetRequiredService<SensitiveMediaRetentionService>());
 builder.Services.AddHostedService<IdentityMediaCloudBackupService>();
 
 // 5c. Location Density Score for the Urgency Algorithm (PostGIS-backed).
