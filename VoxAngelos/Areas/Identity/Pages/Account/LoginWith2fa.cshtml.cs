@@ -1,5 +1,4 @@
 ﻿#nullable disable
-
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
@@ -66,10 +65,12 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             {
                 _logger.LogWarning("OTP for {Email}: {Otp}", user.Email, otp);
 
+                var emailBody = BuildLoginOtpEmail(otp);
+
                 await _emailSender.SendEmailAsync(
                     user.Email,
                     "Your Vox Angelos Login Code",
-                    $"Your 6-digit login code is: <strong>{otp}</strong><br/>This code expires shortly. Do not share it with anyone.");
+                    emailBody);
 
                 GeneratedOtp = otp;
 
@@ -166,6 +167,87 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             }
 
             return RedirectToPage("./Login");
+        }
+
+        private static string BuildLoginOtpEmail(string otp)
+        {
+            return $@"
+<!DOCTYPE html>
+<html lang=""en"">
+<head>
+<meta charset=""utf-8"" />
+<meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
+<title>Your Login Code</title>
+</head>
+<body style=""margin:0; padding:0; background-color:#eaecf5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;"">
+  <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#eaecf5; padding:32px 16px;"">
+    <tr>
+      <td align=""center"">
+        <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""max-width:480px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(22,70,160,0.12);"">
+
+          <!-- Header with Logo Replacement --> 
+<tr>   
+  <td style=""background:linear-gradient(135deg,#2b45b0 0%,#1a2a6c 100%); background-color:#1646a0; padding:32px 40px; text-align:center;"">     
+    <table role=""presentation"" cellpadding=""0"" cellspacing=""0"" style=""margin:0 auto;"">       
+      <tr>         
+        <td style=""vertical-align:middle;"">           
+          <img src=""{{baseUrl}}/assets/VoxAngelosLogo.png"" alt=""Vox Angelos Logo"" style=""height:40px; display:block; border:0px;"" />         
+        </td>         
+        <td style=""padding-left:12px; color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.01em;"">           
+          Vox Angelos         
+        </td>       
+      </tr>     
+    </table>   
+  </td> 
+</tr>
+
+          <!-- Body -->
+          <tr>
+            <td style=""padding:40px;"">
+              <p style=""margin:0 0 8px; color:#1646a0; font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase;"">
+                Authentication Required
+              </p>
+              <h1 style=""margin:0 0 16px; color:#172033; font-size:24px; font-weight:800; letter-spacing:-0.02em; line-height:1.25;"">
+                Your login code
+              </h1>
+              <p style=""margin:0 0 24px; color:#5c687b; font-size:14px; line-height:1.6;"">
+                Please enter the following 6-digit code to complete your login. This code expires shortly.
+              </p>
+
+              <!-- OTP Box Display -->
+              <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#f4f6fb; border:1px solid #e2e8f0; border-radius:12px; margin-bottom:24px;"">
+                <tr>
+                  <td align=""center"" style=""padding:20px; font-size:32px; font-weight:800; letter-spacing:0.25em; color:#1646a0;"">
+                    {otp}
+                  </td>
+                </tr>
+              </table>
+
+              <p style=""margin:0; color:#8994a6; font-size:12px; line-height:1.6;"">
+                If you did not attempt to log in, please secure your account immediately. Do not share this code with anyone.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style=""padding:24px 40px; border-top:1px solid #eef1f6; background-color:#fafbfc;"">
+              <p style=""margin:0; color:#a3adbd; font-size:11px; line-height:1.6;"">
+                Protected by <strong style=""color:#5b6577;"">RA 10173</strong>. Your authentication data is handled in accordance with the Data Privacy Act of the Philippines.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <p style=""margin:20px 0 0; color:#a3adbd; font-size:11px;"">
+          &copy; 2026 Vox Angelos &middot; The Digital Heart of Angeles City
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>";
         }
     }
 }
