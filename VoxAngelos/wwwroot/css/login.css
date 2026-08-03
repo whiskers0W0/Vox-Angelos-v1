@@ -263,12 +263,13 @@ body {
 #validationSummary:not(:empty) {
     display: block !important;
     margin: 0 0 17px;
-    padding: 10px 11px;
+    padding: 11px 11px;
     border: 1px solid #efcbd0;
     border-radius: 7px;
     background: #fbecef;
     color: var(--login-red);
     font-size: 10px;
+    height: 40px;
 }
 
 .cta {
