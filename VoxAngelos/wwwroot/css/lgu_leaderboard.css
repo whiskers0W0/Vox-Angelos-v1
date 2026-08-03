@@ -604,9 +604,6 @@
         grid-template-columns: 1fr;
     }
 
-    .ranking-sidebar {
-        display: none;
-    }
 }
 
 @media (max-width: 680px) {
