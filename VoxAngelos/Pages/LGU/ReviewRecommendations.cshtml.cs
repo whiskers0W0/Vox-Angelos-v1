@@ -20,8 +20,8 @@ namespace VoxAngelos.Pages.LGU
         private readonly IHubContext<FeedHub> _feedHub;
         private readonly IWebHostEnvironment _environment;
         private readonly IEmailSender _emailSender;
+        private readonly IConfiguration _configuration; 
         private readonly ILogger<ReviewRecommendationsModel> _logger;
-        private readonly IConfiguration _configuration;
 
         public ReviewRecommendationsModel(
             ApplicationDbContext db,
@@ -37,6 +37,7 @@ namespace VoxAngelos.Pages.LGU
             _feedHub = feedHub;
             _environment = environment;
             _emailSender = emailSender;
+            _configuration = configuration;
             _logger = logger;
             _configuration = configuration;
         }
@@ -176,17 +177,8 @@ namespace VoxAngelos.Pages.LGU
             if (recipient?.Email == null)
                 return;
 
-            var recommendationsUrl = Url.Page("/User/Recommendations", null, null, Request.Scheme)
-                ?? "/User/Recommendations";
-            var htmlMessage =
-                "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#17213a;'>" +
-                $"<h2 style='color:#1746b1;'>{WebUtility.HtmlEncode(heading)}</h2>" +
-                $"<p style='line-height:1.6;'>{WebUtility.HtmlEncode(message)}</p>" +
-                "<p style='margin:28px 0;'>" +
-                $"<a href='{WebUtility.HtmlEncode(recommendationsUrl)}' style='background:#1746b1;color:#fff;padding:11px 18px;text-decoration:none;border-radius:7px;font-weight:700;'>View your recommendation</a>" +
-                "</p>" +
-                "<p style='color:#718096;font-size:12px;'>You received this because email updates are enabled in your Vox Angelos notifications.</p>" +
-                "</div>";
+            var publicBaseUrl = _configuration["App:PublicBaseUrl"] ?? "https://voxangelos.onrender.com";
+            var htmlMessage = BuildRecommendationEmail(heading, message, publicBaseUrl);
 
             try
             {
@@ -194,13 +186,96 @@ namespace VoxAngelos.Pages.LGU
             }
             catch (Exception exception)
             {
-                // The in-app notification and LGU decision remain successful even when
-                // the optional email provider or network is temporarily unavailable.
                 _logger.LogWarning(
                     exception,
                     "Could not send the optional recommendation update email to citizen {CitizenId}.",
                     citizenId);
             }
+        }
+
+        private static string BuildRecommendationEmail(string heading, string message, string publicBaseUrl)
+        {
+            string baseUrl = publicBaseUrl?.TrimEnd('/') ?? "";
+            var safeHeading = WebUtility.HtmlEncode(heading);
+            var safeMessage = WebUtility.HtmlEncode(message);
+            var recommendationsUrl = "/User/Recommendations";
+
+            return $@"
+<!DOCTYPE html>
+<html lang=""en"">
+<head>
+<meta charset=""utf-8"" />
+<meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
+<title>{safeHeading}</title>
+</head>
+<body style=""margin:0; padding:0; background-color:#eaecf5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;"">
+  <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#eaecf5; padding:32px 16px;"">
+    <tr>
+      <td align=""center"">
+        <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""max-width:480px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(22,70,160,0.12);"">
+
+          <!-- Header with Logo -->
+          <tr>
+            <td style=""background:linear-gradient(135deg,#2b45b0 0%,#1a2a6c 100%); background-color:#1646a0; padding:32px 40px; text-align:center;"">
+              <table role=""presentation"" cellpadding=""0"" cellspacing=""0"" style=""margin:0 auto;"">
+                <tr>
+                  <td style=""vertical-align:middle;"">
+                    <img src=""{baseUrl}/assets/VoxAngelosLogo.png"" alt=""Vox Angelos"" style=""height:40px; display:block; border:0px;"" />
+                  </td>
+                  <td style=""padding-left:12px; color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.01em;"">
+                    Vox Angelos
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style=""padding:40px;"">
+              <p style=""margin:0 0 8px; color:#1646a0; font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase;"">
+                Recommendation Update
+              </p>
+              <h1 style=""margin:0 0 16px; color:#172033; font-size:24px; font-weight:800; letter-spacing:-0.02em; line-height:1.25;"">
+                {safeHeading}
+              </h1>
+              <p style=""margin:0 0 28px; color:#5c687b; font-size:14px; line-height:1.6;"">
+                {safeMessage}
+              </p>
+
+              <!-- Button -->
+              <table role=""presentation"" cellpadding=""0"" cellspacing=""0"">
+                <tr>
+                  <td style=""border-radius:8px; background-color:#1646a0;"">
+                    <a href=""{baseUrl}{recommendationsUrl}""
+                       style=""display:inline-block; padding:14px 28px; color:#ffffff; font-size:13px; font-weight:700; letter-spacing:0.02em; text-transform:uppercase; text-decoration:none; border-radius:8px;"">
+                      View Your Recommendation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style=""padding:24px 40px; border-top:1px solid #eef1f6; background-color:#fafbfc;"">
+              <p style=""margin:0; color:#a3adbd; font-size:11px; line-height:1.6;"">
+                Protected by <strong style=""color:#5b6577;"">RA 10173</strong>. Your data is handled in accordance with the Data Privacy Act of the Philippines.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <p style=""margin:20px 0 0; color:#a3adbd; font-size:11px;"">
+          &copy; 2026 Vox Angelos
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>";
         }
 
         public async Task<IActionResult> OnPostApproveAsync(int recommendationId, string? lguNotes)

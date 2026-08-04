@@ -17,17 +17,20 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginWith2faModel> _logger;
         private readonly IEmailSender _emailSender;
+        private readonly IConfiguration _configuration; 
 
         public LoginWith2faModel(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             ILogger<LoginWith2faModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            IConfiguration configuration) 
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _logger = logger;
             _emailSender = emailSender;
+            _configuration = configuration;
         }
 
         [BindProperty]
@@ -65,7 +68,9 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             {
                 _logger.LogWarning("OTP for {Email}: {Otp}", user.Email, otp);
 
-                var emailBody = BuildLoginOtpEmail(otp);
+                // Fetch public base url from configuration
+                var publicBaseUrl = _configuration["App:PublicBaseUrl"] ?? "https://voxangelos.onrender.com";
+                var emailBody = BuildLoginOtpEmail(otp, publicBaseUrl);
 
                 await _emailSender.SendEmailAsync(
                     user.Email,
@@ -73,9 +78,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     emailBody);
 
                 GeneratedOtp = otp;
-
-                // Remove the raw OTP from TempData after sending; GeneratedOtp (above) is the
-                // only copy that survives into the view, and only for the dev-console preview.
                 TempData.Remove("2FA_OTP");
             }
 
@@ -169,8 +171,10 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             return RedirectToPage("./Login");
         }
 
-        private static string BuildLoginOtpEmail(string otp)
+        private static string BuildLoginOtpEmail(string otp, string publicBaseUrl)
         {
+            string baseUrl = publicBaseUrl?.TrimEnd('/') ?? "";
+
             return $@"
 <!DOCTYPE html>
 <html lang=""en"">
@@ -186,20 +190,20 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""max-width:480px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(22,70,160,0.12);"">
 
           <!-- Header with Logo Replacement --> 
-<tr>   
-  <td style=""background:linear-gradient(135deg,#2b45b0 0%,#1a2a6c 100%); background-color:#1646a0; padding:32px 40px; text-align:center;"">     
-    <table role=""presentation"" cellpadding=""0"" cellspacing=""0"" style=""margin:0 auto;"">       
-      <tr>         
-        <td style=""vertical-align:middle;"">           
-          <img src=""{{baseUrl}}/assets/VoxAngelosLogo.png"" alt=""Vox Angelos Logo"" style=""height:40px; display:block; border:0px;"" />         
-        </td>         
-        <td style=""padding-left:12px; color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.01em;"">           
-          Vox Angelos         
-        </td>       
-      </tr>     
-    </table>   
-  </td> 
-</tr>
+          <tr>   
+            <td style=""background:linear-gradient(135deg,#2b45b0 0%,#1a2a6c 100%); background-color:#1646a0; padding:32px 40px; text-align:center;"">     
+              <table role=""presentation"" cellpadding=""0"" cellspacing=""0"" style=""margin:0 auto;"">       
+                <tr>         
+                  <td style=""vertical-align:middle;"">           
+                    <img src=""{baseUrl}/assets/VoxAngelosLogo.png"" alt=""Vox Angelos Logo"" style=""height:40px; display:block; border:0px;"" />         
+                  </td>         
+                  <td style=""padding-left:12px; color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.01em;"">           
+                    Vox Angelos         
+                  </td>       
+                </tr>     
+              </table>   
+            </td> 
+          </tr>
 
           <!-- Body -->
           <tr>
@@ -241,13 +245,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         </table>
 
         <p style=""margin:20px 0 0; color:#a3adbd; font-size:11px;"">
-          &copy; 2026 Vox Angelos &middot; The Digital Heart of Angeles City
+          &copy; 2026 Vox Angelos
         </p>
       </td>
     </tr>
   </table>
 </body>
 </html>";
-        }
+        
+    }
     }
 }

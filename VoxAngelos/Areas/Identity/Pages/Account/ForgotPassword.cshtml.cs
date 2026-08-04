@@ -80,8 +80,8 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     values: new { area = "Identity", code, email = user.Email },
                     protocol: Request.Scheme);
 
-            // Call the email template helper method
-            var emailBody = BuildPasswordResetEmail(callbackUrl);
+            var resolvedBaseUrl = publicBaseUrl ?? "https://voxangelos.onrender.com";
+            var emailBody = BuildPasswordResetEmail(callbackUrl, resolvedBaseUrl);
 
             await _emailSender.SendEmailAsync(
                 Input.Email,
@@ -91,8 +91,10 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             return RedirectToPage("./ForgotPasswordConfirmation");
         }
 
-        private static string BuildPasswordResetEmail(string callbackUrl)
+        private static string BuildPasswordResetEmail(string callbackUrl, string publicBaseUrl)
         {
+            string baseUrl = publicBaseUrl?.TrimEnd('/') ?? "";
+
             return $@"
 <!DOCTYPE html>
 <html lang=""en"">
@@ -108,20 +110,20 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""max-width:480px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(22,70,160,0.12);"">
 
           <!-- Header -->
-<tr>
-  <td style=""background:linear-gradient(135deg,#2b45b0 0%,#1a2a6c 100%); background-color:#1646a0; padding:32px 40px; text-align:center;"">
-    <table role=""presentation"" cellpadding=""0"" cellspacing=""0"" style=""margin:0 auto;"">
-      <tr>
-        <td style=""vertical-align:middle;"">
-          <img src=""{{baseUrl}}/assets/VoxAngelosLogo.png"" alt=""Vox Angelos"" style=""height:40px; display:block; border:0px;"" />
-        </td>
-        <td style=""padding-left:12px; color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.01em;"">
-          Vox Angelos
-        </td>
-      </tr>
-    </table>
-  </td>
-</tr>
+          <tr>
+            <td style=""background:linear-gradient(135deg,#2b45b0 0%,#1a2a6c 100%); background-color:#1646a0; padding:32px 40px; text-align:center;"">
+              <table role=""presentation"" cellpadding=""0"" cellspacing=""0"" style=""margin:0 auto;"">
+                <tr>
+                  <td style=""vertical-align:middle;"">
+                    <img src=""{baseUrl}/assets/VoxAngelosLogo.png"" alt=""Vox Angelos"" style=""height:40px; display:block; border:0px;"" />
+                  </td>
+                  <td style=""padding-left:12px; color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.01em;"">
+                    Vox Angelos
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
           <!-- Body -->
           <tr>
@@ -171,7 +173,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         </table>
 
         <p style=""margin:20px 0 0; color:#a3adbd; font-size:11px;"">
-          &copy; 2026 Vox Angelos &middot; The Digital Heart of Angeles City
+          &copy; 2026 Vox Angelos
         </p>
       </td>
     </tr>
