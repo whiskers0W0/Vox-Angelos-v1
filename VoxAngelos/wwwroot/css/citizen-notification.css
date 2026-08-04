@@ -450,6 +450,28 @@
     display: block;
 }
 
+.concern-location-link {
+    color: inherit;
+    text-decoration: none;
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.concern-location-link:hover,
+.concern-location-link:focus-visible {
+    border-color: #8eafea;
+    background: #f3f7ff;
+    box-shadow: 0 0 0 3px rgba(22, 70, 160, .1);
+    color: inherit;
+    outline: none;
+}
+
+.concern-location-link:hover strong,
+.concern-location-link:focus-visible strong {
+    color: #1646a0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 .concern-location span {
     margin-bottom: 3px;
     color: var(--va-muted);

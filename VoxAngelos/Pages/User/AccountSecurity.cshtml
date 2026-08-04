@@ -109,17 +109,35 @@
                     <div class="security-fields">
                         <div class="security-field">
                             <label asp-for="PasswordInput.CurrentPassword">Current Password</label>
-                            <input asp-for="PasswordInput.CurrentPassword" autocomplete="current-password" />
+                            <div class="security-password-input">
+                                <input asp-for="PasswordInput.CurrentPassword" autocomplete="current-password" />
+                                <button type="button" class="security-password-toggle" data-target="PasswordInput_CurrentPassword" aria-label="Show current password" aria-pressed="false">
+                                    <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18" /><path d="M10.6 6.2A11.8 11.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.6 6.6C3.6 8.4 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4.1-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                                </button>
+                            </div>
                             <span asp-validation-for="PasswordInput.CurrentPassword"></span>
                         </div>
                         <div class="security-field">
                             <label asp-for="PasswordInput.NewPassword">New Password</label>
-                            <input asp-for="PasswordInput.NewPassword" autocomplete="new-password" />
+                            <div class="security-password-input">
+                                <input asp-for="PasswordInput.NewPassword" autocomplete="new-password" />
+                                <button type="button" class="security-password-toggle" data-target="PasswordInput_NewPassword" aria-label="Show new password" aria-pressed="false">
+                                    <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18" /><path d="M10.6 6.2A11.8 11.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.6 6.6C3.6 8.4 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4.1-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                                </button>
+                            </div>
                             <span asp-validation-for="PasswordInput.NewPassword"></span>
                         </div>
                         <div class="security-field">
                             <label asp-for="PasswordInput.ConfirmPassword">Confirm New Password</label>
-                            <input asp-for="PasswordInput.ConfirmPassword" autocomplete="new-password" />
+                            <div class="security-password-input">
+                                <input asp-for="PasswordInput.ConfirmPassword" autocomplete="new-password" />
+                                <button type="button" class="security-password-toggle" data-target="PasswordInput_ConfirmPassword" aria-label="Show password confirmation" aria-pressed="false">
+                                    <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18" /><path d="M10.6 6.2A11.8 11.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.6 6.6C3.6 8.4 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4.1-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                                </button>
+                            </div>
                             <span asp-validation-for="PasswordInput.ConfirmPassword"></span>
                         </div>
                     </div>
@@ -154,7 +172,13 @@
                         </div>
                         <div class="security-field">
                             <label asp-for="EmailInput.CurrentPassword">Current Password</label>
-                            <input asp-for="EmailInput.CurrentPassword" autocomplete="off" data-lpignore="true" data-1p-ignore="true" />
+                            <div class="security-password-input">
+                                <input asp-for="EmailInput.CurrentPassword" autocomplete="off" data-lpignore="true" data-1p-ignore="true" />
+                                <button type="button" class="security-password-toggle" data-target="EmailInput_CurrentPassword" aria-label="Show current password" aria-pressed="false">
+                                    <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                                    <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18" /><path d="M10.6 6.2A11.8 11.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.6 6.6C3.6 8.4 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4.1-.8" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                                </button>
+                            </div>
                             <span asp-validation-for="EmailInput.CurrentPassword"></span>
                         </div>
                     </div>
@@ -167,4 +191,18 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('.security-password-toggle').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.target);
+                if (!input) return;
+
+                const isVisible = input.type === 'text';
+                input.type = isVisible ? 'password' : 'text';
+                button.classList.toggle('is-visible', !isVisible);
+                button.setAttribute('aria-pressed', String(!isVisible));
+                button.setAttribute('aria-label', `${isVisible ? 'Show' : 'Hide'} ${button.dataset.target.includes('Confirm') ? 'password confirmation' : 'password'}`);
+            });
+        });
+    </script>
 }

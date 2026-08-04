@@ -198,7 +198,7 @@
             <div class="form-group">
                 <label>Categories <span class="form-hint-inline">(HF classifier categories routed to this office)</span></label>
                 <select id="newCategoriesSelect" class="form-control" onchange="addCategory('new', this.value); this.value='';">
-                    <option value="">+ Add a category...</option>
+                    <option value="" selected hidden>Select a category</option>
                     @foreach (var category in OfficeManagementModel.AvailableCategories)
                     {
                         <option value="@category">@category</option>
@@ -257,7 +257,7 @@
             <div class="form-group">
                 <label>Categories <span class="form-hint-inline">(HF classifier categories routed to this office)</span></label>
                 <select id="editCategoriesSelect" class="form-control" onchange="addCategory('edit', this.value); this.value='';">
-                    <option value="">+ Add a category...</option>
+                    <option value="" selected hidden>Select a category</option>
                     @foreach (var category in OfficeManagementModel.AvailableCategories)
                     {
                         <option value="@category">@category</option>
@@ -578,7 +578,7 @@
     function confirmSave() {
         document.getElementById('saveWarningModal').style.display = 'none';
         document.getElementById('editModal').style.display = 'none';
-        document.getElementById('editForm').submit();
+        document.getElementById('editForm').requestSubmit();
     }
 
     // ── Reset Password Warning ──
@@ -602,7 +602,7 @@
     function confirmReset() {
         document.getElementById('resetWarningModal').style.display = 'none';
         document.getElementById('editModal').style.display = 'none';
-        document.getElementById('resetForm').submit();
+        document.getElementById('resetForm').requestSubmit();
     }
 
     // ── Delete Account Warning ──
@@ -627,7 +627,7 @@
     function confirmDelete() {
         document.getElementById('deleteWarningModal').style.display = 'none';
         document.getElementById('editModal').style.display = 'none';
-        document.getElementById('deleteForm').submit();
+        document.getElementById('deleteForm').requestSubmit();
     }
 
     window.setTimeout(() => {

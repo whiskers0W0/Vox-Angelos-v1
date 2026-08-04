@@ -16,9 +16,16 @@ namespace VoxAngelos.Data
 
         public string? RawFullText { get; set; }
         public string? DetectedAddress { get; set; }
+        public string? DetectedStreetAddress { get; set; }
         public string? DetectedLocality { get; set; }
+        public string? DetectedProvince { get; set; }
         public string? DetectedBirthDate { get; set; }
+        public string? DetectedCardExpirationDate { get; set; }
         public bool LocalityMatched { get; set; }
+
+        // The actual accept/reject signal: whether "Angeles [City], Pampanga" was found
+        // anywhere on the ID, independent of whether a specific barangay was also matched.
+        public bool CityProvinceMatched { get; set; }
 
         [Column(TypeName = "decimal(5,4)")]
         public decimal? OcrConfidence { get; set; }

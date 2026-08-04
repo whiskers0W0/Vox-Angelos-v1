@@ -327,10 +327,12 @@ namespace VoxAngelos.Services
 
         // Below this, an HF prediction isn't trusted on its own — the description gets a
         // second opinion from the local fallback tiers before either accepting or rejecting
-        // it. This is a raw softmax margin, not a calibrated probability (see
-        // HfClassificationResult.Confidence) — tune empirically against real submissions,
-        // not as an exact "% chance correct."
-        private const double MinHfConfidence = 0.35;
+        // it. This is a raw softmax margin over 17 classes, not a calibrated probability (see
+        // HfClassificationResult.Confidence) — with that many classes, even a correct
+        // prediction's margin sits well below 50%, so tune empirically against real
+        // submissions rather than as an exact "% chance correct." Observed in practice:
+        // genuine concerns land around 0.13-0.18, off-topic/spam text around 0.08.
+        private const double MinHfConfidence = 0.10;
 
         // A department must clear this score, with no tie against the runner-up, before
         // a classifier result (learned weights, or the static keyword fallback) is
@@ -340,13 +342,15 @@ namespace VoxAngelos.Services
         private const int MinConfidentClassificationScore = 2;
 
         /// <summary>
-        /// Primary: our self-trained TF-IDF + SVM concern classifier (HF Space). Falls
-        /// back to local keyword scoring when the model is unavailable, low-confidence, or
-        /// predicts a category with no real office yet (FUTURE_EXPANSION). Text that's
-        /// vulgar, too sparse to be a real description, or that no tier can confidently tie
-        /// to a real concern is rejected outright via IsRejected rather than silently
-        /// accepted as Uncategorized — the LGU "Close as Invalid" action remains the last
-        /// resort for anything that still slips past these checks.
+        /// Primary: our self-trained TF-IDF + SVM concern classifier (HF Space). A low-confidence
+        /// HF prediction is treated as evidence the text is off-topic/troll noise and rejected
+        /// outright — it does NOT get a second opinion from local keyword scoring, since a
+        /// keyword coincidentally matching off-topic text is exactly the kind of false positive
+        /// that got spam through before. Local keyword/learned-weight scoring only runs as a
+        /// fallback when the HF Space itself is unreachable (an availability issue, not a content
+        /// signal). Vulgar or too-sparse text is rejected before ever calling the HF Space. The
+        /// LGU "Close as Invalid" action remains the last resort for anything that still slips
+        /// past these checks.
         /// </summary>
         public async Task<ClassificationResult> ClassifyAsync(string description)
         {
@@ -366,10 +370,24 @@ namespace VoxAngelos.Services
             }
 
             var hfPrediction = await _hfClassifier.ClassifyAsync(description);
-            var hfIsConfident = hfPrediction?.Confidence == null || hfPrediction.Confidence >= MinHfConfidence;
 
-            if (hfPrediction?.Category != null && hfIsConfident)
+            if (hfPrediction?.Category != null)
             {
+                // Confidence-threshold rejection is disabled for now (pending panel review of
+                // where to set MinHfConfidence) — every HF prediction is accepted regardless of
+                // confidence. To re-enable, restore the block below.
+                // var hfIsConfident = hfPrediction.Confidence == null || hfPrediction.Confidence >= MinHfConfidence;
+                //
+                // if (!hfIsConfident)
+                // {
+                //     _logger.LogInformation(
+                //         "HF classifier LOW CONFIDENCE: category={Category} confidence={Confidence} — rejecting as likely off-topic",
+                //         hfPrediction.Category, hfPrediction.Confidence);
+                //     return new ClassificationResult(null, "Rejected", true,
+                //         "We couldn't confirm this is a specific local concern. Please add more detail — what's happening, and where — so we can route it to the right office.",
+                //         Confidence: hfPrediction.Confidence);
+                // }
+
                 // Admin-assigned category→department mapping (Office Management) wins over
                 // the HF Space's own office_map.json — this is what lets a FUTURE_EXPANSION
                 // category get a real office later without redeploying the Space.
@@ -400,12 +418,10 @@ namespace VoxAngelos.Services
                 return new ClassificationResult(null, "HF Model (Future Expansion)", Confidence: hfPrediction.Confidence);
             }
 
-            if (hfPrediction != null && !hfIsConfident)
-            {
-                _logger.LogInformation(
-                    "HF classifier LOW CONFIDENCE: category={Category} confidence={Confidence} — getting a second opinion from local fallback",
-                    hfPrediction.Category ?? "(none)", hfPrediction.Confidence);
-            }
+            // The HF Space itself was unreachable (or returned a malformed response) — an
+            // availability issue, not evidence this text is spam. Fall back to local scoring
+            // rather than punishing the citizen for an outage.
+            _logger.LogInformation("HF classifier unavailable — falling back to local scoring");
 
             var learned = await LoadLearnedWeightsAsync();
 
@@ -426,20 +442,8 @@ namespace VoxAngelos.Services
                 return new ClassificationResult(keywordResult, "Keyword Scoring");
             }
 
-            if (hfPrediction == null)
-            {
-                // The HF Space itself was unreachable — an infrastructure issue, not evidence
-                // this text is spam. Don't punish the citizen for an outage; accept it
-                // Uncategorized for manual LGU review, same as before this change.
-                _logger.LogInformation("HF classifier unavailable and local fallback found nothing — accepting as Uncategorized");
-                return new ClassificationResult(null, "Uncategorized (HF unavailable)");
-            }
-
-            // HF was reachable, wasn't confident this belongs to any known category, and local
-            // keyword/learned-weight scoring also found nothing — likely off-topic or troll text.
-            _logger.LogInformation("REJECTED: no tier could confidently tie this text to a real concern");
-            return new ClassificationResult(null, "Rejected", true,
-                "We couldn't confirm this is a specific local concern. Please add more detail — what's happening, and where — so we can route it to the right office.");
+            _logger.LogInformation("HF classifier unavailable and local fallback found nothing — accepting as Uncategorized");
+            return new ClassificationResult(null, "Uncategorized (HF unavailable)");
         }
 
         /// <summary>

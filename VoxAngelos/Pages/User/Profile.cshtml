@@ -294,6 +294,10 @@
                         <label>Birth Date</label>
                         <div class="field-value-box">@(profile.BirthDate?.ToString("MMMM dd, yyyy") ?? "Not available")</div>
                     </div>
+                    <div class="profile-field">
+                        <label>Age</label>
+                        <div class="field-value-box">@(profile.Age?.ToString() ?? "Not available")</div>
+                    </div>
                 </div>
             </section>
 
@@ -316,12 +320,34 @@
                 <h3 id="addressInformationHeading" class="profile-section-heading">Address information</h3>
                 <div class="profile-fields-grid">
                     <div class="profile-field">
+                        <label>Lot No. / Street Address</label>
+                        <div class="field-value-box">@(profile.StreetAddress ?? "Not available")</div>
+                    </div>
+                    <div class="profile-field">
                         <label>Barangay</label>
                         <div class="field-value-box">@(profile.Barangay ?? "Not available")</div>
                     </div>
                     <div class="profile-field">
                         <label>City</label>
                         <div class="field-value-box">@(profile.City ?? "Not available")</div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Province</label>
+                        <div class="field-value-box">@(profile.Province ?? "Not available")</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="profile-details-section" aria-labelledby="idInformationHeading">
+                <h3 id="idInformationHeading" class="profile-section-heading">ID information</h3>
+                <div class="profile-fields-grid">
+                    <div class="profile-field">
+                        <label>ID Type</label>
+                        <div class="field-value-box">@(profile.IdType ?? "Not available")</div>
+                    </div>
+                    <div class="profile-field">
+                        <label>Card Expiration Date</label>
+                        <div class="field-value-box">@(profile.CardExpirationDate?.ToString("MMMM dd, yyyy") ?? "Not available")</div>
                     </div>
                 </div>
             </section>

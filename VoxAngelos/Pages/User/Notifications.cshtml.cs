@@ -64,6 +64,8 @@ namespace VoxAngelos.Pages.User
                     Category = c.Category ?? "Uncategorized",
                     Status = c.Status,
                     LocationName = c.LocationName ?? "No location provided",
+                    Latitude = c.Latitude,
+                    Longitude = c.Longitude,
                     SubmittedAt = c.SubmittedAt,
                     UpdatedAt = c.UpdatedAt,
                     LguNotes = c.LguNotes,
@@ -208,6 +210,8 @@ namespace VoxAngelos.Pages.User
         public string Category { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string LocationName { get; set; } = string.Empty;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
         public DateTime SubmittedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string? LguNotes { get; set; }

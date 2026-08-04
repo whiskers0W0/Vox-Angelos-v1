@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.Admin
 {
@@ -13,15 +14,21 @@ namespace VoxAngelos.Pages.Admin
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _environment;
+        private readonly SensitiveMediaRetentionService _mediaRetention;
+        private readonly ILogger<UserApplicationsModel> _logger;
 
         public UserApplicationsModel(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            SensitiveMediaRetentionService mediaRetention,
+            ILogger<UserApplicationsModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
+            _mediaRetention = mediaRetention;
+            _logger = logger;
         }
 
         public List<CitizenApplicationViewModel> Applications { get; set; } = new();
@@ -88,39 +95,66 @@ namespace VoxAngelos.Pages.Admin
         public async Task<IActionResult> OnPostApproveAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user != null && user.ApprovalStatus != "Approved")
+            if (user != null && user.ApprovalStatus == "Pending")
             {
                 user.ApprovalStatus = "Approved";
                 var result = await _userManager.UpdateAsync(user);
                 if (!result.Succeeded)
                     TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
                 else
+                {
+                    await TryPurgeSensitiveMediaAsync(userId);
                     TempData["AdminSuccess"] = "The citizen account was approved successfully.";
+                }
             }
             else
                 TempData["AdminError"] = user == null
                     ? "The citizen account could not be found."
-                    : "This citizen account is already approved.";
+                    : "This application has already received a final decision and cannot be changed.";
             return RedirectToPage(new { filterStatus = FilterStatus });
         }
 
         public async Task<IActionResult> OnPostRejectAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user != null && user.ApprovalStatus != "Rejected")
+            if (user != null && user.ApprovalStatus == "Pending")
             {
                 user.ApprovalStatus = "Rejected";
                 var result = await _userManager.UpdateAsync(user);
                 if (!result.Succeeded)
                     TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
                 else
+                {
+                    await TryPurgeSensitiveMediaAsync(userId);
                     TempData["AdminSuccess"] = "The citizen account was rejected successfully.";
+                }
             }
             else
                 TempData["AdminError"] = user == null
                     ? "The citizen account could not be found."
-                    : "This citizen account is already rejected.";
+                    : "This application has already received a final decision and cannot be changed.";
             return RedirectToPage(new { filterStatus = FilterStatus });
+        }
+
+        private async Task TryPurgeSensitiveMediaAsync(string userId)
+        {
+            try
+            {
+                var purgedCount = await _mediaRetention.PurgeUserMediaAsync(
+                    userId,
+                    HttpContext.RequestAborted);
+                _logger.LogInformation(
+                    "Immediate review cleanup purged {Count} protected media copy/copies for citizen {UserId}.",
+                    purgedCount,
+                    userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Immediate protected-media cleanup failed for citizen {UserId}; the retention sweep will retry.",
+                    userId);
+            }
         }
     }
 

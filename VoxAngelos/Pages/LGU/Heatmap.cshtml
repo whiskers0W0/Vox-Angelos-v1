@@ -94,6 +94,12 @@
                 return status.toLowerCase().replace(' ', '-');
             }
 
+            function escapeHtml(value) {
+                const element = document.createElement('div');
+                element.textContent = value ?? '';
+                return element.innerHTML;
+            }
+
             // Place markers
             concerns.forEach(concern => {
                 const marker = new google.maps.Marker({
@@ -105,16 +111,17 @@
 
                 const content = `
                     <div class="info-window">
-                        <div class="iw-name">${concern.citizenName}</div>
-                        <span class="iw-status ${getStatusClass(concern.status)}">${concern.status}</span>
+                        <div class="iw-name">${escapeHtml(concern.citizenName)}</div>
+                        <span class="iw-status ${getStatusClass(concern.status)}">${escapeHtml(concern.status)}</span>
                         <div class="iw-label">Category</div>
-                        <div class="iw-value">${concern.category}</div>
+                        <div class="iw-value">${escapeHtml(concern.category)}</div>
                         <div class="iw-label">Location</div>
-                        <div class="iw-value">${concern.location}</div>
+                        <div class="iw-value">${escapeHtml(concern.location)}</div>
                         <div class="iw-label">Description</div>
-                        <div class="iw-value">${concern.description}</div>
+                        <div class="iw-value">${escapeHtml(concern.description)}</div>
                         <div class="iw-label">Submitted</div>
-                        <div class="iw-value">${concern.submittedAt}</div>
+                        <div class="iw-value">${escapeHtml(concern.submittedAt)}</div>
+                        <a class="iw-view-concern" href="/LGU/Index?filter=${encodeURIComponent(concern.status)}&concernId=${encodeURIComponent(concern.id)}#concern-${encodeURIComponent(concern.id)}">View concern</a>
                     </div>
                 `;
 
@@ -124,12 +131,9 @@
                     infoWindow.open(map, marker);
                 });
 
-                // Close on mouseout
-                marker.addListener('mouseout', () => {
-                    infoWindow.close();
-                });
-
-                // Keep open on click
+                // The popup remains open after hover so its action can be clicked.
+                // Hovering another marker replaces it; the built-in close button
+                // dismisses it explicitly.
                 marker.addListener('click', () => {
                     infoWindow.setContent(content);
                     infoWindow.open(map, marker);

@@ -264,6 +264,25 @@
         font-size: 11px;
     }
 
+    .info-window .iw-view-concern {
+        display: block;
+        margin-top: 12px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: #1646a0;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 750;
+        text-align: center;
+        text-decoration: none;
+    }
+
+    .info-window .iw-view-concern:hover,
+    .info-window .iw-view-concern:focus-visible {
+        background: #0f377f;
+        color: #fff;
+    }
+
 @media (max-width:760px) {
     .lgu-page-header, .lgu-map-controls {
         align-items: flex-start;
