@@ -161,7 +161,7 @@
                         </svg>
                         <span>Discover</span>
                     </a>
-                    <a asp-page="/User/Notifications" class="nav-item @(path == "/user/notifications" ? "active" : "")">
+                    <a asp-page="/User/Concerns" class="nav-item @(path == "/user/concerns" ? "active" : "")">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                             <polyline points="14,2 14,8 20,8" />
@@ -276,7 +276,7 @@
                                     {
                                         <a class="notification-dropdown-item @(notification.IsRead ? "" : "unread")"
                                            data-notification-id="@notification.Id"
-                                           href="@(notification.LinkUrl ?? "/User/Notifications")">
+                                           href="@(notification.LinkUrl ?? "/User/Concerns")">
                                             <span class="notification-dropdown-item-title">@notification.Title</span>
                                             <span class="notification-dropdown-item-message">@notification.Message</span>
                                             <span class="notification-dropdown-item-date">@notification.CreatedAt.ToLocalTime().ToString("MMM dd, h:mm tt")</span>
@@ -316,7 +316,7 @@
                         emailNotificationsStatus.classList.remove('is-success', 'is-error');
 
                         try {
-                            const response = await fetch('/User/Notifications?handler=SetEmailNotifications', {
+                            const response = await fetch('/User/Concerns?handler=SetEmailNotifications', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -348,7 +348,7 @@
                             const notificationId = item.dataset.notificationId;
 
                             try {
-                                await fetch('/User/Notifications?handler=MarkNotificationRead', {
+                                await fetch('/User/Concerns?handler=MarkNotificationRead', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/x-www-form-urlencoded'

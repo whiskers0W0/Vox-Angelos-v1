@@ -8,12 +8,12 @@ using VoxAngelos.Data;
 namespace VoxAngelos.Pages.User
 {
     [Authorize(Roles = "User")]
-    public class NotificationsModel : PageModel
+    public class ConcernsModel : PageModel
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public NotificationsModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+        public ConcernsModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
         {
             _db = db;
             _userManager = userManager;
