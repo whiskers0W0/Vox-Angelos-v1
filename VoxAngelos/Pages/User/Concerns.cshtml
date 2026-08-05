@@ -1,5 +1,5 @@
 ﻿@page
-@model VoxAngelos.Pages.User.NotificationsModel
+@model VoxAngelos.Pages.User.ConcernsModel
 @{
     Layout = "_CitizenLayout";
     ViewData["Title"] = "My Concerns";
@@ -52,7 +52,7 @@
             <nav class="status-filter" aria-label="Filter your concerns by status">
                 @foreach (var filter in new[] { "All", "Unresolved", "Chosen", "In Progress", "Resolved" })
                 {
-                    <a asp-page="/User/Notifications"
+                    <a asp-page="/User/Concerns"
                        asp-route-status="@filter"
                        class="status-filter-btn @(Model.CurrentStatusFilter == filter ? "active" : "")"
                        aria-current="@(Model.CurrentStatusFilter == filter ? "page" : null)">
@@ -83,7 +83,7 @@
                         }
                         else
                         {
-                            <a asp-page="/User/Notifications" asp-route-status="All">View all concerns</a>
+                            <a asp-page="/User/Concerns" asp-route-status="All">View all concerns</a>
                         }
                     </div>
                 }

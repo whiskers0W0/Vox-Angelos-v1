@@ -25,7 +25,6 @@ namespace VoxAngelos.Pages.LGU
         private readonly IConfiguration _configuration;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<IndexModel> _logger;
-        private readonly IConfiguration _configuration;
         private static readonly IReadOnlyDictionary<string, string> DepartmentDisplayNames =
             new Dictionary<string, string>
             {
@@ -51,7 +50,6 @@ namespace VoxAngelos.Pages.LGU
             _emailSender = emailSender;
             _configuration = configuration;
             _logger = logger;
-            _configuration = configuration;
         }
 
         // Notifies every LGU dashboard that could be displaying this concern — its
@@ -110,7 +108,7 @@ namespace VoxAngelos.Pages.LGU
             string baseUrl = publicBaseUrl?.TrimEnd('/') ?? "";
             var safeHeading = WebUtility.HtmlEncode(heading);
             var safeMessage = WebUtility.HtmlEncode(message);
-            var updatesUrl = "/User/Notifications";
+            var updatesUrl = "/User/Concerns";
 
             return $@"
 <!DOCTYPE html>
@@ -549,7 +547,7 @@ namespace VoxAngelos.Pages.LGU
                     NotificationType = "ConcernUpdate",
                     SenderRole = "LGU",
                     SenderName = actorName,
-                    LinkUrl = "/User/Notifications",
+                    LinkUrl = "/User/Concerns",
                     CreatedAt = forwardedAt
                 });
 
@@ -718,7 +716,7 @@ namespace VoxAngelos.Pages.LGU
                     NotificationType = "ConcernUpdate",
                     SenderRole = "LGU",
                     SenderName = actorName,
-                    LinkUrl = "/User/Notifications",
+                    LinkUrl = "/User/Concerns",
                     CreatedAt = updatedAt
                 });
                 await _db.SaveChangesAsync();
@@ -802,7 +800,7 @@ namespace VoxAngelos.Pages.LGU
                     NotificationType = "ConcernUpdate",
                     SenderRole = "LGU",
                     SenderName = actorName,
-                    LinkUrl = "/User/Notifications",
+                    LinkUrl = "/User/Concerns",
                     CreatedAt = updatedAt
                 });
                 await _db.SaveChangesAsync();
@@ -895,7 +893,7 @@ namespace VoxAngelos.Pages.LGU
                     NotificationType = "ConcernUpdate",
                     SenderRole = "LGU",
                     SenderName = actorName,
-                    LinkUrl = "/User/Notifications",
+                    LinkUrl = "/User/Concerns",
                     CreatedAt = closedAt
                 });
 

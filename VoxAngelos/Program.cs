@@ -115,7 +115,6 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/Admin", "RequireAdminRole");
     options.Conventions.AuthorizeFolder("/LGU", "RequireLGURole");
     options.Conventions.AuthorizeFolder("/User", "RequireUserRole");
-
     // Allow anonymous access to the login pages
     options.Conventions.AllowAnonymousToPage("/Admin/Login");
     options.Conventions.AllowAnonymousToPage("/LGU/Login");
@@ -225,6 +224,23 @@ app.UseStaticFiles(new StaticFileOptions
 {
     ServeUnknownFileTypes = true,
     DefaultContentType = "application/json"
+});
+
+// Preserve old concern links, but make the browser use the new canonical URL.
+// Status 307 also preserves the HTTP method for any older toggle/read requests.
+app.Use(async (context, next) =>
+{
+    if (string.Equals(
+        context.Request.Path.Value,
+        "/User/Notifications",
+        StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status307TemporaryRedirect;
+        context.Response.Headers.Location = "/User/Concerns" + context.Request.QueryString;
+        return;
+    }
+
+    await next();
 });
 
 app.UseRouting();
