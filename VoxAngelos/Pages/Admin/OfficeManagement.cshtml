@@ -402,6 +402,11 @@
     let currentUserId = '';
     let currentDepartment = '';
 
+    // category -> department already routed there, across every other office. Used to
+    // grey out a category in the dropdown before Save Changes even runs, rather than only
+    // rejecting the conflict server-side after the fact.
+    const categoryOwnership = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CategoryOwnership));
+
     // ── Tag pill input ──
     const tagState = { new: [], edit: [] };
 
@@ -479,8 +484,14 @@
     function updateCategorySelectOptions(key) {
         const selectEl = document.getElementById(key + 'CategoriesSelect');
         if (!selectEl) return;
+        // 'new' accounts have no department yet, so any category already owned elsewhere
+        // is off-limits; 'edit' can keep the categories its own department already has.
+        const ownerDept = key === 'edit' ? currentDepartment : null;
         [...selectEl.options].forEach(opt => {
-            if (opt.value) opt.hidden = categoryState[key].includes(opt.value);
+            if (!opt.value) return;
+            const takenInThisForm = categoryState[key].includes(opt.value);
+            const ownedByOtherDept = categoryOwnership[opt.value] && categoryOwnership[opt.value] !== ownerDept;
+            opt.hidden = takenInThisForm || ownedByOtherDept;
         });
     }
 

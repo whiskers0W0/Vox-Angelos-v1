@@ -21,6 +21,11 @@ namespace VoxAngelos.Pages.Admin
 
         public List<LguAccountViewModel> LguAccounts { get; set; } = new();
 
+        // category -> department, across every LGU account — lets the Office Management
+        // page grey out a category in the dropdown once another department already has it,
+        // instead of only discovering the conflict after Save Changes.
+        public Dictionary<string, string> CategoryOwnership { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
         [BindProperty] public string NewEmployeeId { get; set; } = string.Empty;
         [BindProperty] public string NewEmail { get; set; } = string.Empty;
         [BindProperty] public string NewDepartment { get; set; } = string.Empty;
@@ -71,6 +76,16 @@ namespace VoxAngelos.Pages.Admin
                 return Page();
             }
 
+            var newCategories = ParseCategories(NewCategories);
+            var categoryConflicts = FindCategoryConflicts(_userManager.Users.ToList(), newCategories);
+            if (categoryConflicts.Count > 0)
+            {
+                ErrorMessage = "Cannot save — already assigned elsewhere: " +
+                    string.Join(", ", categoryConflicts.Select(c => $"{c.Category} ({c.Department})"));
+                await LoadAccountsAsync();
+                return Page();
+            }
+
             var existingEmpId = _userManager.Users.FirstOrDefault(u => u.EmployeeId == NewEmployeeId);
             if (existingEmpId != null)
             {
@@ -96,7 +111,7 @@ namespace VoxAngelos.Pages.Admin
                 Department = NewDepartment,
                 DepartmentFullName = string.IsNullOrWhiteSpace(NewDepartmentFullName) ? null : NewDepartmentFullName.Trim(),
                 Tags = ParseTags(NewTags),
-                Categories = ParseCategories(NewCategories),
+                Categories = newCategories,
                 ApprovalStatus = "Approved",
                 CreatedAt = DateTime.UtcNow,
                 TwoFactorEnabled = false
@@ -209,8 +224,19 @@ namespace VoxAngelos.Pages.Admin
                 user.DepartmentFullName = EditDepartmentFullName.Trim();
             }
 
+            var editCategories = ParseCategories(EditCategories);
+            var categoryConflicts = FindCategoryConflicts(
+                _userManager.Users.Where(u => u.Id != EditUserId).ToList(), editCategories);
+            if (categoryConflicts.Count > 0)
+            {
+                ErrorMessage = "Cannot save — already assigned elsewhere: " +
+                    string.Join(", ", categoryConflicts.Select(c => $"{c.Category} ({c.Department})"));
+                await LoadAccountsAsync();
+                return Page();
+            }
+
             user.Tags = ParseTags(EditTags);
-            user.Categories = ParseCategories(EditCategories);
+            user.Categories = editCategories;
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
@@ -279,6 +305,26 @@ namespace VoxAngelos.Pages.Admin
             return Page();
         }
 
+        // A category can only ever be routed to one department at a time, so it can't be
+        // assigned to a second account while another already claims it — otherwise
+        // LoadCategoryDepartmentsAsync (the classifier's admin-mapping lookup) would have
+        // two departments to choose from and silently pick whichever was read last.
+        private static List<(string Category, string Department)> FindCategoryConflicts(
+            IEnumerable<ApplicationUser> otherAccounts, List<string> categories)
+        {
+            var conflicts = new List<(string, string)>();
+            foreach (var other in otherAccounts)
+            {
+                if (other.Categories == null || other.Categories.Count == 0) continue;
+                foreach (var category in categories)
+                {
+                    if (other.Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
+                        conflicts.Add((category, other.Department ?? other.Email ?? "another account"));
+                }
+            }
+            return conflicts;
+        }
+
         private static List<string> ParseTags(string? raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) return new List<string>();
@@ -319,6 +365,11 @@ namespace VoxAngelos.Pages.Admin
                     CreatedAt = user.CreatedAt
                 });
             }
+
+            CategoryOwnership.Clear();
+            foreach (var account in LguAccounts)
+                foreach (var category in account.Categories)
+                    CategoryOwnership[category] = account.Department;
         }
     }
 
