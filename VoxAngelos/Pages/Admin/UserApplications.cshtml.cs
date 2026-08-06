@@ -34,10 +34,12 @@ namespace VoxAngelos.Pages.Admin
         public List<CitizenApplicationViewModel> Applications { get; set; } = new();
 
         public string FilterStatus { get; set; } = "All";
+        public string FaceMatchFilter { get; set; } = "All";
 
-        public async Task OnGetAsync(string filterStatus = "All")
+        public async Task OnGetAsync(string filterStatus = "All", string faceMatchFilter = "All")
         {
             FilterStatus = filterStatus;
+            FaceMatchFilter = faceMatchFilter;
 
             var citizenUsers = await _userManager.GetUsersInRoleAsync("User");
 
@@ -71,11 +73,20 @@ namespace VoxAngelos.Pages.Admin
                     ContactNumber = user.PhoneNumber ?? "N/A",
                     DateApplied = user.CreatedAt,
                     ApprovalStatus = user.ApprovalStatus,
-                    FaceMatchConfidence = face?.MatchConfidence ?? 0
+                    FaceMatchConfidence = face?.MatchConfidence,
+                    HasFaceVerification = face != null
                 });
             }
 
+            if (faceMatchFilter == "Attention")
+            {
+                Applications = Applications
+                    .Where(a => !a.HasFaceVerification || a.FaceMatchConfidence < 0.50m)
+                    .ToList();
+            }
+
             if (_environment.IsDevelopment()
+                && faceMatchFilter != "Attention"
                 && (filterStatus == "All" || filterStatus == "Pending"))
             {
                 Applications.Add(new CitizenApplicationViewModel
@@ -87,6 +98,7 @@ namespace VoxAngelos.Pages.Admin
                     DateApplied = DateTime.UtcNow.AddDays(-1),
                     ApprovalStatus = "Pending",
                     FaceMatchConfidence = 0.87m,
+                    HasFaceVerification = true,
                     IsMock = true
                 });
             }
@@ -166,7 +178,8 @@ namespace VoxAngelos.Pages.Admin
         public string ContactNumber { get; set; } = string.Empty;
         public DateTime DateApplied { get; set; }
         public string ApprovalStatus { get; set; } = string.Empty;
-        public decimal FaceMatchConfidence { get; set; }
+        public decimal? FaceMatchConfidence { get; set; }
+        public bool HasFaceVerification { get; set; }
         public bool IsMock { get; set; }
     }
 }

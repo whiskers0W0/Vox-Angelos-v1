@@ -30,14 +30,17 @@ namespace VoxAngelos.Pages.Admin
 
         // ================= NEW: everything below this line is additive =================
 
-        // Below this face-match confidence (%), a verification attempt counts as a "failure".
-        private const int FaceMatchFailureThreshold = 50;
+        // Confidence is stored from 0 to 1, so 0.50 represents the 50% review threshold.
+        private const decimal FaceMatchFailureThreshold = 0.50m;
 
         public int RejectedAccounts { get; set; }
 
         public List<QueueItemViewModel> OldestPending { get; set; } = new();
         public int TotalFaceChecks { get; set; }
         public int LowFaceMatchCount { get; set; }
+        public int PassedFaceMatchCount => TotalFaceChecks - LowFaceMatchCount;
+        public int MissingFaceMatchCount { get; set; }
+        public int FaceMatchAttentionCount => LowFaceMatchCount + MissingFaceMatchCount;
         public double FaceMatchFailureRate { get; set; }
         public List<DailyCountViewModel> ApplicationsLast14Days { get; set; } = new();
 
@@ -48,19 +51,15 @@ namespace VoxAngelos.Pages.Admin
         public int RoutingGapCount { get; set; }
         public List<DepartmentAccountViewModel> AccountsByDepartment { get; set; } = new();
 
-        public int NlpTotalReviewed { get; set; }
-        public double NlpAccuracyPercent { get; set; }
-        public bool NlpThresholdMet { get; set; }
-        public string? WorstDepartment { get; set; }
-        public double WorstDepartmentAccuracy { get; set; }
-        public int RecentMisclassificationCount { get; set; }
-        public List<DepartmentAccuracyViewModel> NlpByDepartment { get; set; } = new();
         public bool AdminTriageEnabled =>
             _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized");
         public int UncategorizedConcernCount { get; set; }
         public int UncategorizedRecommendationCount { get; set; }
         public int TotalAwaitingRouting => UncategorizedConcernCount + UncategorizedRecommendationCount;
         public DateTime? OldestUncategorizedSubmittedAt { get; set; }
+        public RoutingVolumeViewModel? MostAdminRoutedDepartment { get; set; }
+        public RoutingVolumeViewModel? LeastAdminRoutedDepartment { get; set; }
+        public int AdminRoutedDepartmentCount { get; set; }
         public string OldestRoutingAge
         {
             get
@@ -88,7 +87,7 @@ namespace VoxAngelos.Pages.Admin
 
             await LoadApplicationsWidgetsAsync(allUsers);
             await LoadOfficeManagementWidgetsAsync();
-            await LoadNlpWidgetsAsync();
+            await LoadRoutingWidgetsAsync();
         }
 
         private async Task LoadApplicationsWidgetsAsync(IList<ApplicationUser> allUsers)
@@ -128,6 +127,10 @@ namespace VoxAngelos.Pages.Admin
 
             TotalFaceChecks = faceChecks.Count;
             LowFaceMatchCount = faceChecks.Count(f => f.MatchConfidence < FaceMatchFailureThreshold);
+            MissingFaceMatchCount = allUserIds.Count - faceChecks
+                .Select(f => f.UserId)
+                .Distinct()
+                .Count();
             FaceMatchFailureRate = TotalFaceChecks == 0
                 ? 0
                 : Math.Round(LowFaceMatchCount * 100.0 / TotalFaceChecks, 1);
@@ -185,41 +188,8 @@ namespace VoxAngelos.Pages.Admin
                 department.Active == 0 || department.CategoryCount == 0 || department.KeywordCount == 0);
         }
 
-        private async Task LoadNlpWidgetsAsync()
+        private async Task LoadRoutingWidgetsAsync()
         {
-            var corrections = await _context.ClassificationCorrections
-                .AsNoTracking()
-                .ToListAsync();
-
-            NlpTotalReviewed = corrections.Count;
-            var correctCount = corrections.Count(correction => correction.WasCorrect);
-            NlpAccuracyPercent = NlpTotalReviewed == 0
-                ? 0
-                : Math.Round(correctCount * 100.0 / NlpTotalReviewed, 1);
-            NlpThresholdMet = NlpAccuracyPercent >= NlpAccuracyModel.TargetAccuracyPercent;
-            NlpByDepartment = corrections
-                .GroupBy(correction => correction.CorrectedCategory)
-                .Select(group => new DepartmentAccuracyViewModel
-                {
-                    Department = group.Key,
-                    Total = group.Count(),
-                    Correct = group.Count(correction => correction.WasCorrect),
-                    AccuracyPercent = Math.Round(group.Count(correction => correction.WasCorrect) * 100.0 / group.Count(), 1)
-                })
-                .OrderBy(department => department.Department)
-                .ToList();
-
-            if (NlpByDepartment.Count > 0)
-            {
-                var worst = NlpByDepartment.OrderBy(department => department.AccuracyPercent).First();
-                WorstDepartment = worst.Department;
-                WorstDepartmentAccuracy = worst.AccuracyPercent;
-            }
-
-            var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
-            RecentMisclassificationCount = corrections
-                .Count(correction => !correction.WasCorrect && correction.ReviewedAt >= sevenDaysAgo);
-
             if (AdminTriageEnabled)
             {
                 var concernDates = await _context.Concerns
@@ -242,6 +212,28 @@ namespace VoxAngelos.Pages.Admin
                     .OrderBy(date => date)
                     .Cast<DateTime?>()
                     .FirstOrDefault();
+
+                var routingByDepartment = await _context.AdminRoutingAssignments
+                    .AsNoTracking()
+                    .GroupBy(assignment => assignment.Department)
+                    .Select(group => new RoutingVolumeViewModel
+                    {
+                        Department = group.Key,
+                        Total = group.Count(),
+                        Concerns = group.Count(assignment => assignment.SubmissionType == "Concern"),
+                        Recommendations = group.Count(assignment => assignment.SubmissionType == "Recommendation")
+                    })
+                    .ToListAsync();
+
+                AdminRoutedDepartmentCount = routingByDepartment.Count;
+                MostAdminRoutedDepartment = routingByDepartment
+                    .OrderByDescending(item => item.Total)
+                    .ThenBy(item => item.Department)
+                    .FirstOrDefault();
+                LeastAdminRoutedDepartment = routingByDepartment
+                    .OrderBy(item => item.Total)
+                    .ThenBy(item => item.Department)
+                    .FirstOrDefault();
             }
         }
     }
@@ -259,6 +251,14 @@ namespace VoxAngelos.Pages.Admin
     {
         public DateTime Date { get; set; }
         public int Count { get; set; }
+    }
+
+    public class RoutingVolumeViewModel
+    {
+        public string Department { get; set; } = string.Empty;
+        public int Total { get; set; }
+        public int Concerns { get; set; }
+        public int Recommendations { get; set; }
     }
 
     public class DepartmentAccountViewModel

@@ -32,6 +32,10 @@ namespace VoxAngelos.Pages.Admin
         public List<MisclassificationViewModel> RecentMisclassifications { get; set; } = new();
         public string CurrentType { get; set; } = "All";
         public string CurrentSort { get; set; } = "Oldest";
+        public int UnassignedConcernCount { get; set; }
+        public int UnassignedRecommendationCount { get; set; }
+        public string OldestConcernWaiting { get; set; } = "—";
+        public string OldestRecommendationWaiting { get; set; } = "—";
 
         public async Task OnGetAsync(string? submissionType, string? sortOrder)
         {
@@ -40,29 +44,17 @@ namespace VoxAngelos.Pages.Admin
                 ? "Newest"
                 : "Oldest";
 
-            var corrections = await _db.ClassificationCorrections
-                .Include(correction => correction.Concern)
-                .Include(correction => correction.ReviewedBy)
-                .OrderByDescending(correction => correction.ReviewedAt)
-                .ToListAsync();
-
-            ByDepartment = corrections
-                .GroupBy(correction => correction.CorrectedCategory)
-                .Select(group => new DepartmentAccuracyViewModel
-                {
-                    Department = group.Key,
-                    Total = group.Count(),
-                    Correct = group.Count(correction => correction.WasCorrect),
-                    AccuracyPercent = Math.Round(group.Count(correction => correction.WasCorrect) * 100.0 / group.Count(), 1)
-                })
-                .OrderBy(department => department.Department)
-                .ToList();
-
             if (AdminTriageEnabled)
             {
                 await LoadUncategorizedSubmissionsAsync();
                 return;
             }
+
+            var corrections = await _db.ClassificationCorrections
+                .Include(correction => correction.Concern)
+                .Include(correction => correction.ReviewedBy)
+                .OrderByDescending(correction => correction.ReviewedAt)
+                .ToListAsync();
 
             RecentMisclassifications = corrections
                 .Where(correction => !correction.WasCorrect)
@@ -123,6 +115,15 @@ namespace VoxAngelos.Pages.Admin
                 TempData["RoutingError"] = "This submission was already assigned or is no longer available.";
                 return RedirectToPage(new { submissionType = currentType, sortOrder = currentSort });
             }
+
+            _db.AdminRoutingAssignments.Add(new AdminRoutingAssignment
+            {
+                SubmissionType = isConcern ? "Concern" : "Recommendation",
+                SubmissionId = submissionId,
+                Department = normalizedDepartment,
+                AssignedByUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+                AssignedAt = DateTime.UtcNow
+            });
 
             var recipientIds = await _db.Users
                 .AsNoTracking()
@@ -203,6 +204,17 @@ namespace VoxAngelos.Pages.Admin
                     (recommendation.AssignedOffice == null || recommendation.AssignedOffice == ""))
                 .ToListAsync();
 
+            UnassignedConcernCount = concernEntities.Count;
+            UnassignedRecommendationCount = recommendationEntities.Count;
+            OldestConcernWaiting = FormatWaitingAge(concernEntities
+                .OrderBy(concern => concern.SubmittedAt)
+                .Select(concern => (DateTime?)concern.SubmittedAt)
+                .FirstOrDefault());
+            OldestRecommendationWaiting = FormatWaitingAge(recommendationEntities
+                .OrderBy(recommendation => recommendation.SubmittedAt)
+                .Select(recommendation => (DateTime?)recommendation.SubmittedAt)
+                .FirstOrDefault());
+
             var recommendations = recommendationEntities
                 .Select(recommendation => new UncategorizedSubmissionViewModel
                 {
@@ -246,6 +258,19 @@ namespace VoxAngelos.Pages.Admin
                 return path;
 
             return "/" + path.TrimStart('~', '/', '\\').Replace('\\', '/');
+        }
+
+        private static string FormatWaitingAge(DateTime? submittedAt)
+        {
+            if (!submittedAt.HasValue)
+                return "—";
+
+            var age = DateTime.UtcNow - submittedAt.Value;
+            if (age.TotalDays >= 1)
+                return $"{Math.Max(1, (int)age.TotalDays)} day(s)";
+            if (age.TotalHours >= 1)
+                return $"{Math.Max(1, (int)age.TotalHours)} hour(s)";
+            return $"{Math.Max(1, (int)age.TotalMinutes)} minute(s)";
         }
     }
 

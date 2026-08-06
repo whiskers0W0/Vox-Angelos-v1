@@ -298,6 +298,11 @@
     color: var(--applications-red);
 }
 
+.admin-applications-confidence.missing {
+    background: #fff6dd;
+    color: #8b5c09;
+}
+
 .admin-applications-status.status-pending {
     background: #fff6dd;
     color: #8b5c09;

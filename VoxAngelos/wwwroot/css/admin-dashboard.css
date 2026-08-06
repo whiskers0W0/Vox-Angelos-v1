@@ -43,10 +43,14 @@
 .admin-table-action { display:inline-flex; min-height:28px; align-items:center; padding:0 9px; border:1px solid #cad9f3; border-radius:6px; color:var(--admin-blue); font-size:10px; font-weight:750; text-decoration:none; }
 .admin-table-action:hover { border-color:var(--admin-blue); background:var(--admin-blue-soft); color:var(--admin-blue-dark); }
 .admin-health { display:flex; align-items:flex-start; justify-content:space-between; gap:22px; min-height:102px; }
-.admin-health-value { display:block; color:var(--admin-green); font-size:38px; font-weight:760; line-height:.9; letter-spacing:-.05em; }
+.admin-health-value { display:block; color:var(--admin-green); font-size:30px; font-weight:760; line-height:1; letter-spacing:-.04em; }
 .text-danger .admin-health-value,.admin-health-value.text-danger { color:var(--admin-red); }
 .admin-health p { max-width:230px; margin:9px 0 0; color:var(--admin-body); font-size:11px; line-height:1.5; }
-.admin-health-meta { max-width:150px; padding:10px; border-left:2px solid #d9e4f7; color:var(--admin-body); font-size:11px; line-height:1.45; }
+.admin-health-meta { display:grid; min-width:150px; padding:8px 10px; border-left:2px solid #d9e4f7; color:var(--admin-body); font-size:11px; line-height:1.55; }
+.admin-health-meta strong { color:var(--admin-ink); }
+.admin-warning--action { display:flex; align-items:center; justify-content:space-between; gap:12px; text-decoration:none; font-weight:750; }
+.admin-warning--action:hover { border-color:#d5ab58; background:#fff3d5; }
+.admin-routing-extremes { grid-template-columns:repeat(2,minmax(0,1fr)); width:min(100%,860px); margin-right:auto; margin-left:auto; }
 .admin-warning { margin:16px 0 0; padding:10px 11px; border:1px solid #f0d9a9; border-left:3px solid #a76f12; border-radius:7px; background:#fff8e8; color:#7b5714; font-size:10.5px; line-height:1.45; }
 .admin-chart-wrap { height:220px; }
 .admin-kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -56,4 +60,4 @@
 .admin-kpi .text-success { color:var(--admin-green); }.admin-kpi .text-danger { color:var(--admin-red); }
 .admin-kpi span { display:block; margin-top:5px; color:var(--admin-body); font-size:10.5px; line-height:1.4; }
 @media (max-width:920px) { .admin-summary-grid,.admin-kpi-grid { grid-template-columns:1fr; } .admin-dashboard-grid--two { grid-template-columns:1fr; } }
-@media (max-width:680px) { .admin-page-header,.admin-section-heading { align-items:flex-start; flex-direction:column; } .admin-primary-action { width:100%; } .admin-health { flex-direction:column; } .admin-health-meta { max-width:none; border-top:2px solid #d9e4f7; border-left:0; } }
+@media (max-width:680px) { .admin-page-header,.admin-section-heading { align-items:flex-start; flex-direction:column; } .admin-primary-action { width:100%; } .admin-health { flex-direction:column; } .admin-health-meta { max-width:none; border-top:2px solid #d9e4f7; border-left:0; } .admin-routing-extremes { grid-template-columns:1fr; width:100%; } }
