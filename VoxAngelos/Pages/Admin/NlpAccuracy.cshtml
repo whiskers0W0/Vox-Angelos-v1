@@ -33,31 +33,28 @@
         </div>
     }
 
-    <section class="admin-nlp-panel" aria-labelledby="departmentAccuracyHeading">
+    <section class="admin-nlp-panel" aria-labelledby="unassignedSummaryHeading">
         <header class="admin-nlp-panel-header">
             <div>
-                <span>Department performance</span>
-                <h2 id="departmentAccuracyHeading">Accuracy by department</h2>
+                <span>Routing overview</span>
+                <h2 id="unassignedSummaryHeading">Unassigned submission summary</h2>
             </div>
-            <p>Reviewed classifications, grouped by the final assigned category.</p>
+            <p>Only concerns and recommendations still waiting for an LGU office are included.</p>
         </header>
         <div class="admin-nlp-table-wrap">
             <table class="admin-nlp-table">
-                <thead><tr><th scope="col">Department</th><th scope="col">Reviewed</th><th scope="col">Correct</th><th scope="col">Accuracy</th></tr></thead>
+                <thead><tr><th scope="col">Submission type</th><th scope="col">Waiting for assignment</th><th scope="col">Oldest waiting</th></tr></thead>
                 <tbody>
-                    @if (!Model.ByDepartment.Any())
-                    {
-                        <tr><td colspan="4" class="admin-nlp-empty">No reviewed classifications yet.</td></tr>
-                    }
-                    @foreach (var department in Model.ByDepartment)
-                    {
-                        <tr>
-                            <td data-label="Department"><strong>@department.Department</strong></td>
-                            <td data-label="Reviewed">@department.Total</td>
-                            <td data-label="Correct">@department.Correct</td>
-                            <td data-label="Accuracy"><span class="admin-nlp-accuracy @(department.AccuracyPercent >= 75 ? "admin-nlp-accuracy--good" : "admin-nlp-accuracy--bad")">@department.AccuracyPercent%</span></td>
-                        </tr>
-                    }
+                    <tr>
+                        <td data-label="Submission type"><strong>Concerns</strong></td>
+                        <td data-label="Waiting for assignment">@Model.UnassignedConcernCount</td>
+                        <td data-label="Oldest waiting">@Model.OldestConcernWaiting</td>
+                    </tr>
+                    <tr>
+                        <td data-label="Submission type"><strong>Recommendations</strong></td>
+                        <td data-label="Waiting for assignment">@Model.UnassignedRecommendationCount</td>
+                        <td data-label="Oldest waiting">@Model.OldestRecommendationWaiting</td>
+                    </tr>
                 </tbody>
             </table>
         </div>

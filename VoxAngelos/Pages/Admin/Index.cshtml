@@ -14,7 +14,7 @@
         <div>
             <span class="admin-page-eyebrow">Angeles City · Administrative console</span>
             <h1>Administrative overview</h1>
-            <p>Monitor citizen account intake, office access, identity-verification health, and classification quality from one controlled workspace.</p>
+            <p>Monitor citizen account intake, office access, identity-verification health, and submissions awaiting manual routing.</p>
         </div>
         <a class="admin-primary-action" asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending">
             Review pending applications
@@ -71,17 +71,26 @@
             </article>
 
             <article class="admin-panel">
-                <header class="admin-panel-header"><h3>Face-match health</h3><span>Verification</span></header>
+                <header class="admin-panel-header"><h3>Face verification summary</h3><span>Verification</span></header>
                 <div class="admin-health">
-                    <div class="@(Model.FaceMatchFailureRate > 20 ? "text-danger" : "")">
-                        <strong class="admin-health-value">@Model.FaceMatchFailureRate.ToString("0.0")%</strong>
-                        <p>Failure rate for checks below the 50% confidence threshold.</p>
+                    <div class="@(Model.LowFaceMatchCount > 0 ? "text-danger" : "")">
+                        <strong class="admin-health-value">@Model.FaceMatchAttentionCount need attention</strong>
+                        <p>@Model.FaceMatchFailureRate.ToString("0.0")% of recorded checks scored below the 50% threshold.</p>
                     </div>
-                    <div class="admin-health-meta">@Model.LowFaceMatchCount of @Model.TotalFaceChecks checks are below threshold.</div>
+                    <div class="admin-health-meta">
+                        <strong>@Model.TotalFaceChecks recorded</strong>
+                        <span>@Model.PassedFaceMatchCount passed</span>
+                        <span>@Model.LowFaceMatchCount below threshold</span>
+                        <span>@Model.MissingFaceMatchCount not recorded</span>
+                    </div>
                 </div>
-                @if (Model.FaceMatchFailureRate > 20 && Model.TotalFaceChecks > 0)
+                @if (Model.LowFaceMatchCount > 0 || Model.MissingFaceMatchCount > 0)
                 {
-                    <p class="admin-warning">Failure rate is elevated. Review identity-verification service health.</p>
+                    <a class="admin-warning admin-warning--action"
+                       asp-page="/Admin/UserApplications"
+                       asp-route-faceMatchFilter="Attention">
+                        Review low or missing face checks <span aria-hidden="true">→</span>
+                    </a>
                 }
             </article>
         </div>
@@ -130,49 +139,44 @@
         </div>
     </section>
 
-    <section class="admin-dashboard-section" aria-labelledby="nlpHeading">
+    <section class="admin-dashboard-section" aria-labelledby="routingHeading">
         <div class="admin-section-heading">
-            <div><span>Classification operations</span><h2 id="nlpHeading">NLP and submission routing</h2></div>
+            <div><span>Manual routing</span><h2 id="routingHeading">Unassigned submissions</h2></div>
             <a asp-page="/Admin/NlpAccuracy">Open routing queue</a>
         </div>
         @if (Model.AdminTriageEnabled)
         {
             <div class="admin-kpi-grid admin-kpi-grid--four" aria-label="Admin routing queue summary">
-                <article class="admin-kpi"><strong class="@(Model.TotalAwaitingRouting > 0 ? "text-danger" : "text-success")">@Model.TotalAwaitingRouting</strong><span>Total submissions awaiting Admin routing</span></article>
-                <article class="admin-kpi"><strong>@Model.UncategorizedConcernCount</strong><span>Uncategorized concerns</span></article>
+                <article class="admin-kpi"><strong class="@(Model.TotalAwaitingRouting > 0 ? "text-danger" : "text-success")">@Model.TotalAwaitingRouting</strong><span>Total waiting for office assignment</span></article>
+                <article class="admin-kpi"><strong>@Model.UncategorizedConcernCount</strong><span>Unassigned concerns</span></article>
                 <article class="admin-kpi"><strong>@Model.UncategorizedRecommendationCount</strong><span>Unassigned recommendations</span></article>
                 <article class="admin-kpi"><strong>@Model.OldestRoutingAge</strong><span>@(Model.OldestUncategorizedSubmittedAt.HasValue ? $"Oldest item · submitted {Model.OldestUncategorizedSubmittedAt:MMM dd, yyyy}" : "No submissions currently waiting")</span></article>
+            </div>
+            <div class="admin-kpi-grid admin-routing-extremes admin-dashboard-grid--spaced" aria-label="Manual assignment distribution">
+                <article class="admin-kpi">
+                    <span class="admin-summary-label">Most assigned department</span>
+                    <strong>@(Model.MostAdminRoutedDepartment?.Department ?? "—")</strong>
+                    <span>@(Model.MostAdminRoutedDepartment == null
+                        ? "No Admin assignments recorded yet"
+                        : $"Most assigned · {Model.MostAdminRoutedDepartment.Total} total ({Model.MostAdminRoutedDepartment.Concerns} concerns, {Model.MostAdminRoutedDepartment.Recommendations} recommendations)")</span>
+                </article>
+                <article class="admin-kpi">
+                    <span class="admin-summary-label">Least assigned department</span>
+                    <strong>@(Model.LeastAdminRoutedDepartment?.Department ?? "—")</strong>
+                    <span>@(Model.LeastAdminRoutedDepartment == null
+                        ? "No Admin assignments recorded yet"
+                        : Model.AdminRoutedDepartmentCount == 1
+                            ? $"Only assigned department · {Model.LeastAdminRoutedDepartment.Total} total"
+                            : $"Least assigned · {Model.LeastAdminRoutedDepartment.Total} total ({Model.LeastAdminRoutedDepartment.Concerns} concerns, {Model.LeastAdminRoutedDepartment.Recommendations} recommendations)")</span>
+                </article>
             </div>
         }
         else
         {
-            <div class="admin-kpi-grid" aria-label="NLP performance summary">
-                <article class="admin-kpi"><strong class="@(Model.NlpThresholdMet ? "text-success" : "text-danger")">@Model.NlpAccuracyPercent.ToString("0.0")%</strong><span>Overall accuracy@(Model.NlpTotalReviewed > 0 ? " · target 75%" : "")</span></article>
-                <article class="admin-kpi"><strong>@(Model.WorstDepartment ?? "—")</strong><span>Weakest department@(Model.WorstDepartment != null ? $" · {Model.WorstDepartmentAccuracy:0.0}% accurate" : "")</span></article>
-                <article class="admin-kpi"><strong class="@(Model.RecentMisclassificationCount > 0 ? "text-danger" : "")">@Model.RecentMisclassificationCount</strong><span>Misclassified in the last 7 days</span></article>
-            </div>
+            <article class="admin-panel admin-panel--wide">
+                <p class="admin-empty-state">Admin routing is not enabled in this environment.</p>
+            </article>
         }
-        <article class="admin-panel admin-panel--wide admin-dashboard-grid--spaced">
-            <header class="admin-panel-header"><h3>Classification accuracy by department</h3><span>@Model.NlpTotalReviewed reviewed</span></header>
-            @if (Model.NlpByDepartment.Count == 0)
-            {
-                <p class="admin-empty-state">No classification reviews have been recorded yet. A department appears here after an LGU confirms or corrects an NLP assignment.</p>
-            }
-            else
-            {
-                <div class="admin-table-wrap">
-                    <table class="admin-data-table">
-                        <thead><tr><th scope="col">Department</th><th scope="col">Reviewed</th><th scope="col">Correct</th><th scope="col">Accuracy</th></tr></thead>
-                        <tbody>
-                        @foreach (var department in Model.NlpByDepartment)
-                        {
-                            <tr><td><strong>@department.Department</strong></td><td>@department.Total</td><td>@department.Correct</td><td><strong class="@(department.AccuracyPercent >= 75 ? "text-success" : "text-danger")">@department.AccuracyPercent.ToString("0.0")%</strong></td></tr>
-                        }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </article>
     </section>
 </div>
 

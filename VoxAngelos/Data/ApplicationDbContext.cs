@@ -33,6 +33,7 @@ namespace VoxAngelos.Data
         public DbSet<RecommendationAttachment> RecommendationAttachments { get; set; }
         public DbSet<ClassificationCorrection> ClassificationCorrections { get; set; }
         public DbSet<LearnedKeyword> LearnedKeywords { get; set; }
+        public DbSet<AdminRoutingAssignment> AdminRoutingAssignments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -202,6 +203,13 @@ namespace VoxAngelos.Data
 
             builder.Entity<UserNotification>()
                 .HasIndex(n => new { n.RecipientUserId, n.IsRead, n.CreatedAt });
+
+            builder.Entity<AdminRoutingAssignment>()
+                .HasIndex(assignment => new { assignment.SubmissionType, assignment.SubmissionId })
+                .IsUnique();
+
+            builder.Entity<AdminRoutingAssignment>()
+                .HasIndex(assignment => new { assignment.Department, assignment.AssignedAt });
         }
     }
 }
