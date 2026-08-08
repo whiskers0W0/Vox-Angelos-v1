@@ -19,17 +19,57 @@
         <article class="lgu-stat-card"><span class="lgu-stat-label">Today’s concerns</span><strong>@Model.TodayConcerns.ToString("D2")</strong><span class="lgu-stat-note">Submitted today</span></article>
     </section>
     <section class="lgu-dashboard-section" aria-labelledby="activityHeading">
-        <div class="lgu-section-heading"><div><span>Activity monitoring</span><h2 id="activityHeading">Service pulse</h2></div><p>Last seven days and latest updates</p></div>
+        <div class="lgu-section-heading"><div><span>Activity monitoring</span><h2 id="activityHeading">Service pulse</h2></div><p>Concern volume and latest updates</p></div>
         <div class="lgu-dashboard-grid lgu-dashboard-grid--two">
-            <article class="lgu-panel"><header class="lgu-panel-header"><h3>Concern trend</h3><span>7 days</span></header><div class="lgu-chart-wrap"><canvas id="concernTrendChart"></canvas></div></article>
+            <article class="lgu-panel lgu-trend-panel">
+                <header class="lgu-panel-header"><h3>Concern trend</h3><span>@Model.TrendRangeLabel</span></header>
+                <div class="lgu-chart-wrap"><canvas id="concernTrendChart"></canvas></div>
+                <form method="get" class="lgu-trend-filter" id="trendFilterForm">
+                    <input type="hidden" name="categoryRange" value="@Model.CategoryRange" /><input type="hidden" name="categoryFrom" value="@Model.CategoryFrom" /><input type="hidden" name="categoryTo" value="@Model.CategoryTo" />
+                    <input type="hidden" name="barangayRange" value="@Model.BarangayRange" /><input type="hidden" name="barangayFrom" value="@Model.BarangayFrom" /><input type="hidden" name="barangayTo" value="@Model.BarangayTo" />
+                    <div class="lgu-trend-presets" role="group" aria-label="Concern trend period">
+                        <button type="submit" name="trendRange" value="weekly" class="@(Model.TrendRange == "weekly" ? "active" : null)">Weekly</button>
+                        <button type="submit" name="trendRange" value="monthly" class="@(Model.TrendRange == "monthly" ? "active" : null)">Monthly</button>
+                        <button type="submit" name="trendRange" value="yearly" class="@(Model.TrendRange == "yearly" ? "active" : null)">Yearly</button>
+                        <button type="button" class="custom-range-toggle @(Model.TrendRange == "custom" ? "active" : null)" data-target="trendCustomRange">Custom</button>
+                    </div>
+                    <div class="lgu-custom-range @(Model.TrendRange == "custom" ? "visible" : null)" id="trendCustomRange">
+                        <label>From<input type="date" name="trendFrom" value="@Model.TrendFrom" required /></label>
+                        <label>To<input type="date" name="trendTo" value="@Model.TrendTo" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" required /></label>
+                        <button type="submit" name="trendRange" value="custom">Apply</button>
+                    </div>
+                </form>
+            </article>
             <article class="lgu-panel lgu-activity-panel"><header class="lgu-panel-header"><h3>Recent activity</h3><span>Live feed</span></header><div class="lgu-activity-feed">@foreach (var item in Model.RecentActivities) { <div class="lgu-activity-item @item.Type"><span class="lgu-activity-dot"></span><div><p>@Html.Raw(item.Text)</p><time>@item.TimeAgo</time></div></div> } @if (!Model.RecentActivities.Any()) { <p class="lgu-empty-state">No recent activity yet.</p> }</div></article>
         </div>
     </section>
     <section class="lgu-dashboard-section" aria-labelledby="distributionHeading">
-        <div class="lgu-section-heading"><div><span>Location and category</span><h2 id="distributionHeading">Demand distribution</h2></div><p>Where attention is needed</p></div>
+        <div class="lgu-section-heading"><div><span>Location and department</span><h2 id="distributionHeading">Demand distribution</h2></div><p>Where attention is needed</p></div>
         <div class="lgu-dashboard-grid lgu-dashboard-grid--two">
-            <article class="lgu-panel"><header class="lgu-panel-header"><h3>Concerns by category</h3><span>Breakdown</span></header><div class="lgu-chart-wrap"><canvas id="categoryChart"></canvas></div></article>
-            <article class="lgu-panel"><header class="lgu-panel-header"><h3>Top barangays by concern volume</h3><span>Top 5</span></header><div class="lgu-barangay-list">@if (!Model.TopBarangays.Any()) { <p class="lgu-empty-state">No data yet.</p> } @foreach (var b in Model.TopBarangays) { var pct = Model.TotalConcerns > 0 ? (int)((double)b.Count / Model.TotalConcerns * 100) : 0; <div class="lgu-barangay-row"><div><strong>@b.Barangay</strong><span>@b.Count concerns</span></div><div class="lgu-progress-track"><span style="width:@pct%"></span></div></div> }</div></article>
+            <article class="lgu-panel lgu-distribution-panel">
+                <header class="lgu-panel-header"><h3>Concerns by department</h3><span>@Model.CategoryRangeLabel</span></header>
+                <div class="lgu-chart-wrap"><canvas id="categoryChart"></canvas></div>
+                <form method="get" class="lgu-trend-filter">
+                    <input type="hidden" name="trendRange" value="@Model.TrendRange" /><input type="hidden" name="trendFrom" value="@Model.TrendFrom" /><input type="hidden" name="trendTo" value="@Model.TrendTo" />
+                    <input type="hidden" name="barangayRange" value="@Model.BarangayRange" /><input type="hidden" name="barangayFrom" value="@Model.BarangayFrom" /><input type="hidden" name="barangayTo" value="@Model.BarangayTo" />
+                    <div class="lgu-trend-presets" role="group" aria-label="Department breakdown period">
+                        <button type="submit" name="categoryRange" value="weekly" class="@(Model.CategoryRange == "weekly" ? "active" : null)">Weekly</button><button type="submit" name="categoryRange" value="monthly" class="@(Model.CategoryRange == "monthly" ? "active" : null)">Monthly</button><button type="submit" name="categoryRange" value="yearly" class="@(Model.CategoryRange == "yearly" ? "active" : null)">Yearly</button><button type="button" class="custom-range-toggle @(Model.CategoryRange == "custom" ? "active" : null)" data-target="categoryCustomRange">Custom</button>
+                    </div>
+                    <div class="lgu-custom-range @(Model.CategoryRange == "custom" ? "visible" : null)" id="categoryCustomRange"><label>From<input type="date" name="categoryFrom" value="@Model.CategoryFrom" required /></label><label>To<input type="date" name="categoryTo" value="@Model.CategoryTo" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" required /></label><button type="submit" name="categoryRange" value="custom">Apply</button></div>
+                </form>
+            </article>
+            <article class="lgu-panel lgu-distribution-panel">
+                <header class="lgu-panel-header"><h3>Top barangays by concern volume</h3><span>@Model.BarangayRangeLabel</span></header>
+                <div class="lgu-barangay-list">@if (!Model.TopBarangays.Any()) { <p class="lgu-empty-state">No data yet.</p> } @foreach (var b in Model.TopBarangays) { var pct = Model.BarangayPeriodTotal > 0 ? (int)((double)b.Count / Model.BarangayPeriodTotal * 100) : 0; <div class="lgu-barangay-row"><div><strong>@b.Barangay</strong><span>@b.Count concerns</span></div><div class="lgu-progress-track"><span style="width:@pct%"></span></div></div> }</div>
+                <form method="get" class="lgu-trend-filter lgu-barangay-filter">
+                    <input type="hidden" name="trendRange" value="@Model.TrendRange" /><input type="hidden" name="trendFrom" value="@Model.TrendFrom" /><input type="hidden" name="trendTo" value="@Model.TrendTo" />
+                    <input type="hidden" name="categoryRange" value="@Model.CategoryRange" /><input type="hidden" name="categoryFrom" value="@Model.CategoryFrom" /><input type="hidden" name="categoryTo" value="@Model.CategoryTo" />
+                    <div class="lgu-trend-presets" role="group" aria-label="Top barangays period">
+                        <button type="submit" name="barangayRange" value="weekly" class="@(Model.BarangayRange == "weekly" ? "active" : null)">Weekly</button><button type="submit" name="barangayRange" value="monthly" class="@(Model.BarangayRange == "monthly" ? "active" : null)">Monthly</button><button type="submit" name="barangayRange" value="yearly" class="@(Model.BarangayRange == "yearly" ? "active" : null)">Yearly</button><button type="button" class="custom-range-toggle @(Model.BarangayRange == "custom" ? "active" : null)" data-target="barangayCustomRange">Custom</button>
+                    </div>
+                    <div class="lgu-custom-range @(Model.BarangayRange == "custom" ? "visible" : null)" id="barangayCustomRange"><label>From<input type="date" name="barangayFrom" value="@Model.BarangayFrom" required /></label><label>To<input type="date" name="barangayTo" value="@Model.BarangayTo" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" required /></label><button type="submit" name="barangayRange" value="custom">Apply</button></div>
+                </form>
+            </article>
         </div>
     </section>
 </div>
@@ -38,5 +78,11 @@
     <script>
         const trendCtx = document.getElementById('concernTrendChart').getContext('2d'); new Chart(trendCtx, { type: 'line', data: { labels: @Html.Raw(Model.TrendLabels), datasets: [{ label: 'New Reports', data: @Html.Raw(Model.TrendData), borderColor: '#1646a0', backgroundColor: 'rgba(22, 70, 160, 0.08)', fill: true, tension: 0.35, pointRadius: 3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { min: 0, ticks: { stepSize: 1, callback: function(value) { if (value <= 10 || value % 5 === 0) return value; return null; } } } } } });
         const categoryCtx = document.getElementById('categoryChart').getContext('2d'); new Chart(categoryCtx, { type: 'bar', data: { labels: @Html.Raw(Model.CategoryLabels), datasets: [{ label: 'Concerns', data: @Html.Raw(Model.CategoryData), backgroundColor: ['rgba(22, 70, 160, .88)', 'rgba(22, 70, 160, .72)', 'rgba(22, 70, 160, .56)', 'rgba(22, 70, 160, .42)', 'rgba(22, 70, 160, .3)'], borderColor: '#1646a0', borderWidth: 1, borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { min: 0, ticks: { stepSize: 1, callback: function(value) { if (value <= 10 || value % 5 === 0) return value; return null; } } } } } });
+        document.querySelectorAll('.custom-range-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.classList.add('active');
+                document.getElementById(toggle.dataset.target).classList.toggle('visible');
+            });
+        });
     </script>
 }

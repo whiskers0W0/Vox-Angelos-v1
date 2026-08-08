@@ -30,6 +30,19 @@ namespace VoxAngelos.Pages.LGU
         public string CategoryData { get; set; } = "[]";
         public string TrendLabels { get; set; } = "[]";
         public string TrendData { get; set; } = "[]";
+        public string TrendRange { get; set; } = "weekly";
+        public string TrendRangeLabel { get; set; } = "7 days";
+        public string TrendFrom { get; set; } = string.Empty;
+        public string TrendTo { get; set; } = string.Empty;
+        public string CategoryRange { get; set; } = "weekly";
+        public string CategoryRangeLabel { get; set; } = "7 days";
+        public string CategoryFrom { get; set; } = string.Empty;
+        public string CategoryTo { get; set; } = string.Empty;
+        public string BarangayRange { get; set; } = "weekly";
+        public string BarangayRangeLabel { get; set; } = "7 days";
+        public string BarangayFrom { get; set; } = string.Empty;
+        public string BarangayTo { get; set; } = string.Empty;
+        public int BarangayPeriodTotal { get; set; }
         public double ResolutionRate { get; set; }
         public double AvgResponseDays { get; set; }
         public int TodayConcerns { get; set; }
@@ -47,7 +60,10 @@ namespace VoxAngelos.Pages.LGU
             public string Text { get; set; } = "";
             public string TimeAgo { get; set; } = "";
         }
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(
+            string? trendRange, DateTime? trendFrom, DateTime? trendTo,
+            string? categoryRange, DateTime? categoryFrom, DateTime? categoryTo,
+            string? barangayRange, DateTime? barangayFrom, DateTime? barangayTo)
         {
             var user = await _userManager.GetUserAsync(User);
             DepartmentName = user?.Department ?? "LGU";
@@ -62,8 +78,22 @@ namespace VoxAngelos.Pages.LGU
             TotalResolved = await concerns.CountAsync(c => c.Status == "Resolved");
             PendingRecommendations = await _db.Recommendations.CountAsync(r => r.Status == "Pending");
 
-            // Category Breakdown
+            var today = DateTime.UtcNow.Date;
+            var categoryPeriod = ResolvePeriod(categoryRange, categoryFrom, categoryTo, today);
+            CategoryRange = categoryPeriod.Range;
+            CategoryRangeLabel = categoryPeriod.Label;
+            CategoryFrom = categoryPeriod.Start.ToString("yyyy-MM-dd");
+            CategoryTo = categoryPeriod.End.ToString("yyyy-MM-dd");
+
+            var barangayPeriod = ResolvePeriod(barangayRange, barangayFrom, barangayTo, today);
+            BarangayRange = barangayPeriod.Range;
+            BarangayRangeLabel = barangayPeriod.Label;
+            BarangayFrom = barangayPeriod.Start.ToString("yyyy-MM-dd");
+            BarangayTo = barangayPeriod.End.ToString("yyyy-MM-dd");
+
+            // Category Breakdown for the selected category period.
             var categoryGroups = await concerns
+                .Where(c => c.SubmittedAt >= categoryPeriod.Start && c.SubmittedAt < categoryPeriod.End.AddDays(1))
                 .GroupBy(c => c.Category)
                 .Select(g => new { Category = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
@@ -93,9 +123,11 @@ namespace VoxAngelos.Pages.LGU
             // Top Barangays — assign each mapped concern to the barangay boundary
             // that contains its saved latitude and longitude.
             var mappedConcernLocations = await concerns
-                .Where(c => c.Latitude.HasValue && c.Longitude.HasValue)
+                .Where(c => c.SubmittedAt >= barangayPeriod.Start && c.SubmittedAt < barangayPeriod.End.AddDays(1) &&
+                    c.Latitude.HasValue && c.Longitude.HasValue)
                 .Select(c => new { Latitude = c.Latitude!.Value, Longitude = c.Longitude!.Value })
                 .ToListAsync();
+            BarangayPeriodTotal = mappedConcernLocations.Count;
 
             var barangayBoundaries = await LoadBarangayBoundariesAsync();
             TopBarangays = mappedConcernLocations
@@ -113,19 +145,76 @@ namespace VoxAngelos.Pages.LGU
                 .ToList();
 
             // Concern Trends — last 7 days
-            var today = DateTime.UtcNow.Date;
             var labels = new List<string>();
             var data = new List<int>();
 
             // Today's Concerns — add this right here
             TodayConcerns = await concerns.CountAsync(c => c.SubmittedAt.Date == today);
 
-            for (int i = 6; i >= 0; i--)
+            TrendRange = trendRange?.ToLowerInvariant() switch
             {
-                var day = today.AddDays(-i);
-                labels.Add(day.ToString("ddd"));
-                var count = await concerns.CountAsync(c => c.SubmittedAt.Date == day);
-                data.Add(count);
+                "monthly" => "monthly",
+                "yearly" => "yearly",
+                "custom" => "custom",
+                _ => "weekly"
+            };
+
+            var startDate = TrendRange switch
+            {
+                "monthly" => today.AddDays(-29),
+                "yearly" => new DateTime(today.Year, today.Month, 1).AddMonths(-11),
+                "custom" when trendFrom.HasValue => trendFrom.Value.Date,
+                _ => today.AddDays(-6)
+            };
+            var endDate = TrendRange == "custom" && trendTo.HasValue ? trendTo.Value.Date : today;
+
+            if (startDate > endDate)
+                (startDate, endDate) = (endDate, startDate);
+            if (endDate > today)
+                endDate = today;
+            if (startDate < today.AddYears(-5))
+                startDate = today.AddYears(-5);
+
+            // PostgreSQL stores SubmittedAt as timestamp with time zone. Values from
+            // new DateTime(...) and HTML date inputs have Kind=Unspecified, so make
+            // the reporting boundaries explicitly UTC before using them as parameters.
+            startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            TrendFrom = startDate.ToString("yyyy-MM-dd");
+            TrendTo = endDate.ToString("yyyy-MM-dd");
+            TrendRangeLabel = TrendRange switch
+            {
+                "monthly" => "30 days",
+                "yearly" => "12 months",
+                "custom" => $"{startDate:MMM d, yyyy} – {endDate:MMM d, yyyy}",
+                _ => "7 days"
+            };
+
+            var trendConcerns = await concerns
+                .Where(c => c.SubmittedAt >= startDate && c.SubmittedAt < endDate.AddDays(1))
+                .Select(c => c.SubmittedAt)
+                .ToListAsync();
+
+            var groupByMonth = TrendRange == "yearly" || (endDate - startDate).TotalDays > 60;
+            if (groupByMonth)
+            {
+                var month = new DateTime(startDate.Year, startDate.Month, 1);
+                var finalMonth = new DateTime(endDate.Year, endDate.Month, 1);
+                while (month <= finalMonth)
+                {
+                    labels.Add(month.ToString("MMM yyyy"));
+                    data.Add(trendConcerns.Count(date => date.Year == month.Year && date.Month == month.Month));
+                    month = month.AddMonths(1);
+                }
+            }
+            else
+            {
+                for (var day = startDate; day <= endDate; day = day.AddDays(1))
+                {
+                    labels.Add(TrendRange == "weekly" ? day.ToString("ddd") : day.ToString("MMM d"));
+                    data.Add(trendConcerns.Count(date => date.Date == day));
+                }
             }
 
             TrendLabels = System.Text.Json.JsonSerializer.Serialize(labels);
@@ -177,6 +266,46 @@ namespace VoxAngelos.Pages.LGU
                     });
                 }
             }
+        }
+
+        private static (string Range, DateTime Start, DateTime End, string Label) ResolvePeriod(
+            string? requestedRange, DateTime? requestedFrom, DateTime? requestedTo, DateTime today)
+        {
+            var range = requestedRange?.ToLowerInvariant() switch
+            {
+                "monthly" => "monthly",
+                "yearly" => "yearly",
+                "custom" => "custom",
+                _ => "weekly"
+            };
+
+            var start = range switch
+            {
+                "monthly" => today.AddDays(-29),
+                "yearly" => new DateTime(today.Year, today.Month, 1).AddMonths(-11),
+                "custom" when requestedFrom.HasValue => requestedFrom.Value.Date,
+                _ => today.AddDays(-6)
+            };
+            var end = range == "custom" && requestedTo.HasValue ? requestedTo.Value.Date : today;
+
+            if (start > end)
+                (start, end) = (end, start);
+            if (end > today)
+                end = today;
+            if (start < today.AddYears(-5))
+                start = today.AddYears(-5);
+
+            start = DateTime.SpecifyKind(start, DateTimeKind.Utc);
+            end = DateTime.SpecifyKind(end, DateTimeKind.Utc);
+            var label = range switch
+            {
+                "monthly" => "30 days",
+                "yearly" => "12 months",
+                "custom" => $"{start:MMM d, yyyy} – {end:MMM d, yyyy}",
+                _ => "7 days"
+            };
+
+            return (range, start, end, label);
         }
 
         private sealed class BarangayBoundary

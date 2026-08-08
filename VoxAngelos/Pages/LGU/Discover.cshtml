@@ -1,0 +1,161 @@
+@page
+@model VoxAngelos.Pages.LGU.DiscoverModel
+@{
+    Layout = "_LGULayout";
+    ViewData["Title"] = "Discover";
+    var totalRatings = Model.Recommendations.Sum(recommendation => recommendation.RatingCount);
+    var spotlight = Model.TopRated.FirstOrDefault() ?? Model.Recommendations.FirstOrDefault();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/citizen-discover.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/citizen-dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/lgu-discover.css" asp-append-version="true" />
+}
+
+<div class="discover-page civic-dashboard lgu-discover-page">
+    <header class="page-heading">
+        <div>
+            <span class="page-eyebrow">Angeles City · Community recommendations</span>
+            <h1 class="page-title">Discover</h1>
+            <p>Browse published citizen proposals and review the priorities reflected in community ratings.</p>
+        </div>
+        <div class="lgu-discover-readonly"><strong>Read-only view</strong><span>Citizen ratings are shown for reference.</span></div>
+    </header>
+
+    <section class="concept-stage dashboard-stage" aria-label="Community recommendation overview">
+        <div class="dashboard-intro">
+            <span class="stage-label"><span></span> Community pulse</span>
+            <h2>What Angeles City is talking about.</h2>
+            <p>Review citizen ideas, participation, and priorities from an LGU perspective.</p>
+        </div>
+        <div class="dashboard-metrics">
+            <article><span class="metric-icon blue">▤</span><div><strong>@Model.Recommendations.Count</strong><small>Published proposals</small></div><em>Public</em></article>
+            <article><span class="metric-icon red">↑</span><div><strong>@Model.TopRated.Count</strong><small>Priority proposals</small></div><em>Ranked</em></article>
+            <article><span class="metric-icon green">✓</span><div><strong>@totalRatings</strong><small>Citizen ratings</small></div><em>Community</em></article>
+        </div>
+        @if (spotlight != null)
+        {
+            <button type="button" class="priority-callout js-show-leaderboard">
+                <span class="priority-rank">#1</span>
+                <span><small>Highest community score</small><strong>@spotlight.Title</strong></span>
+                <b>@spotlight.CompositeScore.ToString("0.0") <small>/ 5</small></b>
+                <i>View →</i>
+            </button>
+        }
+    </section>
+
+    <section class="content-header" aria-label="Recommendation tools">
+        <div class="toolbar-heading"><span>Browse recommendations</span><small id="resultCount">@Model.Recommendations.Count results</small></div>
+        <div class="header-right">
+            <label class="search-box"><span class="control-label">Search</span><span class="search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><input type="search" placeholder="Keywords or topics" class="search-input" id="searchInput" /></span></label>
+            <label class="filter-field"><span class="control-label">City office</span><select class="filter-select" id="officeFilter"><option value="">All offices</option>@foreach (var office in VoxAngelos.Pages.User.IndexModel.Offices){<option value="@office.Code">@office.Name</option>}</select></label>
+            <label class="filter-field"><span class="control-label">Published</span><select class="filter-select" id="periodFilter"><option value="">Any time</option><option value="day">Today</option><option value="week">This week</option><option value="month">This month</option><option value="year">This year</option></select></label>
+            <label class="filter-field sort-field"><span class="control-label">Sort by</span><select class="filter-select" id="dateSort"><option value="desc">Newest first</option><option value="asc">Oldest first</option></select></label>
+            <button type="button" id="clearFiltersBtn" class="clear-filters" hidden>Clear filters</button>
+        </div>
+    </section>
+
+    <div class="tab-group" role="tablist" aria-label="Discover views">
+        <div class="tab-indicator"></div>
+        <button type="button" class="tab-btn active" data-view="proposals">Citizen Recommendations</button>
+        <button type="button" class="tab-btn" data-view="leaderboard">Top Rated</button>
+    </div>
+
+    <div id="proposalsView" class="view-section active-view">
+        <div class="proposals-feed" id="proposalsFeed">
+            @if (!Model.Recommendations.Any())
+            {
+                <div class="empty-results"><strong>No published recommendations yet.</strong></div>
+            }
+            @foreach (var recommendation in Model.Recommendations)
+            {
+                <article class="proposal-card" data-title="@recommendation.Title.ToLowerInvariant()" data-description="@recommendation.Description.ToLowerInvariant()" data-category="@recommendation.Category.ToLowerInvariant()" data-office="@recommendation.AssignedOffice" data-date="@recommendation.ApprovedAt.ToString("yyyy-MM-dd")">
+                    @await Html.PartialAsync("_LguDiscoverRecommendation", recommendation)
+                    <footer class="lgu-discover-ratings" aria-label="Citizen rating summary">
+                        <span class="rating-chip urgency">Urgency @recommendation.AvgUrgency.ToString("0.0")★</span>
+                        <span class="rating-chip relevance">Relevance @recommendation.AvgRelevance.ToString("0.0")★</span>
+                        <span class="rating-chip feasibility">Feasibility @recommendation.AvgFeasibility.ToString("0.0")★</span>
+                        <span class="rating-count">@recommendation.RatingCount citizen rating@(recommendation.RatingCount == 1 ? "" : "s")</span>
+                    </footer>
+                </article>
+            }
+            <div id="noFilterResults" class="empty-results" hidden><strong>No matching recommendations</strong><p>Try changing the search or filters.</p></div>
+        </div>
+    </div>
+
+    <div id="leaderboardView" class="view-section">
+        <div class="leaderboard-wrapper">
+            <div class="leaderboard-feed">
+                @for (var rank = 0; rank < Model.TopRated.Count; rank++)
+                {
+                    var recommendation = Model.TopRated[rank];
+                    <div class="leaderboard-item">
+                        <div class="rank-col"><div class="rank-number">@(rank + 1)</div></div>
+                        <article class="proposal-card leaderboard-card">
+                            @await Html.PartialAsync("_LguDiscoverRecommendation", recommendation)
+                            <footer class="lgu-discover-ratings"><span class="rating-chip urgency">Urgency @recommendation.AvgUrgency.ToString("0.0")★</span><span class="rating-chip relevance">Relevance @recommendation.AvgRelevance.ToString("0.0")★</span><span class="rating-chip feasibility">Feasibility @recommendation.AvgFeasibility.ToString("0.0")★</span><span class="rating-count">@recommendation.RatingCount ratings</span></footer>
+                        </article>
+                    </div>
+                }
+            </div>
+            <aside class="ranking-sidebar"><div class="ranking-box"><div class="ranking-header"><h2 class="ranking-title">LEADERBOARD INSIGHTS</h2></div><div class="leaderboard-insights"><section class="insight-section"><span class="insight-label">How ranking works</span><p>Scores combine citizen ratings for urgency, relevance, and feasibility.</p></section><section class="insight-section"><span class="insight-label">Top recommendation</span><strong>@(spotlight?.Title ?? "No ranked recommendation yet")</strong></section><section class="insight-section insight-stats"><div><strong>@Model.TopRated.Count</strong><span>ranked proposals</span></div><div><strong>@totalRatings</strong><span>citizen ratings</span></div></section></div></div></aside>
+        </div>
+    </div>
+
+    <button type="button" id="backToTopBtn" class="back-to-top-btn" hidden aria-label="Back to top"><span>↑</span><span class="back-to-top-label">Top</span></button>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const tabs = [...document.querySelectorAll('.tab-btn')];
+    const proposals = document.getElementById('proposalsView');
+    const leaderboard = document.getElementById('leaderboardView');
+    const indicator = document.querySelector('.tab-indicator');
+    const cards = [...document.querySelectorAll('#proposalsFeed > .proposal-card')];
+    const search = document.getElementById('searchInput');
+    const office = document.getElementById('officeFilter');
+    const period = document.getElementById('periodFilter');
+    const sort = document.getElementById('dateSort');
+    const clear = document.getElementById('clearFiltersBtn');
+    const count = document.getElementById('resultCount');
+    const empty = document.getElementById('noFilterResults');
+    const top = document.getElementById('backToTopBtn');
+
+    function show(view) {
+        const isLeaderboard = view === 'leaderboard';
+        proposals.classList.toggle('active-view', !isLeaderboard);
+        leaderboard.classList.toggle('active-view', isLeaderboard);
+        tabs.forEach(button => button.classList.toggle('active', button.dataset.view === view));
+        indicator.style.transform = `translateX(${isLeaderboard ? 100 : 0}%)`;
+    }
+    tabs.forEach(button => button.addEventListener('click', () => show(button.dataset.view)));
+    document.querySelector('.js-show-leaderboard')?.addEventListener('click', () => { show('leaderboard'); leaderboard.scrollIntoView({ behavior: 'smooth' }); });
+
+    function applyFilters() {
+        const query = search.value.trim().toLowerCase();
+        const now = new Date();
+        let visible = 0;
+        cards.sort((a, b) => (sort.value === 'asc' ? 1 : -1) * (new Date(a.dataset.date) - new Date(b.dataset.date)));
+        cards.forEach(card => {
+            const date = new Date(card.dataset.date + 'T00:00:00');
+            const ageDays = (now - date) / 86400000;
+            const periodMatch = !period.value || (period.value === 'day' && ageDays < 1) || (period.value === 'week' && ageDays <= 7) || (period.value === 'month' && ageDays <= 31) || (period.value === 'year' && ageDays <= 366);
+            const matches = (!query || `${card.dataset.title} ${card.dataset.description} ${card.dataset.category}`.includes(query)) && (!office.value || card.dataset.office === office.value) && periodMatch;
+            card.hidden = !matches;
+            if (matches) { proposals.querySelector('.proposals-feed').appendChild(card); visible++; }
+        });
+        count.textContent = `${visible} result${visible === 1 ? '' : 's'}`;
+        empty.hidden = visible !== 0;
+        clear.hidden = !(query || office.value || period.value || sort.value !== 'desc');
+    }
+    [search, office, period, sort].forEach(control => control.addEventListener(control === search ? 'input' : 'change', applyFilters));
+    clear.addEventListener('click', () => { search.value = ''; office.value = ''; period.value = ''; sort.value = 'desc'; applyFilters(); });
+
+    document.querySelectorAll('.proposal-text-toggle').forEach(button => button.addEventListener('click', () => { const text = button.previousElementSibling; const expanded = text.classList.toggle('is-expanded'); button.textContent = expanded ? 'See less' : 'See more'; }));
+    window.addEventListener('scroll', () => top.hidden = window.scrollY < 360, { passive: true });
+    top.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
+</script>
+}

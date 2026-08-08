@@ -79,7 +79,7 @@
 
 .lgu-map-controls {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 18px;
     margin-bottom: 14px;
@@ -89,11 +89,16 @@
     background: var(--lgu-surface);
 }
 
-.lgu-map-control-label span, .lgu-map-control-label strong {
-    display: block;
+.lgu-map-control-group {
+    display: grid;
+    flex: 0 1 430px;
+    width: min(430px, 100%);
+    min-width: 0;
+    gap: 5px;
 }
 
-.lgu-map-control-label span {
+.lgu-map-control-heading {
+    display: block;
     color: var(--lgu-muted);
     font-size: 9px;
     font-weight: 800;
@@ -101,16 +106,57 @@
     text-transform: uppercase;
 }
 
-.lgu-map-control-label strong {
-    margin-top: 3px;
-    color: var(--lgu-ink);
-    font-size: 11px;
+.lgu-map-scope {
+    margin-left: 0;
+}
+
+.lgu-map-scope-options {
+    display: flex;
+    gap: 5px;
+    padding: 3px;
+    border: 1px solid #cad9f3;
+    border-radius: 7px;
+    background: #f5f8fd;
+}
+
+.scope-btn {
+    flex: 1;
+    min-height: 28px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--lgu-body);
+    font: 700 10px var(--font);
+    cursor: pointer;
+}
+
+.scope-btn.active {
+    background: var(--lgu-blue);
+    color: #fff;
+}
+
+.scope-btn:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.iw-view-restricted {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border: 1px solid #dfe5ed;
+    border-radius: 5px;
+    background: #f5f7fa;
+    color: #68758a;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
 }
 
 .tab-group {
     position: relative;
     display: flex;
-    flex: 0 1 420px;
+    width: 100%;
     gap: 8px;
     padding: 4px;
     border: 1px solid #cad9f3;
@@ -292,6 +338,20 @@
     .lgu-page-context {
         width: 100%;
 
+    }
+
+    .lgu-map-scope {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .lgu-map-control-group {
+        width: 100%;
+    }
+
+    .lgu-map-scope-options,
+    .scope-btn {
+        width: 100%;
     }
     
     .tab-group {

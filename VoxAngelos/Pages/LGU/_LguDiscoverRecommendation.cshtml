@@ -1,0 +1,32 @@
+@model VoxAngelos.Pages.LGU.DiscoverModel.RecommendationCardViewModel
+
+<header class="card-header">
+    <div class="author-info"><div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg></div><div class="author-details"><strong class="author-name">@Model.CitizenName</strong><span>Verified citizen proposal</span></div></div>
+    <time class="card-date" datetime="@Model.ApprovedAt.ToString("yyyy-MM-dd")">@Model.ApprovedAt.ToString("MMM d, yyyy")</time>
+</header>
+<div class="card-meta">
+    @if (!string.IsNullOrWhiteSpace(Model.Category)) { <span class="category-badge">@Model.Category</span> }
+    @if (!string.IsNullOrWhiteSpace(Model.AssignedOffice)) { <span class="office-badge"><small>Assigned to</small> @Model.AssignedOffice</span> }
+</div>
+<div class="card-body"><h3 class="proposal-title">@Model.Title</h3><p class="proposal-excerpt">@Model.Description</p><button type="button" class="proposal-text-toggle" aria-expanded="false">See more</button></div>
+
+@if (Model.AttachmentPaths.Any())
+{
+    <div class="attachments @(Model.AttachmentPaths.Count >= 3 ? "attachments--three-or-more" : "")">
+        @{ var shown = Math.Min(2, Model.AttachmentPaths.Count); var extra = Model.AttachmentPaths.Count - shown; }
+        @for (var index = 0; index < shown; index++)
+        {
+            var path = Model.AttachmentPaths[index];
+            var type = Model.AttachmentTypes.ElementAtOrDefault(index) ?? string.Empty;
+            <a class="attachment-thumb" href="@path" target="_blank" rel="noopener noreferrer" aria-label="Open attachment @(index + 1) of @Model.AttachmentPaths.Count">
+                @if (type == "image" || type.StartsWith("image/")) { <img src="@path" alt="Recommendation attachment" loading="lazy" /> }
+                else if (type == "video" || type.StartsWith("video/")) { <video src="@path" muted preload="metadata"></video> }
+                else { <span class="thumb-placeholder document-attachment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14,2 14,8 20,8" /></svg><strong>Document</strong><small>Open attachment</small></span> }
+            </a>
+        }
+        @if (extra > 0)
+        {
+            <a class="attachment-thumb more-files" href="@Model.AttachmentPaths[shown]" target="_blank" rel="noopener noreferrer"><span>@extra+</span><small>Files</small></a>
+        }
+    </div>
+}

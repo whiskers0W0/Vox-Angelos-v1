@@ -194,13 +194,22 @@ namespace VoxAngelos.Pages.LGU
         public string CurrentFilter { get; set; } = "Unresolved";
         public string? CurrentUserDepartment { get; set; }
 
-        public async Task OnGetAsync(string? filter)
+        public async Task<IActionResult> OnGetAsync(string? filter, int? concernId)
         {
             CurrentFilter = filter ?? "Unresolved";
 
             var user = await _userManager.GetUserAsync(User);
             var userDepartment = user?.Department;
             CurrentUserDepartment = userDepartment;
+
+            if (concernId.HasValue)
+            {
+                var canViewConcern = !string.IsNullOrWhiteSpace(userDepartment) &&
+                    await _db.Concerns.AnyAsync(concern =>
+                        concern.Id == concernId.Value && concern.Category == userDepartment);
+                if (!canViewConcern)
+                    return Forbid();
+            }
 
             var query = _db.Concerns
                 .Include(c => c.Attachments)
@@ -270,6 +279,8 @@ namespace VoxAngelos.Pages.LGU
                         barangayBoundaries);
                 }
             }
+
+            return Page();
         }
 
         private sealed class BarangayBoundary
@@ -670,12 +681,18 @@ namespace VoxAngelos.Pages.LGU
         public async Task<IActionResult> OnPostUpdateStatusAsync(
             int concernId, string status, string? notes)
         {
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null || string.IsNullOrWhiteSpace(lguUser.Department))
+                return Forbid();
+
             var updatedAt = DateTime.UtcNow;
 
             // Guarded by current Status so two staff updating the same concern at once
             // can't overwrite each other — only the first update lands, atomically.
             var updated = await _db.Concerns
-                .Where(c => c.Id == concernId && c.Status != "Resolved")
+                .Where(c => c.Id == concernId &&
+                    c.Category == lguUser.Department &&
+                    c.Status != "Resolved")
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(c => c.Status, status)
                     .SetProperty(c => c.LguNotes, notes)
@@ -691,7 +708,6 @@ namespace VoxAngelos.Pages.LGU
                     .Where(c => c.Id == concernId)
                     .Select(c => new { c.Category, c.CitizenId })
                     .SingleAsync();
-                var lguUser = await _userManager.GetUserAsync(User);
                 var actorName = lguUser?.Department ?? lguUser?.Email ?? "LGU Office";
                 var updateMessage = string.IsNullOrWhiteSpace(notes)
                     ? $"The LGU updated the concern status to {status}."
@@ -735,9 +751,15 @@ namespace VoxAngelos.Pages.LGU
 
         public async Task<IActionResult> OnPostChooseConcernAsync(int concernId)
         {
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null || string.IsNullOrWhiteSpace(lguUser.Department))
+                return Forbid();
+
             var updatedAt = DateTime.UtcNow;
             var updated = await _db.Concerns
-                .Where(c => c.Id == concernId && c.Status == "Unresolved")
+                .Where(c => c.Id == concernId &&
+                    c.Category == lguUser.Department &&
+                    c.Status == "Unresolved")
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(c => c.Status, "Chosen")
                     .SetProperty(c => c.UpdatedAt, updatedAt));
@@ -752,7 +774,6 @@ namespace VoxAngelos.Pages.LGU
                     .Where(c => c.Id == concernId)
                     .Select(c => new { c.Category, c.CitizenId })
                     .SingleAsync();
-                var lguUser = await _userManager.GetUserAsync(User);
                 var actorName = lguUser?.Department ?? lguUser?.Email ?? "LGU Office";
                 const string updateMessage = "An LGU office has accepted this concern for action.";
 

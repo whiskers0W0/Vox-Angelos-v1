@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using VoxAngelos.Data;
@@ -11,20 +12,29 @@ namespace VoxAngelos.Pages.LGU
     {
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _configuration;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public HeatmapModel(ApplicationDbContext db, IConfiguration configuration)
+        public HeatmapModel(
+            ApplicationDbContext db,
+            IConfiguration configuration,
+            UserManager<ApplicationUser> userManager)
         {
             _db = db;
             _configuration = configuration;
+            _userManager = userManager;
         }
 
         public string ConcernsJson { get; set; } = "[]";
         public string GoogleMapsApiKey => _configuration["GoogleMaps:ApiKey"] ?? "";
+        public string CurrentUserDepartment { get; set; } = string.Empty;
         //public string BarangayGeoJson { get; set; } = "{}";
 
 
         public async Task OnGetAsync()
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+            CurrentUserDepartment = currentUser?.Department?.Trim() ?? string.Empty;
+
             var concerns = await _db.Concerns
                 .Include(c => c.Citizen)
                 .ThenInclude(u => u.UserProfile)
@@ -37,6 +47,8 @@ namespace VoxAngelos.Pages.LGU
                     description = c.Description,
                     status = c.Status,
                     category = c.Category ?? "Uncategorized",
+                    department = c.Category ?? string.Empty,
+                    canOpen = !string.IsNullOrEmpty(CurrentUserDepartment) && c.Category == CurrentUserDepartment,
                     location = c.LocationName ?? "No location provided",
                     locationDensityScore = c.LocationDensityScore,
                     submittedAt = c.SubmittedAt.ToString("MMM dd, yyyy"),
