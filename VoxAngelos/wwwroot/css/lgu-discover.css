@@ -1,0 +1,10 @@
+.lgu-discover-page { max-width:1280px; margin:0 auto; padding-bottom:42px; }
+.lgu-discover-readonly { display:grid; gap:3px; min-width:210px; padding:13px 16px; border:1px solid #c9d8ef; border-radius:9px; background:#f7faff; color:#183d7a; }
+.lgu-discover-readonly strong { font-size:12px; }
+.lgu-discover-readonly span { color:#687b99; font-size:10px; }
+.lgu-discover-ratings { display:flex; flex-wrap:wrap; gap:7px; align-items:center; margin-top:16px; padding-top:14px; border-top:1px solid #e3e9f2; }
+.lgu-discover-ratings .rating-count { margin-left:auto; color:#68758d; font-size:10px; }
+.lgu-discover-page .attachment-thumb { text-decoration:none; }
+.lgu-discover-page .attachment-thumb img,.lgu-discover-page .attachment-thumb video { width:100%; height:100%; object-fit:cover; border-radius:7px; }
+.lgu-discover-page .proposal-text-toggle { cursor:pointer; }
+@media (max-width:720px) { .lgu-discover-readonly { width:100%; } .lgu-discover-ratings .rating-count { width:100%; margin-left:0; } }

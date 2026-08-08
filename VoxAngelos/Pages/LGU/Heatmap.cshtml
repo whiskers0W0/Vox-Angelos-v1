@@ -9,15 +9,65 @@
     <link rel="stylesheet" href="~/css/lgu_heatmap.css" asp-append-version="true" />
 }
 <div class="lgu-heatmap-workspace">
-    <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Location intelligence</span><h1>Concern location map</h1><p>Inspect mapped reports and barangay-level concentration patterns to prioritize field response across Angeles City.</p></div><div class="lgu-page-context"><span>Map scope</span><strong>All mapped concerns</strong></div></header>
-    <section class="lgu-map-controls" aria-label="Map view selector"><div class="lgu-map-control-label"><span>Display mode</span><strong>Explore reports or concentration</strong></div><div class="tab-group"><div class="tab-indicator"></div><button class="tab-btn active" data-view="locations">Concern locations</button><button class="tab-btn" data-view="heatmap">Barangay concentration</button></div></section>
+    <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Location intelligence</span><h1>Concern location map</h1><p>Inspect mapped reports and barangay-level concentration patterns to prioritize field response across Angeles City.</p></div><div class="lgu-page-context"><span>Map scope</span><strong id="mapScopeLabel">All mapped concerns</strong></div></header>
+    <section class="lgu-map-controls" aria-label="Map controls">
+        <div class="lgu-map-control-group lgu-map-scope" aria-label="Filter concerns by department">
+            <span class="lgu-map-control-heading">Department scope</span>
+            <div class="lgu-map-scope-options">
+                <button type="button" class="scope-btn active" data-scope="all">All departments</button>
+                <button type="button" class="scope-btn" data-scope="mine" disabled="@(string.IsNullOrWhiteSpace(Model.CurrentUserDepartment))">My department (@Model.CurrentUserDepartment)</button>
+            </div>
+        </div>
+        <div class="lgu-map-control-group" aria-label="Choose map display mode">
+            <span class="lgu-map-control-heading">Display mode</span>
+            <div class="tab-group"><div class="tab-indicator"></div><button type="button" class="tab-btn active" data-view="locations">Concern locations</button><button type="button" class="tab-btn" data-view="heatmap">Barangay concentration</button></div>
+        </div>
+    </section>
     <section class="lgu-map-panel locations-wrapper" aria-label="Concern locations map"><div class="lgu-map-panel-header"><span>Point view</span><p>Marker colors reflect the current concern status.</p></div><div id="map"></div></section>
     <section class="lgu-map-panel heatmap-wrapper" aria-label="Barangay concern concentration map"><div class="lgu-map-panel-header"><span>Concentration view</span><p>Hover a barangay boundary to view its mapped concern count.</p></div><div id="choropleth-map"></div></section>
 </div>
 
 @section Scripts {
     <script>
-        const concerns = @Html.Raw(Model.ConcernsJson)
+        const concerns = @Html.Raw(Model.ConcernsJson);
+        const currentDepartment = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CurrentUserDepartment));
+        let departmentScope = 'all';
+        let pointMap = null;
+        let concernMarkers = [];
+        let choroplethMap = null;
+        let barangayGeoJson = null;
+        let refreshChoroplethCounts = null;
+
+        function getVisibleConcerns() {
+            return departmentScope === 'mine'
+                ? concerns.filter(concern => concern.department === currentDepartment)
+                : concerns;
+        }
+
+        function updatePointMarkers() {
+            concernMarkers.forEach(item => {
+                const visible = departmentScope === 'all' || item.concern.department === currentDepartment;
+                item.marker.setMap(visible ? pointMap : null);
+            });
+        }
+
+        function updateMapScope() {
+            document.getElementById('mapScopeLabel').textContent = departmentScope === 'mine'
+                ? `${currentDepartment} concerns only`
+                : 'All mapped concerns';
+            updatePointMarkers();
+            if (refreshChoroplethCounts) {
+                refreshChoroplethCounts();
+            }
+        }
+
+        document.querySelectorAll('.scope-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                departmentScope = button.dataset.scope;
+                document.querySelectorAll('.scope-btn').forEach(item => item.classList.toggle('active', item === button));
+                updateMapScope();
+            });
+        });
 
         // ── Tab Switching ──
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -76,6 +126,7 @@
                     }
                 ]
             });
+            pointMap = map;
 
             const infoWindow = new google.maps.InfoWindow();
 
@@ -109,6 +160,10 @@
                     title: concern.citizenName
                 });
 
+                const concernAction = concern.canOpen
+                    ? `<a class="iw-view-concern" href="/LGU/Index?filter=${encodeURIComponent(concern.status)}&concernId=${encodeURIComponent(concern.id)}#concern-${encodeURIComponent(concern.id)}">View concern</a>`
+                    : `<div class="iw-view-restricted">View-only · Assigned to ${escapeHtml(concern.department || 'another department')}</div>`;
+
                 const content = `
                     <div class="info-window">
                         <div class="iw-name">${escapeHtml(concern.citizenName)}</div>
@@ -121,7 +176,7 @@
                         <div class="iw-value">${escapeHtml(concern.description)}</div>
                         <div class="iw-label">Submitted</div>
                         <div class="iw-value">${escapeHtml(concern.submittedAt)}</div>
-                        <a class="iw-view-concern" href="/LGU/Index?filter=${encodeURIComponent(concern.status)}&concernId=${encodeURIComponent(concern.id)}#concern-${encodeURIComponent(concern.id)}">View concern</a>
+                        ${concernAction}
                     </div>
                 `;
 
@@ -138,6 +193,7 @@
                     infoWindow.setContent(content);
                     infoWindow.open(map, marker);
                 });
+                concernMarkers.push({ marker, concern });
             });
         }
 
@@ -169,6 +225,7 @@
                 },
                 styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
             });
+            choroplethMap = map;
 
             function isPointInRing(point, ring) {
                 const [longitude, latitude] = point;
@@ -221,29 +278,34 @@
     .then(res => res.json())
     .then(geojson => {
 
-        geojson.features.forEach(feature => {
-            const barangayName = feature.properties.name;
-            let count = 0;
-            concerns.forEach(concern => {
-                if (typeof concern.lat === 'number' && typeof concern.lng === 'number' &&
-                    geometryContainsPoint(feature.geometry, [concern.lng, concern.lat])) {
-                    count++;
-                }
+        barangayGeoJson = geojson;
+
+        refreshChoroplethCounts = () => {
+            const visibleConcerns = getVisibleConcerns();
+            geojson.features.forEach(feature => {
+                let count = 0;
+                visibleConcerns.forEach(concern => {
+                    if (typeof concern.lat === 'number' && typeof concern.lng === 'number' &&
+                        geometryContainsPoint(feature.geometry, [concern.lng, concern.lat])) {
+                        count++;
+                    }
+                });
+                feature.properties.concernCount = count;
             });
-            feature.properties.concernCount = count;
-        });
+
+            map.data.forEach(feature => {
+                const sourceFeature = geojson.features.find(item =>
+                    item.properties.name === feature.getProperty('name'));
+                feature.setProperty('concernCount', sourceFeature?.properties.concernCount ?? 0);
+            });
+            map.data.setStyle(feature => {
+                const count = feature.getProperty('concernCount') || 0;
+                return { fillColor: getChoroColor(count), fillOpacity: 0.7, strokeColor: '#333', strokeWeight: 1 };
+            });
+        };
 
         map.data.addGeoJson(geojson);
-
-        map.data.setStyle(feature => {
-            const count = feature.getProperty('concernCount') || 0;
-            return {
-                fillColor: getChoroColor(count),
-                fillOpacity: 0.7,
-                strokeColor: '#333',
-                strokeWeight: 1
-            };
-        });
+        refreshChoroplethCounts();
 
         const infoWindow = new google.maps.InfoWindow();
 

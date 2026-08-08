@@ -64,6 +64,12 @@
 
                 <div class="col-lg-7 panel-right">
                     <form id="registerForm" class="registration-form-panel" asp-route-returnUrl="@Model.ReturnUrl" method="post" enctype="multipart/form-data" autocomplete="off" novalidate>
+                        <div class="top-part">
+                            <a asp-area="" asp-page="/Index" class="back-link">
+                                <span class="back-link-arrow" aria-hidden="true">←</span>
+                                Back to Home Page
+                            </a>
+                        </div>
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
                         <input type="file" id="selfieHiddenInput" name="Input.SelfiePhoto" style="display:none;" accept="image/*" />

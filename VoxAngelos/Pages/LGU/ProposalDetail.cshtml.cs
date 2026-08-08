@@ -69,7 +69,7 @@ namespace VoxAngelos.Pages.LGU
             var proposal = proposals.FirstOrDefault(p => p.Id == id);
 
             if (proposal == null)
-                return RedirectToPage("/LGU/Leaderboard");
+                return RedirectToPage("/LGU/Discover");
 
             Proposal = proposal;
             return Page();
