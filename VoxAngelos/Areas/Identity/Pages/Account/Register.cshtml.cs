@@ -128,11 +128,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             [Display(Name = "ID Photo")]
             public IFormFile IdPhoto { get; set; }
 
-            // Only required when IdType == "National ID" — checked in the handler rather
-            // than with [Required], since every other ID type is single-sided.
-            [Display(Name = "ID Photo (Back)")]
-            public IFormFile? IdPhotoBack { get; set; }
-
             [Required]
             [Display(Name = "Selfie Photo")]
             public IFormFile SelfiePhoto { get; set; }
@@ -150,46 +145,15 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             public string ConfirmPassword { get; set; }
         }
 
-        // Mirrors the reason codes returned by /validate-id on the HF Space, mapped to a
-        // specific, actionable message instead of relaying the Space's raw text verbatim —
-        // keeps the citizen-facing wording consistent even if the Space's phrasing changes.
-        private static string DescribeIdValidationFailure(string reasonCode, string fallbackReason, string sideLabel)
-        {
-            return reasonCode switch
-            {
-                "LOW_RESOLUTION" => $"Your {sideLabel} photo is too low-resolution. Please retake it in better lighting, closer to the ID.",
-                "TOO_BLURRY" => $"Your {sideLabel} photo is too blurry. Hold the camera steady and make sure the ID is in focus.",
-                "GLARE" => $"There's glare on your {sideLabel} photo. Tilt the ID slightly or move away from direct light and try again.",
-                "NO_FACE" => $"We couldn't find a face on your {sideLabel} photo. Make sure you're photographing the side of the ID with your photo on it.",
-                "OBSTRUCTED" => $"Part of your {sideLabel} photo looks covered or obscured. Make sure nothing (fingers, glare, shadows) is blocking the ID.",
-                "TYPE_MISMATCH" => $"This doesn't look like the ID type you selected. Please double-check you're submitting the correct ID.",
-                "WRONG_SIDE" => $"This looks like the wrong side of the ID. Please submit the {sideLabel} as requested.",
-                _ => $"{sideLabel} ID Validation Failed: {fallbackReason}"
-            };
-        }
-
         // --- ADD THIS NEW HANDLER FOR STEP 1 VALIDATION ---
-        public async Task<IActionResult> OnPostVerifyIdentityAsync(
-            IFormFile idPhoto, IFormFile idPhotoBack, string idType, IFormFile selfiePhoto)
+        public async Task<IActionResult> OnPostVerifyIdentityAsync(IFormFile idPhoto, IFormFile selfiePhoto)
         {
             if (idPhoto == null || selfiePhoto == null)
             {
                 return new JsonResult(new { success = false, error = "Both ID Photo and Live Selfie are required." });
             }
 
-            if (string.IsNullOrWhiteSpace(idType))
-            {
-                return new JsonResult(new { success = false, error = "Please select an ID type." });
-            }
-
-            bool requiresBack = idType == "National ID";
-            if (requiresBack && idPhotoBack == null)
-            {
-                return new JsonResult(new { success = false, error = "National ID requires a photo of the back as well." });
-            }
-
             string tempIdPath = null;
-            string tempIdBackPath = null;
             string tempSelfiePath = null;
 
             try
@@ -201,46 +165,18 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     Directory.CreateDirectory(tempFolder);
                 }
 
-                // 1. Save temp ID photo (front)
+                // 1. Save temp ID photo
                 tempIdPath = Path.Combine(tempFolder, $"{Guid.NewGuid()}{Path.GetExtension(idPhoto.FileName)}");
                 using (var stream = new FileStream(tempIdPath, FileMode.Create))
                 {
                     await idPhoto.CopyToAsync(stream);
                 }
 
-                // 2. Validate the front of the ID
-                var (isValidFront, frontReasonCode, frontReason) =
-                    await _idValidationService.ValidateIdAsync(tempIdPath, idType, "front");
-                if (!isValidFront)
+                // 2. Validate the ID Document
+                var (isValidId, validationReason) = await _idValidationService.ValidateIdAsync(tempIdPath);
+                if (!isValidId)
                 {
-                    return new JsonResult(new
-                    {
-                        success = false,
-                        error = DescribeIdValidationFailure(frontReasonCode, frontReason, "front"),
-                        reasonCode = frontReasonCode
-                    });
-                }
-
-                // 2b. Save + validate the back, when this ID type needs one
-                if (requiresBack)
-                {
-                    tempIdBackPath = Path.Combine(tempFolder, $"{Guid.NewGuid()}{Path.GetExtension(idPhotoBack.FileName)}");
-                    using (var stream = new FileStream(tempIdBackPath, FileMode.Create))
-                    {
-                        await idPhotoBack.CopyToAsync(stream);
-                    }
-
-                    var (isValidBack, backReasonCode, backReason) =
-                        await _idValidationService.ValidateIdAsync(tempIdBackPath, idType, "back");
-                    if (!isValidBack)
-                    {
-                        return new JsonResult(new
-                        {
-                            success = false,
-                            error = DescribeIdValidationFailure(backReasonCode, backReason, "back"),
-                            reasonCode = backReasonCode
-                        });
-                    }
+                    return new JsonResult(new { success = false, error = $"ID Validation Failed: {validationReason}" });
                 }
 
                 // 3. Save temp Selfie photo
@@ -250,17 +186,32 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     await selfiePhoto.CopyToAsync(stream);
                 }
 
-                // 4. Verify Face Match — always against the front photo, since that's the
-                // side with the citizen's photo on it for every supported ID type.
+                // 4. Verify Face Match
                 var (isMatch, confidence) = await _faceVerificationService.VerifyFacesAsync(tempIdPath, tempSelfiePath);
                 if (!isMatch)
                 {
                     return new JsonResult(new
                     {
+
                         success = false,
+                        //error = "Face verification failed. The selfie does not match the ID provided." });
                         error = $"Face verification failed. (Score: {confidence:F2}%). The selfie does not match the ID provided."
                     });
                 }
+
+                //// 4. Verify Face Match (UNCOMMENT TO BYPASS FOR TESTING)
+                //var (isMatch, confidence) = await _faceVerificationService.VerifyFacesAsync(tempIdPath, tempSelfiePath);
+
+                //// TESTING ONLY: Force pass regardless of match result — remove before production
+                //bool isMatchOverride = true; // was: isMatch
+                //if (!isMatchOverride)
+                //{
+                //    return new JsonResult(new
+                //    {
+                //        success = false,
+                //        error = $"Face verification failed. (Score: {confidence:F2}%). The selfie does not match the ID provided."
+                //    });
+                //}
 
                 // All checks passed: return success JSON so all code paths return a value
                 return new JsonResult(new { success = true });
@@ -274,7 +225,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             {
                 // Clean up temporary files immediately to save space
                 if (tempIdPath != null && System.IO.File.Exists(tempIdPath)) System.IO.File.Delete(tempIdPath);
-                if (tempIdBackPath != null && System.IO.File.Exists(tempIdBackPath)) System.IO.File.Delete(tempIdBackPath);
                 if (tempSelfiePath != null && System.IO.File.Exists(tempSelfiePath)) System.IO.File.Delete(tempSelfiePath);
             }
         }
@@ -369,23 +319,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 }
                 // ← this brace closes ONLY the IdPhoto if-block, NOT ModelState.IsValid
 
-                // ── Save back-of-ID photo (National ID only) ────────────────────────
-                string savedBackFileName = null;
-
-                if (Input.IdPhotoBack != null && Input.IdPhotoBack.Length > 0)
-                {
-                    string uploadsFolder = IdentityDocumentStorage.IdsFolder(_environment);
-                    if (!Directory.Exists(uploadsFolder))
-                        Directory.CreateDirectory(uploadsFolder);
-
-                    string fileExtension = Path.GetExtension(Input.IdPhotoBack.FileName);
-                    savedBackFileName = $"{Guid.NewGuid()}{fileExtension}";
-                    string filePath = Path.Combine(uploadsFolder, savedBackFileName);
-
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
-                        await Input.IdPhotoBack.CopyToAsync(fileStream);
-                }
-
                 // ── Save selfie photo ──────────────────────────────────────────────
                 string savedSelfieFileName = null;
 
@@ -446,7 +379,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     // working concern/recommendation attachment flow while keeping identity
                     // media private. Protected local copies remain available for retries.
                     PrivateIdentityMediaUpload privateIdUpload = null;
-                    PrivateIdentityMediaUpload privateIdBackUpload = null;
                     PrivateIdentityMediaUpload privateSelfieUpload = null;
                     var cloudUploadErrors = new List<string>();
 
@@ -459,20 +391,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     {
                         cloudUploadErrors.Add("ID image backup failed.");
                         _logger.LogWarning(ex, "Private ID upload failed for user {UserId}.", user.Id);
-                    }
-
-                    if (Input.IdPhotoBack != null && Input.IdPhotoBack.Length > 0)
-                    {
-                        try
-                        {
-                            privateIdBackUpload = await _privateIdentityMediaStorage
-                                .UploadAsync(Input.IdPhotoBack, "id");
-                        }
-                        catch (Exception ex)
-                        {
-                            cloudUploadErrors.Add("Back-of-ID image backup failed.");
-                            _logger.LogWarning(ex, "Private back-of-ID upload failed for user {UserId}.", user.Id);
-                        }
                     }
 
                     try
@@ -505,25 +423,15 @@ var identityDocument = new UserIdentityDocument
     IdPhotoPath = savedFileName,
     IdPhotoCloudinaryPublicId = privateIdUpload?.PublicId,
     IdPhotoCloudinaryFormat = privateIdUpload?.Format,
-    IdPhotoBackPath = savedBackFileName,
-    IdPhotoBackCloudinaryPublicId = privateIdBackUpload?.PublicId,
-    IdPhotoBackCloudinaryFormat = privateIdBackUpload?.Format,
     UploadedAt = DateTime.UtcNow,
 };
 _context.UserIdentityDocuments.Add(identityDocument);
 await _context.SaveChangesAsync();
 
-// ── Run OCR on the ID ───────────────────────────────────
-// National ID prints the address/QR details on the back, not the front, so that's
-// the side OCR needs to read for the residency gate below. Every other supported ID
-// type is single-sided, so the front (its only side) is still what gets OCR'd.
-string ocrTargetFileName = (Input.IdType == "National ID" && savedBackFileName != null)
-    ? savedBackFileName
-    : savedFileName;
-
-if (ocrTargetFileName != null)
+// ── Run OCR on the ID photo ────────────────────────────
+if (savedFileName != null)
 {
-    string idPhotoFullPath = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), ocrTargetFileName);
+    string idPhotoFullPath = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
     var ocrResult = await _ocrService.ExtractIdDataAsync(idPhotoFullPath);
 
     var ocrVerification = new UserOcrVerification

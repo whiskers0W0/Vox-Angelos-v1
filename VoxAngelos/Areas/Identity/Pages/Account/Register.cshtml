@@ -73,8 +73,6 @@
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
                         <input type="file" id="selfieHiddenInput" name="Input.SelfiePhoto" style="display:none;" accept="image/*" />
-                        <input type="file" id="idPhotoHiddenInput" name="Input.IdPhoto" style="display:none;" accept="image/*" />
-                        <input type="file" id="idPhotoBackHiddenInput" name="Input.IdPhotoBack" style="display:none;" accept="image/*" />
 
                         <div id="step1">
                             <span class="eyebrow">Step 1 of 3</span>
@@ -204,13 +202,14 @@
                                 </div>
 
                                 <div class="mb-2" id="idPhotoSection" style="display:none;">
-                                    <p class="id-type-help" id="idTypeHelp"></p>
-                                    <ul class="id-capture-checklist">
-                                        <li>Don't cover any part of the ID</li>
-                                        <li>Avoid glare — angle away from direct light</li>
-                                        <li>Use your physical ID, not a photo or a screen</li>
-                                    </ul>
-                                    <div id="idCaptureSlots"></div>
+                                    <label asp-for="Input.IdPhoto" class="form-text-label">Upload ID Photo</label>
+                                    <div class="file-drop-zone" id="fileDropZone">
+                                        <input asp-for="Input.IdPhoto" type="file" class="file-input" id="idPhotoInput" accept=".jpg,.jpeg,.png" />
+                                        <div class="file-drop-zone__inner">
+                                            <svg class="file-drop-zone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V8m0 0-3 3m3-3 3 3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                            <span class="file-drop-zone__text" id="fileLabel">Click to upload · JPG or PNG</span>
+                                        </div>
+                                    </div>
                                     <span asp-validation-for="Input.IdPhoto" class="tech-validation"></span>
                                 </div>
 
@@ -314,33 +313,6 @@
         </div>
     </div>
 
-    <div id="idCaptureModal" class="camera-capture-modal" role="dialog" aria-modal="true" aria-labelledby="idCaptureTitle" aria-hidden="true">
-        <div class="camera-capture-dialog">
-            <div class="camera-capture-header">
-                <div>
-                    <span class="eyebrow" id="idCaptureEyebrow">ID Scan</span>
-                    <h2 id="idCaptureTitle">Align your ID in the guide</h2>
-                </div>
-                <button type="button" class="camera-close-button" onclick="closeIdCapture()" aria-label="Close camera">×</button>
-            </div>
-            <ul class="id-capture-checklist">
-                <li>Don't cover any part of the ID</li>
-                <li>Avoid glare — angle away from direct light</li>
-                <li>Use your physical ID, not a photo or a screen</li>
-            </ul>
-            <div class="camera-capture-viewport">
-                <video id="idOverlayBackdrop" autoplay playsinline muted aria-hidden="true"></video>
-                <video id="idOverlayFeed" autoplay playsinline></video>
-                <div class="id-guide" id="idGuide" aria-hidden="true"></div>
-            </div>
-            <div id="idCaptureHint" class="selfie-status"></div>
-            <div class="camera-capture-actions">
-                <button type="button" class="cta-back" onclick="closeIdCapture()">Cancel</button>
-                <button type="button" id="btnCaptureId" onclick="captureIdPhoto()" class="cta">Capture ID</button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
@@ -362,174 +334,20 @@
         }
         });
 
-        // ── ID Type Config & Capture ───────────────────────────────────
-        // ratio = width/height of the guide overlay and the dimension check below.
-        // sides = which faces of the ID need to be captured — only National ID prints
-        // its address/QR details on the back rather than the front.
-        const ID_CONFIG = {
-        "National ID":      { ratio: 1.585, sides: ['front','back'], help: "Your photo is on the front; your address details are on the back — we need both sides." },
-        "Driver's License":  { ratio: 1.585, sides: ['front'], help: "Everything we need is on the front of your license." },
-        "Passport":          { ratio: 0.75,  sides: ['front'], help: "Use the photo/bio-data page only." },
-        "Voter's ID":        { ratio: 1.585, sides: ['front'], help: "Everything we need is on the front of your Voter's ID." },
-        };
-        const SIDE_LABEL = { front: 'Front', back: 'Back' };
-
-        let idFiles = { front: null, back: null };
-        let idCameraStream = null;
-        let activeIdSide = 'front';
-        let idHintInterval = null;
-
-        // Keeps the real, form-bound hidden inputs (Input.IdPhoto / Input.IdPhotoBack) in
-        // sync with whatever was last scanned or uploaded — submitRegistration() reads
-        // these via `new FormData(form)` for the final account-creation POST, the same
-        // way #selfieHiddenInput already works for the selfie capture.
-        function syncIdHiddenInput(side, file) {
-        const input = document.getElementById(side === 'front' ? 'idPhotoHiddenInput' : 'idPhotoBackHiddenInput');
-        if (file) {
-        const dt = new DataTransfer(); dt.items.add(file);
-        input.files = dt.files;
-        } else {
-        input.value = '';
-        }
-        }
-
+        // ── ID Type Toggle ───────────────────────────────────────────
         function onIdTypeChange() {
         const val = document.getElementById('idTypeSelect').value;
         document.getElementById('idPhotoSection').style.display = val ? 'block' : 'none';
-        idFiles = { front: null, back: null };
-        syncIdHiddenInput('front', null);
-        syncIdHiddenInput('back', null);
-        if (!val) { document.getElementById('idCaptureSlots').innerHTML = ''; return; }
-
-        const cfg = ID_CONFIG[val];
-        document.getElementById('idTypeHelp').textContent = cfg.help;
-        document.getElementById('idCaptureSlots').innerHTML = cfg.sides.map(side => `
-        <div class="id-capture-slot" data-side="${side}">
-        ${cfg.sides.length > 1 ? `<label class="id-slot-label">${SIDE_LABEL[side]} of ID</label>` : ''}
-        <div class="id-capture-buttons">
-        <button type="button" class="btn-camera-text" onclick="openIdCapture('${side}')">📷 Scan ID</button>
-        <button type="button" class="btn-camera-text" onclick="document.getElementById('idFileInput_${side}').click()">⬆ Upload Photo</button>
-        </div>
-        <input type="file" id="idFileInput_${side}" class="file-input" accept=".jpg,.jpeg,.png" style="display:none;" onchange="handleIdFileSelected(event,'${side}')" />
-        <div class="id-capture-preview" id="idPreview_${side}"><span class="id-preview-placeholder">No photo yet</span></div>
-        <div class="id-capture-status" id="idStatus_${side}"></div>
-        </div>
-        `).join('');
         }
 
-        async function handleIdFileSelected(event, side) {
-        const file = event.target.files[0];
-        if (!file) return;
-        // Phones embed an EXIF orientation tag on freshly-taken photos instead of
-        // rotating the actual pixel data; browsers honor it for display, but the
-        // raw bytes we'd otherwise upload are still sideways. Re-drawing onto a
-        // canvas bakes in the on-screen orientation and strips the EXIF tag.
-        idFiles[side] = await normalizeImageOrientation(file);
-        syncIdHiddenInput(side, idFiles[side]);
-        renderIdPreview(side);
-        }
-
-        function renderIdPreview(side) {
-        const container = document.getElementById(`idPreview_${side}`);
-        const status = document.getElementById(`idStatus_${side}`);
-        if (!idFiles[side]) {
-        container.classList.remove('has-photo');
-        container.innerHTML = '<span class="id-preview-placeholder">No photo yet</span>';
-        status.textContent = '';
-        return;
-        }
-        container.classList.add('has-photo');
-        container.innerHTML = `<img src="${URL.createObjectURL(idFiles[side])}" alt="${SIDE_LABEL[side]} of ID" />`;
-        status.textContent = 'Captured. Tap Scan or Upload again to retake.';
-        status.className = 'id-capture-status success';
-        }
-
-        // ── ID Capture Modal ────────────────────────────────────────────
-        async function openIdCapture(side) {
-        activeIdSide = side;
-        const idType = document.getElementById('idTypeSelect').value;
-        const cfg = ID_CONFIG[idType];
-        document.getElementById('idCaptureEyebrow').textContent = `${idType} — ${SIDE_LABEL[side]}`;
-        document.getElementById('idCaptureTitle').textContent = `Align the ${SIDE_LABEL[side].toLowerCase()} of your ID in the guide`;
-        document.getElementById('idGuide').style.setProperty('--id-ratio', cfg.ratio);
-        document.getElementById('idCaptureHint').textContent = '';
-
-        try {
-        stopIdCamera();
-        idCameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 } },
-        audio: false
+        document.getElementById('idPhotoInput').addEventListener('change', function() {
+        const label = document.getElementById('fileLabel');
+        label.textContent = this.files.length > 0 ? this.files[0].name : 'Click to upload · JPG or PNG';
         });
-        document.getElementById('idOverlayFeed').srcObject = idCameraStream;
-        document.getElementById('idOverlayBackdrop').srcObject = idCameraStream;
-        document.getElementById('idCaptureModal').classList.add('is-open');
-        document.getElementById('idCaptureModal').setAttribute('aria-hidden', 'false');
-        startIdHintSampling();
-        } catch(e) {
-        document.getElementById(`idStatus_${side}`).textContent = 'We could not open your camera. Please allow camera access or upload a photo instead.';
-        document.getElementById(`idStatus_${side}`).className = 'id-capture-status error';
-        }
-        }
 
-        function captureIdPhoto() {
-        const v = document.getElementById('idOverlayFeed');
-        const c = document.createElement('canvas');
-        c.width = v.videoWidth; c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0, 0);
-        closeIdCapture();
-        c.toBlob(blob => {
-        idFiles[activeIdSide] = new File([blob], `id-${activeIdSide}.jpg`, { type: 'image/jpeg' });
-        syncIdHiddenInput(activeIdSide, idFiles[activeIdSide]);
-        renderIdPreview(activeIdSide);
-        }, 'image/jpeg', 0.92);
-        }
-
-        function closeIdCapture() {
-        document.getElementById('idCaptureModal').classList.remove('is-open');
-        document.getElementById('idCaptureModal').setAttribute('aria-hidden', 'true');
-        stopIdCamera();
-        }
-
-        function stopIdCamera() {
-        stopIdHintSampling();
-        if (idCameraStream) idCameraStream.getTracks().forEach(t => t.stop());
-        idCameraStream = null;
-        document.getElementById('idOverlayFeed').srcObject = null;
-        document.getElementById('idOverlayBackdrop').srcObject = null;
-        }
-
-        // Advisory-only live hints while scanning — never blocks capture. The server
-        // response after capture/upload remains the authoritative pass/fail check.
-        function startIdHintSampling() {
-        const v = document.getElementById('idOverlayFeed');
-        const hint = document.getElementById('idCaptureHint');
-        const sampleCanvas = document.createElement('canvas');
-        sampleCanvas.width = 96; sampleCanvas.height = 72;
-        const ctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-        idHintInterval = setInterval(() => {
-        if (!v.videoWidth) return;
-        ctx.drawImage(v, 0, 0, sampleCanvas.width, sampleCanvas.height);
-        const data = ctx.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height).data;
-        let brightCount = 0, gradientSum = 0, prevLuma = null;
-        for (let i = 0; i < data.length; i += 4) {
-        const luma = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-        if (luma > 245) brightCount++;
-        if (prevLuma !== null) gradientSum += Math.abs(luma - prevLuma);
-        prevLuma = luma;
-        }
-        const pixelCount = data.length / 4;
-        const glareRatio = brightCount / pixelCount;
-        const avgGradient = gradientSum / pixelCount;
-        if (glareRatio > 0.18) { hint.textContent = 'Glare detected — tilt the ID slightly.'; hint.className = 'id-capture-status error'; }
-        else if (avgGradient < 2) { hint.textContent = 'Looks blurry — hold steady.'; hint.className = 'id-capture-status error'; }
-        else { hint.textContent = 'Looking good — capture when ready.'; hint.className = 'id-capture-status success'; }
-        }, 400);
-        }
-
-        function stopIdHintSampling() {
-        if (idHintInterval) clearInterval(idHintInterval);
-        idHintInterval = null;
-        }
+        document.getElementById('fileDropZone').addEventListener('click', (e) => {
+        if (e.target !== document.getElementById('idPhotoInput')) document.getElementById('idPhotoInput').click();
+        });
 
         // ── Step navigation ───────────────────────────────────────────
         function setRegistrationInteractionLock(locked) {
@@ -573,27 +391,31 @@
 
         const idType = document.getElementById('idTypeSelect').value;
         if (!idType) return showResultModal('error', 'ID Required', 'Please select an ID type.');
-        const cfg = ID_CONFIG[idType];
-
-        for (const side of cfg.sides) {
-        if (!idFiles[side]) {
-        return showResultModal('error', 'Photo Required',
-        cfg.sides.length > 1 ? `Please scan or upload the ${SIDE_LABEL[side].toLowerCase()} of your ID.` : 'Please scan or upload your ID photo.');
-        }
-        }
+        const idInput = document.getElementById('idPhotoInput');
+        if (!idInput.files.length) return showResultModal('error', 'Photo Required', 'Please upload your ID photo.');
         if (!selfieCaptured) return setStatus('Live bio-capture required.', 'error');
 
-        for (const side of cfg.sides) {
-        const dimensionOk = await checkIdDimensions(idFiles[side], cfg, SIDE_LABEL[side]);
+        const idDimensions = {
+        "Driver's License": { ratio: 1.585, label: "Driver's License" },
+        "National ID": { ratio: 1.585, label: "National ID" },
+        "Voter's ID": { ratio: 1.585, label: "Voter's ID" },
+        "Passport": { ratio: 0.75, label: "Passport" }
+        };
+
+        // Phones embed an EXIF orientation tag on freshly-taken photos instead of
+        // rotating the actual pixel data; browsers honor it for display, but the
+        // raw bytes we'd otherwise upload are still sideways. Re-drawing onto a
+        // canvas bakes in the on-screen orientation and strips the EXIF tag, the
+        // same way the selfie capture already does via canvas.toBlob().
+        const normalizedIdPhoto = await normalizeImageOrientation(idInput.files[0]);
+
+        const dimensionOk = await checkIdDimensions(normalizedIdPhoto, idType, idDimensions);
         if (!dimensionOk) return;
-        }
 
         $('#loadingModal').css('display', 'flex');
         setRegistrationInteractionLock(true);
         const formData = new FormData();
-        formData.append('idType', idType);
-        formData.append('idPhoto', idFiles.front);
-        if (idFiles.back) formData.append('idPhotoBack', idFiles.back);
+        formData.append('idPhoto', normalizedIdPhoto);
         formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
@@ -632,13 +454,14 @@
         });
         }
 
-        function checkIdDimensions(file, cfg, sideLabel) {
+        function checkIdDimensions(file, idType, rules) {
         return new Promise((resolve) => {
+        const rule = rules[idType];
         const img = new Image();
         img.onload = function() {
         const ratio = img.naturalWidth / img.naturalHeight;
-        if (Math.abs(ratio - cfg.ratio) / cfg.ratio > 0.25) {
-        showResultModal('error', 'Invalid Format', `Your ${sideLabel.toLowerCase()} photo doesn't look like a ${cfg.ratio > 1 ? 'landscape' : 'portrait'} ID photo. Please retake it so the whole ID fills the guide.`);
+        if (Math.abs(ratio - rule.ratio) / rule.ratio > 0.25) {
+        showResultModal('error', 'Invalid Format', `Upload a ${rule.ratio > 1 ? 'landscape' : 'portrait'} photo of your ${rule.label}.`);
         resolve(false);
         } else resolve(true);
         };
@@ -653,7 +476,7 @@
         window.scrollTo(0,0);
         }
 
-        function goToStep1() { stopCamera(); stopIdCamera(); showStep(2, 1); }
+        function goToStep1() { stopCamera(); showStep(2, 1); }
         function goBackToStep2() { showStep(3, 2); }
 
         // ── Final submission (AJAX, no page reload) ────────────────────
@@ -860,7 +683,6 @@
 
         window.addEventListener('load', () => { setTimeout(() => { document.querySelectorAll('input:not([type="hidden"])').forEach(i => i.value = ''); }, 100); });
         window.addEventListener('beforeunload', stopCamera);
-        window.addEventListener('beforeunload', stopIdCamera);
     </script>
     <script src="~/js/form-submit-lock.js" asp-append-version="true"></script>
 </body>

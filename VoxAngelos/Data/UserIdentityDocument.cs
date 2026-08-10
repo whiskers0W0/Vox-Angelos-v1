@@ -25,15 +25,6 @@ namespace VoxAngelos.Data
 
         public string? IdPhotoCloudinaryFormat { get; set; }
 
-        // Back-of-card image — only populated for ID types that need a second side
-        // (currently National ID, whose address/QR details are printed on the back
-        // rather than the front). Null for single-sided types.
-        public string? IdPhotoBackPath { get; set; }
-
-        public string? IdPhotoBackCloudinaryPublicId { get; set; }
-
-        public string? IdPhotoBackCloudinaryFormat { get; set; }
-
         // Tracks automatic retries when private cloud backup is temporarily unavailable.
         public int CloudinaryUploadAttempts { get; set; }
 
