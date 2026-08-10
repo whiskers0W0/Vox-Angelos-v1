@@ -1,6 +1,21 @@
 ﻿@{
 
 }
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using VoxAngelos.Data
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@{
+    var currentAdminUser = await UserManager.GetUserAsync(User);
+    var recentAdminNotifications = new List<UserNotification>();
+    var unreadAdminNotificationCount = 0;
+    if (currentAdminUser != null)
+    {
+        unreadAdminNotificationCount = await Db.UserNotifications.AsNoTracking().CountAsync(notification => notification.RecipientUserId == currentAdminUser.Id && !notification.IsRead);
+        recentAdminNotifications = await Db.UserNotifications.AsNoTracking().Where(notification => notification.RecipientUserId == currentAdminUser.Id).OrderByDescending(notification => notification.CreatedAt).Take(5).ToListAsync();
+    }
+}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -136,6 +151,27 @@
 
                 <!-- Page Content -->
                 <main class="main-content">
+                    <form id="admin-notification-antiforgery-form" hidden>@Html.AntiForgeryToken()</form>
+                    <div class="admin-notification-toolbar">
+                        <details class="admin-notification-menu">
+                            <summary class="admin-notification-trigger" aria-label="Open Admin notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>@if (unreadAdminNotificationCount > 0){<span class="admin-notification-count"></span>}</summary>
+                            <div class="admin-notification-dropdown">
+                                <div class="admin-notification-header"><strong>Notifications</strong>@if (unreadAdminNotificationCount > 0){<span>@unreadAdminNotificationCount unread</span>}</div>
+                                @if (currentAdminUser != null)
+                                {
+                                    <div class="admin-notification-email-preference"><div class="admin-notification-email-copy"><strong>Email alerts</strong><span>@(currentAdminUser.EmailConfirmed ? $"Send application and routing alerts to {currentAdminUser.Email}" : "A confirmed Admin email is required.")</span></div><label class="admin-notification-email-switch" for="adminEmailNotificationsToggle"><input type="checkbox" id="adminEmailNotificationsToggle" checked="@currentAdminUser.EmailNotificationsEnabled" disabled="@(!currentAdminUser.EmailConfirmed)" aria-label="Receive Admin alerts by email" /><span aria-hidden="true"></span></label><small id="adminEmailNotificationsStatus" class="admin-notification-email-status" aria-live="polite"></small></div>
+                                }
+                                @if (recentAdminNotifications.Count == 0)
+                                {
+                                    <div class="admin-notification-empty"><strong>No notifications yet</strong><span>New applications and submissions requiring routing will appear here.</span></div>
+                                }
+                                else
+                                {
+                                    <div class="admin-notification-list">@foreach (var notification in recentAdminNotifications){<a class="admin-notification-item @(!notification.IsRead ? "unread" : "")" href="@(string.IsNullOrWhiteSpace(notification.LinkUrl) ? "/Admin" : notification.LinkUrl)" data-notification-id="@notification.Id"><span class="admin-notification-copy"><strong>@notification.Title</strong><span>@notification.Message</span><small>@notification.CreatedAt.ToLocalTime().ToString("MMM d, h:mm tt")</small></span></a>}</div>
+                                }
+                            </div>
+                        </details>
+                    </div>
                     @RenderBody()
                 </main>
             </div>
@@ -158,6 +194,36 @@
             </script>
 
             <script src="~/js/form-submit-lock.js" asp-append-version="true"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const token = document.querySelector('#admin-notification-antiforgery-form input[name="__RequestVerificationToken"]')?.value ?? '';
+                    document.querySelectorAll('.admin-notification-item.unread').forEach(item => item.addEventListener('click', async event => {
+                        event.preventDefault();
+                        try { await fetch('/Admin/Notifications?handler=MarkNotificationRead', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `notificationId=${encodeURIComponent(item.dataset.notificationId ?? '')}&__RequestVerificationToken=${encodeURIComponent(token)}` }); }
+                        finally { window.location.assign(item.href); }
+                    }));
+
+                    const toggle = document.getElementById('adminEmailNotificationsToggle');
+                    const status = document.getElementById('adminEmailNotificationsStatus');
+                    toggle?.addEventListener('change', async () => {
+                        const requestedState = toggle.checked;
+                        toggle.disabled = true;
+                        status.textContent = 'Saving preference...';
+                        status.className = 'admin-notification-email-status';
+                        try {
+                            const response = await fetch('/Admin/Notifications?handler=SetEmailNotifications', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `enabled=${encodeURIComponent(requestedState)}&__RequestVerificationToken=${encodeURIComponent(token)}` });
+                            const result = await response.json();
+                            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to update your email preference.');
+                            status.textContent = result.message;
+                            status.classList.add('is-success');
+                        } catch (error) {
+                            toggle.checked = !requestedState;
+                            status.textContent = error.message || 'Unable to update your email preference.';
+                            status.classList.add('is-error');
+                        } finally { toggle.disabled = false; }
+                    });
+                });
+            </script>
             @RenderSection("Scripts", required: false)
         </body>
 
