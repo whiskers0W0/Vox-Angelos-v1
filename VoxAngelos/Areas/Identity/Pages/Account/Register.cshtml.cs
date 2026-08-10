@@ -563,6 +563,9 @@ if (savedFileName != null)
 
                     await _userManager.AddToRoleAsync(user, "User");
 
+                    if (user.ApprovalStatus == "Pending")
+                        await NotifyAdminsOfPendingApplicationAsync(user, profile);
+
                     // Send email confirmation
                     var userId = await _userManager.GetUserIdAsync(user);
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -609,6 +612,40 @@ if (savedFileName != null)
             return new JsonResult(new { success = false, fieldErrors });
         }
 
+
+        private async Task NotifyAdminsOfPendingApplicationAsync(ApplicationUser applicant, UserProfile profile)
+        {
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            var applicantName = $"{profile.FirstName} {profile.LastName}".Trim();
+            foreach (var admin in admins.Where(admin => admin.LockoutEnd == null || admin.LockoutEnd < DateTimeOffset.UtcNow))
+            {
+                _context.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = admin.Id,
+                    Title = "New citizen application",
+                    Message = $"{applicantName} submitted an account application for review.",
+                    NotificationType = "CitizenApplication",
+                    SenderRole = "Citizen",
+                    SenderName = applicantName,
+                    LinkUrl = $"/Admin/ReviewApplication?userId={Uri.EscapeDataString(applicant.Id)}",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            foreach (var admin in admins.Where(admin => admin.EmailNotificationsEnabled && admin.EmailConfirmed && !string.IsNullOrWhiteSpace(admin.Email)))
+            {
+                try
+                {
+                    await _emailSender.SendEmailAsync(admin.Email!, "New Vox Angelos citizen application",
+                        $"<p><strong>{HtmlEncoder.Default.Encode(applicantName)}</strong> submitted a citizen account application.</p><p>Sign in to the Admin portal to review the identity-verification results and application evidence.</p>");
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Admin application alert email failed for {AdminId}.", admin.Id);
+                }
+            }
+        }
 
         private ApplicationUser CreateUser()
         {

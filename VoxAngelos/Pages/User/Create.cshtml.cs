@@ -318,6 +318,9 @@ namespace VoxAngelos.Pages.User
                 message: "A new citizen concern has been assigned to your office for review.",
                 linkUrl: "/LGU/Index?filter=Unresolved");
 
+            if (!notifyDepartments.Any() && _configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized"))
+                await NotifyAdminsOfUnassignedSubmissionAsync("concern");
+
             foreach (var dept in notifyDepartments)
                 await _feedHub.Clients.Group(FeedHub.LguDepartmentGroup(dept)).SendAsync("ConcernFeedChanged");
 
@@ -598,6 +601,10 @@ namespace VoxAngelos.Pages.User
                     message: $"A new citizen recommendation, “{RecTitle},” is ready for your office to review.",
                     linkUrl: "/LGU/ReviewRecommendations");
             }
+            else if (_configuration.GetValue<bool>("SubmissionRouting:AdminTriageUncategorized"))
+            {
+                await NotifyAdminsOfUnassignedSubmissionAsync("recommendation");
+            }
 
             if (!string.IsNullOrWhiteSpace(assignedOffice))
             {
@@ -613,6 +620,40 @@ namespace VoxAngelos.Pages.User
                 classifierTier = recommendationClassification.Tier,
                 confidence = recommendationClassification.Confidence
             });
+        }
+
+        private async Task NotifyAdminsOfUnassignedSubmissionAsync(string submissionType)
+        {
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            var activeAdmins = admins.Where(admin => admin.LockoutEnd == null || admin.LockoutEnd < DateTimeOffset.UtcNow).ToList();
+            foreach (var admin in activeAdmins)
+            {
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = admin.Id,
+                    Title = $"Unassigned {submissionType} needs routing",
+                    Message = $"A citizen {submissionType} could not be assigned automatically and is waiting in the Admin routing queue.",
+                    NotificationType = "AdminRouting",
+                    SenderRole = "System",
+                    SenderName = "Vox Angelos",
+                    LinkUrl = "/Admin/NlpAccuracy",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await _db.SaveChangesAsync();
+
+            foreach (var admin in activeAdmins.Where(admin => admin.EmailNotificationsEnabled && admin.EmailConfirmed && !string.IsNullOrWhiteSpace(admin.Email)))
+            {
+                try
+                {
+                    await _emailSender.SendEmailAsync(admin.Email!, $"Unassigned Vox Angelos {submissionType}",
+                        $"<p>A new citizen <strong>{submissionType}</strong> could not be assigned automatically.</p><p>Sign in to the Admin portal and open NLP &amp; Routing to select the responsible office.</p>");
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Admin routing alert email failed for {AdminId}.", admin.Id);
+                }
+            }
         }
 
         private async Task AddLguSubmissionNotificationsAsync(
