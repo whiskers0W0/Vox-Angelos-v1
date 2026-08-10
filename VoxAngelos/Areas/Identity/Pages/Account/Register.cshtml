@@ -74,7 +74,6 @@
                         <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
                         <input type="file" id="selfieHiddenInput" name="Input.SelfiePhoto" style="display:none;" accept="image/*" />
                         <input type="file" id="idPhotoHiddenInput" name="Input.IdPhoto" style="display:none;" accept="image/*" />
-                        <input type="file" id="idPhotoBackHiddenInput" name="Input.IdPhotoBack" style="display:none;" accept="image/*" />
 
                         <div id="step1">
                             <span class="eyebrow">Step 1 of 3</span>
@@ -364,27 +363,25 @@
 
         // ── ID Type Config & Capture ───────────────────────────────────
         // ratio = width/height of the guide overlay and the dimension check below.
-        // sides = which faces of the ID need to be captured — only National ID prints
-        // its address/QR details on the back rather than the front.
+        // Every supported ID type only needs its front captured — passports and
+        // National ID both carry everything required on a single side.
         const ID_CONFIG = {
-        "National ID":      { ratio: 1.585, sides: ['front','back'], help: "Your photo is on the front; your address details are on the back — we need both sides." },
-        "Driver's License":  { ratio: 1.585, sides: ['front'], help: "Everything we need is on the front of your license." },
-        "Passport":          { ratio: 0.75,  sides: ['front'], help: "Use the photo/bio-data page only." },
-        "Voter's ID":        { ratio: 1.585, sides: ['front'], help: "Everything we need is on the front of your Voter's ID." },
+        "National ID":      { ratio: 1.585, help: "Everything we need is on the front of your National ID." },
+        "Driver's License":  { ratio: 1.585, help: "Everything we need is on the front of your license." },
+        "Passport":          { ratio: 1.42,  help: "Use the photo/bio-data page only." },
+        "Voter's ID":        { ratio: 1.585, help: "Everything we need is on the front of your Voter's ID." },
         };
-        const SIDE_LABEL = { front: 'Front', back: 'Back' };
 
-        let idFiles = { front: null, back: null };
+        let idFile = null;
         let idCameraStream = null;
-        let activeIdSide = 'front';
         let idHintInterval = null;
 
-        // Keeps the real, form-bound hidden inputs (Input.IdPhoto / Input.IdPhotoBack) in
-        // sync with whatever was last scanned or uploaded — submitRegistration() reads
-        // these via `new FormData(form)` for the final account-creation POST, the same
-        // way #selfieHiddenInput already works for the selfie capture.
-        function syncIdHiddenInput(side, file) {
-        const input = document.getElementById(side === 'front' ? 'idPhotoHiddenInput' : 'idPhotoBackHiddenInput');
+        // Keeps the real, form-bound hidden input (Input.IdPhoto) in sync with
+        // whatever was last scanned or uploaded — submitRegistration() reads it via
+        // `new FormData(form)` for the final account-creation POST, the same way
+        // #selfieHiddenInput already works for the selfie capture.
+        function syncIdHiddenInput(file) {
+        const input = document.getElementById('idPhotoHiddenInput');
         if (file) {
         const dt = new DataTransfer(); dt.items.add(file);
         input.files = dt.files;
@@ -396,61 +393,58 @@
         function onIdTypeChange() {
         const val = document.getElementById('idTypeSelect').value;
         document.getElementById('idPhotoSection').style.display = val ? 'block' : 'none';
-        idFiles = { front: null, back: null };
-        syncIdHiddenInput('front', null);
-        syncIdHiddenInput('back', null);
+        idFile = null;
+        syncIdHiddenInput(null);
         if (!val) { document.getElementById('idCaptureSlots').innerHTML = ''; return; }
 
         const cfg = ID_CONFIG[val];
         document.getElementById('idTypeHelp').textContent = cfg.help;
-        document.getElementById('idCaptureSlots').innerHTML = cfg.sides.map(side => `
-        <div class="id-capture-slot" data-side="${side}">
-        ${cfg.sides.length > 1 ? `<label class="id-slot-label">${SIDE_LABEL[side]} of ID</label>` : ''}
+        document.getElementById('idCaptureSlots').innerHTML = `
+        <div class="id-capture-slot">
         <div class="id-capture-buttons">
-        <button type="button" class="btn-camera-text" onclick="openIdCapture('${side}')">📷 Scan ID</button>
-        <button type="button" class="btn-camera-text" onclick="document.getElementById('idFileInput_${side}').click()">⬆ Upload Photo</button>
+        <button type="button" class="btn-camera-text" onclick="openIdCapture()">📷 Scan ID</button>
+        <button type="button" class="btn-camera-text" onclick="document.getElementById('idFileInput').click()">⬆ Upload Photo</button>
         </div>
-        <input type="file" id="idFileInput_${side}" class="file-input" accept=".jpg,.jpeg,.png" style="display:none;" onchange="handleIdFileSelected(event,'${side}')" />
-        <div class="id-capture-preview" id="idPreview_${side}"><span class="id-preview-placeholder">No photo yet</span></div>
-        <div class="id-capture-status" id="idStatus_${side}"></div>
+        <input type="file" id="idFileInput" class="file-input" accept=".jpg,.jpeg,.png" style="display:none;" onchange="handleIdFileSelected(event)" />
+        <div class="id-capture-preview" id="idPreview"><span class="id-preview-placeholder">No photo yet</span></div>
+        <div class="id-capture-status" id="idStatus"></div>
         </div>
-        `).join('');
+        `;
         }
 
-        async function handleIdFileSelected(event, side) {
+        async function handleIdFileSelected(event) {
         const file = event.target.files[0];
         if (!file) return;
         // Phones embed an EXIF orientation tag on freshly-taken photos instead of
         // rotating the actual pixel data; browsers honor it for display, but the
         // raw bytes we'd otherwise upload are still sideways. Re-drawing onto a
         // canvas bakes in the on-screen orientation and strips the EXIF tag.
-        idFiles[side] = await normalizeImageOrientation(file);
-        syncIdHiddenInput(side, idFiles[side]);
-        renderIdPreview(side);
+        idFile = await normalizeImageOrientation(file);
+        syncIdHiddenInput(idFile);
+        renderIdPreview();
         }
 
-        function renderIdPreview(side) {
-        const container = document.getElementById(`idPreview_${side}`);
-        const status = document.getElementById(`idStatus_${side}`);
-        if (!idFiles[side]) {
+        function renderIdPreview() {
+        const container = document.getElementById('idPreview');
+        const status = document.getElementById('idStatus');
+        if (!idFile) {
         container.classList.remove('has-photo');
         container.innerHTML = '<span class="id-preview-placeholder">No photo yet</span>';
         status.textContent = '';
         return;
         }
         container.classList.add('has-photo');
-        container.innerHTML = `<img src="${URL.createObjectURL(idFiles[side])}" alt="${SIDE_LABEL[side]} of ID" />`;
+        container.innerHTML = `<img src="${URL.createObjectURL(idFile)}" alt="ID photo" />`;
         status.textContent = 'Captured. Tap Scan or Upload again to retake.';
         status.className = 'id-capture-status success';
         }
 
         // ── ID Capture Modal ────────────────────────────────────────────
-        async function openIdCapture(side) {
-        activeIdSide = side;
+        async function openIdCapture() {
         const idType = document.getElementById('idTypeSelect').value;
         const cfg = ID_CONFIG[idType];
-        document.getElementById('idCaptureEyebrow').textContent = `${idType} — ${SIDE_LABEL[side]}`;
-        document.getElementById('idCaptureTitle').textContent = `Align the ${SIDE_LABEL[side].toLowerCase()} of your ID in the guide`;
+        document.getElementById('idCaptureEyebrow').textContent = idType;
+        document.getElementById('idCaptureTitle').textContent = 'Align your ID in the guide';
         document.getElementById('idGuide').style.setProperty('--id-ratio', cfg.ratio);
         document.getElementById('idCaptureHint').textContent = '';
 
@@ -466,8 +460,8 @@
         document.getElementById('idCaptureModal').setAttribute('aria-hidden', 'false');
         startIdHintSampling();
         } catch(e) {
-        document.getElementById(`idStatus_${side}`).textContent = 'We could not open your camera. Please allow camera access or upload a photo instead.';
-        document.getElementById(`idStatus_${side}`).className = 'id-capture-status error';
+        document.getElementById('idStatus').textContent = 'We could not open your camera. Please allow camera access or upload a photo instead.';
+        document.getElementById('idStatus').className = 'id-capture-status error';
         }
         }
 
@@ -478,9 +472,9 @@
         c.getContext('2d').drawImage(v, 0, 0);
         closeIdCapture();
         c.toBlob(blob => {
-        idFiles[activeIdSide] = new File([blob], `id-${activeIdSide}.jpg`, { type: 'image/jpeg' });
-        syncIdHiddenInput(activeIdSide, idFiles[activeIdSide]);
-        renderIdPreview(activeIdSide);
+        idFile = new File([blob], 'id-photo.jpg', { type: 'image/jpeg' });
+        syncIdHiddenInput(idFile);
+        renderIdPreview();
         }, 'image/jpeg', 0.92);
         }
 
@@ -575,25 +569,19 @@
         if (!idType) return showResultModal('error', 'ID Required', 'Please select an ID type.');
         const cfg = ID_CONFIG[idType];
 
-        for (const side of cfg.sides) {
-        if (!idFiles[side]) {
-        return showResultModal('error', 'Photo Required',
-        cfg.sides.length > 1 ? `Please scan or upload the ${SIDE_LABEL[side].toLowerCase()} of your ID.` : 'Please scan or upload your ID photo.');
-        }
+        if (!idFile) {
+        return showResultModal('error', 'Photo Required', 'Please scan or upload your ID photo.');
         }
         if (!selfieCaptured) return setStatus('Live bio-capture required.', 'error');
 
-        for (const side of cfg.sides) {
-        const dimensionOk = await checkIdDimensions(idFiles[side], cfg, SIDE_LABEL[side]);
+        const dimensionOk = await checkIdDimensions(idFile, cfg);
         if (!dimensionOk) return;
-        }
 
         $('#loadingModal').css('display', 'flex');
         setRegistrationInteractionLock(true);
         const formData = new FormData();
         formData.append('idType', idType);
-        formData.append('idPhoto', idFiles.front);
-        if (idFiles.back) formData.append('idPhotoBack', idFiles.back);
+        formData.append('idPhoto', idFile);
         formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
         const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
@@ -632,13 +620,13 @@
         });
         }
 
-        function checkIdDimensions(file, cfg, sideLabel) {
+        function checkIdDimensions(file, cfg) {
         return new Promise((resolve) => {
         const img = new Image();
         img.onload = function() {
         const ratio = img.naturalWidth / img.naturalHeight;
         if (Math.abs(ratio - cfg.ratio) / cfg.ratio > 0.25) {
-        showResultModal('error', 'Invalid Format', `Your ${sideLabel.toLowerCase()} photo doesn't look like a ${cfg.ratio > 1 ? 'landscape' : 'portrait'} ID photo. Please retake it so the whole ID fills the guide.`);
+        showResultModal('error', 'Invalid Format', `Your ID photo doesn't look like a ${cfg.ratio > 1 ? 'landscape' : 'portrait'} ID photo. Please retake it so the whole ID fills the guide.`);
         resolve(false);
         } else resolve(true);
         };
