@@ -132,6 +132,14 @@ namespace VoxAngelos.Pages.Admin
                 cloudinaryFormat = doc?.IdPhotoCloudinaryFormat;
                 folder = IdentityDocumentStorage.IdsFolder(_environment);
             }
+            else if (mediaType == "id-back")
+            {
+                var doc = await _context.UserIdentityDocuments.FindAsync(documentId);
+                fileName = doc?.IdPhotoBackPath;
+                cloudinaryPublicId = doc?.IdPhotoBackCloudinaryPublicId;
+                cloudinaryFormat = doc?.IdPhotoBackCloudinaryFormat;
+                folder = IdentityDocumentStorage.IdsFolder(_environment);
+            }
             else if (mediaType == "selfie")
             {
                 var face = await _context.UserFaceVerifications

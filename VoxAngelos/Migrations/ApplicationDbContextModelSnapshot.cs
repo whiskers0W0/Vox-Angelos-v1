@@ -779,6 +779,15 @@ namespace VoxAngelos.Migrations
                     b.Property<int>("CloudinaryUploadAttempts")
                         .HasColumnType("integer");
 
+                    b.Property<string>("IdPhotoBackCloudinaryFormat")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IdPhotoBackCloudinaryPublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IdPhotoBackPath")
+                        .HasColumnType("text");
+
                     b.Property<string>("IdPhotoCloudinaryFormat")
                         .HasColumnType("text");
 
