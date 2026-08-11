@@ -15,7 +15,6 @@ using System.Text.Json;
 namespace VoxAngelos.Pages.User
 {
     [Authorize(Roles = "User")]
-    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("concern-submission")]
     public class CreateModel : PageModel
     {
         private readonly ApplicationDbContext _db;

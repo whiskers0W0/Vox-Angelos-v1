@@ -1,9 +1,7 @@
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.RateLimiting;
 using VoxAngelos.Data;
 using VoxAngelos.Hubs;
 using VoxAngelos.Services; 
@@ -150,56 +148,6 @@ builder.Services.AddHostedService<IdentityMediaCloudBackupService>();
 // 5c. Location Density Score for the Urgency Algorithm (PostGIS-backed).
 builder.Services.AddScoped<UrgencyScoreService>();
 
-// 5d. Rate limiting on the endpoints that call paid/quota-limited external APIs
-// (Google Cloud NLP/Vision and the Hugging-Face-hosted face/ID verification API) —
-// mitigates "Denial of Wallet" bot abuse of registration and concern submission.
-// Disabled in Development so repeated local testing never gets throttled — the
-// real quota risk is only in Production, where this stays fully enforced.
-var isDevelopment = builder.Environment.IsDevelopment();
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    // Registration's identity-verification step (OCR + face match) is the most
-    // expensive call chain in the app — it hits both Google Cloud Vision and the
-    // Hugging Face face-verification API for a single request.
-    options.AddPolicy("registration", httpContext => isDevelopment
-        ? RateLimitPartition.GetNoLimiter(httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown")
-        : RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(5),
-                QueueLimit = 0
-            }));
-
-    // Concern/recommendation submission triggers a Google Cloud Natural Language
-    // classification call per submission.
-    options.AddPolicy("concern-submission", httpContext => isDevelopment
-        ? RateLimitPartition.GetNoLimiter(httpContext.User.Identity?.IsAuthenticated == true
-            ? httpContext.User.Identity!.Name!
-            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown")
-        : RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.User.Identity?.IsAuthenticated == true
-                ? httpContext.User.Identity!.Name!
-                : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 20,
-                Window = TimeSpan.FromMinutes(10),
-                QueueLimit = 0
-            }));
-
-    options.OnRejected = async (context, token) =>
-    {
-        context.HttpContext.Response.ContentType = "application/json";
-        await context.HttpContext.Response.WriteAsync(
-            "{\"success\":false,\"error\":\"Too many requests. Please wait a few minutes before trying again.\"}",
-            token);
-    };
-});
-
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = maximumUploadRequestSize;
@@ -247,7 +195,6 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseRateLimiter();
 
 app.MapRazorPages();
 app.MapHub<FeedHub>("/hubs/feed");
