@@ -1452,6 +1452,15 @@
         const concernSuccessState = document.getElementById('concernSuccessState');
         const concernDescriptionInput = document.getElementById('concernDescription');
         const concernLocationRow = document.querySelector('.concern-location-row');
+        const concernSubmitButton = document.getElementById('concernSubmitBtn');
+
+        function resetConcernSubmissionState() {
+            concernSubmitting = false;
+            setSubmissionInteractionLock(concernForm, false);
+            concernSubmitButton.textContent = 'Submit';
+            concernSubmitButton.disabled = false;
+            concernSaveDraftBtn.disabled = false;
+        }
 
         concernDescriptionInput.addEventListener('input', () => {
             if (concernDescriptionInput.value.trim()) {
@@ -1466,7 +1475,7 @@
         }
 
         // Concern submit — Step 1: validate then classify
-        document.getElementById('concernSubmitBtn').addEventListener('click', async () => {
+        concernSubmitButton.addEventListener('click', async () => {
             if (concernSubmitting) return;
 
             let valid = true;
@@ -1502,7 +1511,7 @@
             if (!valid) return;
 
             // Show loading state
-            const submitBtn = document.getElementById('concernSubmitBtn');
+            const submitBtn = concernSubmitButton;
             concernSubmitting = true;
             setSubmissionInteractionLock(concernForm, true);
             submitBtn.textContent = 'Analyzing...';
@@ -1588,6 +1597,7 @@
         }
 
         document.getElementById('btnNewConcern').addEventListener('click', () => {
+            resetConcernSubmissionState();
             concernForm.reset();
             selectedConcernFiles = [];
             syncConcernFileInput();
@@ -1602,10 +1612,17 @@
             document.getElementById('err-description').textContent = '';
             document.getElementById('err-location').textContent = '';
             document.getElementById('err-attachment').textContent = '';
-            setSubmissionInteractionLock(concernForm, false);
             concernSuccessState.classList.remove('active');
             concernForm.style.display = '';
             document.getElementById('concernDescription').focus();
+        });
+
+        // Browsers can restore this page from their back/forward cache with the old
+        // disabled "Submitting..." button. Always restore an editable form on return.
+        window.addEventListener('pageshow', event => {
+            if (event.persisted && !concernSuccessState.classList.contains('active')) {
+                resetConcernSubmissionState();
+            }
         });
 
         document.getElementById('classificationErrorBackBtn').addEventListener('click', () => {

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
@@ -23,7 +22,7 @@ namespace VoxAngelos.Pages.LGU
         private readonly IHubContext<FeedHub> _feedHub;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
-        private readonly IEmailSender _emailSender;
+        private readonly IBackgroundEmailQueue _backgroundEmailQueue;
         private readonly ILogger<IndexModel> _logger;
         private static readonly IReadOnlyDictionary<string, string> DepartmentDisplayNames =
             new Dictionary<string, string>
@@ -39,15 +38,16 @@ namespace VoxAngelos.Pages.LGU
 
         public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager,
             ConcernClassificationService classifier, IHubContext<FeedHub> feedHub,
-            IWebHostEnvironment environment, IEmailSender emailSender,
-            ILogger<IndexModel> logger, IConfiguration configuration)
+            IWebHostEnvironment environment,
+            ILogger<IndexModel> logger, IConfiguration configuration,
+            IBackgroundEmailQueue backgroundEmailQueue)
         {
             _db = db;
             _userManager = userManager;
             _classifier = classifier;
             _feedHub = feedHub;
             _environment = environment;
-            _emailSender = emailSender;
+            _backgroundEmailQueue = backgroundEmailQueue;
             _configuration = configuration;
             _logger = logger;
         }
@@ -92,7 +92,7 @@ namespace VoxAngelos.Pages.LGU
 
             try
             {
-                await _emailSender.SendEmailAsync(recipient.Email, subject, htmlMessage);
+                _backgroundEmailQueue.Enqueue(recipient.Email, subject, htmlMessage);
             }
             catch (Exception exception)
             {
@@ -193,10 +193,30 @@ namespace VoxAngelos.Pages.LGU
         public List<ConcernViewModel> Concerns { get; set; } = new();
         public string CurrentFilter { get; set; } = "Unresolved";
         public string? CurrentUserDepartment { get; set; }
+        public string SearchTerm { get; set; } = string.Empty;
+        public string BarangayFilter { get; set; } = string.Empty;
+        public DateTime? DateFrom { get; set; }
+        public DateTime? DateTo { get; set; }
+        public string SortOrder { get; set; } = "newest";
+        public List<string> BarangayOptions { get; set; } = new();
 
-        public async Task<IActionResult> OnGetAsync(string? filter, int? concernId)
+        public async Task<IActionResult> OnGetAsync(
+            string? filter,
+            int? concernId,
+            string? search,
+            string? barangay,
+            DateTime? dateFrom,
+            DateTime? dateTo,
+            string? sort)
         {
             CurrentFilter = filter ?? "Unresolved";
+            SearchTerm = search?.Trim() ?? string.Empty;
+            BarangayFilter = barangay?.Trim() ?? string.Empty;
+            DateFrom = dateFrom?.Date;
+            DateTo = dateTo?.Date;
+            SortOrder = string.Equals(sort, "oldest", StringComparison.OrdinalIgnoreCase)
+                ? "oldest"
+                : "newest";
 
             var user = await _userManager.GetUserAsync(User);
             var userDepartment = user?.Department;
@@ -231,14 +251,38 @@ namespace VoxAngelos.Pages.LGU
                 query = query.Where(c => c.Status == CurrentFilter);
             }
 
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                var searchPattern = $"%{SearchTerm}%";
+                query = query.Where(c =>
+                    EF.Functions.ILike(c.Description, searchPattern) ||
+                    (c.LocationName != null && EF.Functions.ILike(c.LocationName, searchPattern)) ||
+                    (c.Category != null && EF.Functions.ILike(c.Category, searchPattern)));
+            }
+
+            if (DateFrom.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(DateFrom.Value, DateTimeKind.Utc);
+                query = query.Where(c => c.SubmittedAt >= fromUtc);
+            }
+
+            if (DateTo.HasValue)
+            {
+                var untilUtc = DateTime.SpecifyKind(DateTo.Value.AddDays(1), DateTimeKind.Utc);
+                query = query.Where(c => c.SubmittedAt < untilUtc);
+            }
+
             var reviewedConcernIds = (await _db.ClassificationCorrections
                 .Select(cc => cc.ConcernId)
                 .Distinct()
                 .ToListAsync())
                 .ToHashSet();
 
+            query = SortOrder == "oldest"
+                ? query.OrderBy(c => c.SubmittedAt)
+                : query.OrderByDescending(c => c.SubmittedAt);
+
             Concerns = await query
-                .OrderByDescending(c => c.SubmittedAt)
                 .Select(c => new ConcernViewModel
                 {
                     Id = c.Id,
@@ -278,6 +322,24 @@ namespace VoxAngelos.Pages.LGU
                         concern.Longitude.Value,
                         barangayBoundaries);
                 }
+            }
+
+            BarangayOptions = Concerns
+                .Select(concern => concern.BarangayName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => name!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name)
+                .ToList();
+
+            if (!string.IsNullOrWhiteSpace(BarangayFilter))
+            {
+                Concerns = Concerns
+                    .Where(concern => string.Equals(
+                        concern.BarangayName,
+                        BarangayFilter,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
             }
 
             return Page();
@@ -576,6 +638,102 @@ namespace VoxAngelos.Pages.LGU
             }
         }
 
+        public async Task<IActionResult> OnPostSendToAdminForReassignmentAsync(int concernId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null || string.IsNullOrWhiteSpace(user.Department))
+                return Forbid();
+
+            var concern = await _db.Concerns
+                .SingleOrDefaultAsync(c => c.Id == concernId);
+
+            if (concern == null)
+                return NotFound();
+
+            if (concern.Category != user.Department || concern.Status != "Unresolved")
+            {
+                TempData["ConcernError"] = "This concern can no longer be returned to Admin because its department or status has changed.";
+                return RedirectToPage(new { filter = CurrentFilter });
+            }
+
+            if (await _db.ClassificationCorrections.AnyAsync(correction => correction.ConcernId == concernId))
+            {
+                TempData["ConcernError"] = "This concern has already been reviewed.";
+                return RedirectToPage(new { filter = CurrentFilter });
+            }
+
+            var previousDepartment = concern.Category;
+            var routedAt = DateTime.UtcNow;
+            var actorName = GetDepartmentDisplayName(user.Department);
+
+            concern.Category = null;
+            concern.UpdatedAt = routedAt;
+
+            _db.ClassificationCorrections.Add(new ClassificationCorrection
+            {
+                ConcernId = concern.Id,
+                PreviousCategory = previousDepartment,
+                CorrectedCategory = string.Empty,
+                WasCorrect = false,
+                ReviewedByUserId = user.Id,
+                ReviewedAt = routedAt
+            });
+
+            _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+            {
+                ConcernId = concern.Id,
+                EventType = "Sent for Admin Reassignment",
+                Status = concern.Status,
+                Message = "The assigned office returned this concern to Admin for correct department routing.",
+                ActorRole = "LGU",
+                ActorName = actorName,
+                CreatedAt = routedAt
+            });
+
+            const string citizenUpdate = "Your concern is being reviewed by Admin so it can be routed to the correct city office.";
+            _db.UserNotifications.Add(new UserNotification
+            {
+                RecipientUserId = concern.CitizenId,
+                Title = "Your concern is being rerouted",
+                Message = citizenUpdate,
+                NotificationType = "ConcernUpdate",
+                SenderRole = "LGU",
+                SenderName = actorName,
+                LinkUrl = "/User/Concerns",
+                CreatedAt = routedAt
+            });
+
+            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            foreach (var admin in adminUsers)
+            {
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = admin.Id,
+                    Title = "Concern needs reassignment",
+                    Message = $"{actorName} marked concern #{concern.Id} as assigned to the wrong department.",
+                    NotificationType = "AdminRouting",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/Admin/NlpAccuracy?submissionType=Concern&sortOrder=Oldest",
+                    CreatedAt = routedAt
+                });
+            }
+
+            await _db.SaveChangesAsync();
+            await SendCitizenEmailIfEnabledAsync(
+                concern.CitizenId,
+                "Your Vox Angelos concern is being rerouted",
+                "Your concern is being rerouted",
+                citizenUpdate);
+            await NotifyDepartmentsAsync(previousDepartment);
+
+            TempData["ConcernSuccess"] = "The concern was sent to Admin for department reassignment.";
+            return RedirectToPage(new { filter = CurrentFilter });
+        }
+
+        // Retained as non-page helpers only for legacy code reference. LGU users can no
+        // longer invoke department reassignment handlers; routing now belongs to Admin.
+        [NonHandler]
         // Manual Override Feature: lets an LGU admin correct a concern that the Google
         // NLP classifier (or the local keyword fallback) routed to the wrong department,
         // re-routing it to the correct one. See docs/manual-override-feature.md for the
@@ -620,6 +778,7 @@ namespace VoxAngelos.Pages.LGU
         // Bulk version of the reassign feature above — lets an LGU staffer route many
         // uncategorized/misrouted concerns to the correct department in one submit
         // instead of clicking through the single-item modal for each one.
+        [NonHandler]
         public async Task<IActionResult> OnPostBulkReassignCategoryAsync(int[] concernIds, string newCategory, string? filter)
         {
             CurrentFilter = filter ?? "Unresolved";
@@ -836,6 +995,239 @@ namespace VoxAngelos.Pages.LGU
             }
 
             return RedirectToPage(new { filter = "Chosen" });
+        }
+
+        public async Task<IActionResult> OnPostBulkChooseConcernsAsync(int[] concernIds, string? filter)
+        {
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null || string.IsNullOrWhiteSpace(lguUser.Department))
+                return Forbid();
+
+            var selectedIds = (concernIds ?? Array.Empty<int>()).Distinct().ToArray();
+            if (selectedIds.Length == 0)
+            {
+                TempData["ConcernError"] = "Select at least one concern to accept.";
+                return RedirectToPage(new { filter = filter ?? "Unresolved" });
+            }
+
+            var eligible = await _db.Concerns
+                .Where(c => selectedIds.Contains(c.Id) &&
+                            c.Category == lguUser.Department &&
+                            c.Status == "Unresolved")
+                .Select(c => new { c.Id, c.CitizenId, c.Category })
+                .ToListAsync();
+
+            var acceptedAt = DateTime.UtcNow;
+            var actorName = lguUser.DepartmentFullName ?? lguUser.Department;
+            const string updateMessage = "An LGU office has accepted this concern for action.";
+            var accepted = 0;
+            var acceptedCitizens = new List<string>();
+
+            foreach (var concern in eligible)
+            {
+                var updated = await _db.Concerns
+                    .Where(c => c.Id == concern.Id && c.Status == "Unresolved" && c.Category == lguUser.Department)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(c => c.Status, "Chosen")
+                        .SetProperty(c => c.UpdatedAt, acceptedAt));
+
+                if (updated == 0) continue;
+
+                try { await TryConfirmConcernCategoryAsync(concern.Id, lguUser); }
+                catch (ConcernAlreadyReviewedException) { }
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concern.Id, EventType = "Concern Chosen", Status = "Chosen",
+                    Message = updateMessage, ActorRole = "LGU", ActorName = actorName, CreatedAt = acceptedAt
+                });
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId, Title = "Your concern was accepted",
+                    Message = updateMessage, NotificationType = "ConcernUpdate", SenderRole = "LGU",
+                    SenderName = actorName, LinkUrl = "/User/Concerns", CreatedAt = acceptedAt
+                });
+                acceptedCitizens.Add(concern.CitizenId);
+                accepted++;
+            }
+
+            await _db.SaveChangesAsync();
+            foreach (var citizenId in acceptedCitizens)
+                await SendCitizenEmailIfEnabledAsync(citizenId, "Your Vox Angelos concern was accepted", "Your concern was accepted", updateMessage);
+
+            await NotifyDepartmentsAsync(lguUser.Department);
+            var skipped = selectedIds.Length - accepted;
+            TempData[accepted > 0 ? "ConcernSuccess" : "ConcernError"] = accepted > 0
+                ? $"Accepted {accepted} concern{(accepted == 1 ? "" : "s")}. {skipped} selected item{(skipped == 1 ? " was" : "s were")} skipped because it was no longer eligible."
+                : "None of the selected concerns could be accepted.";
+            return RedirectToPage(new { filter = "Chosen" });
+        }
+
+        public async Task<IActionResult> OnPostBulkCloseInvalidAsync(int[] concernIds, string? reason, string? filter)
+        {
+            reason = reason?.Trim();
+            if (string.IsNullOrWhiteSpace(reason) || reason.Length < 10 || reason.Length > 500)
+            {
+                TempData["ConcernError"] = "Provide a clear reason between 10 and 500 characters before closing the selected concerns.";
+                return RedirectToPage(new { filter = filter ?? "Unresolved" });
+            }
+
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null || string.IsNullOrWhiteSpace(lguUser.Department))
+                return Forbid();
+
+            var selectedIds = (concernIds ?? Array.Empty<int>()).Distinct().ToArray();
+            var eligible = await _db.Concerns
+                .Where(c => selectedIds.Contains(c.Id) && c.Category == lguUser.Department && c.Status == "Unresolved")
+                .Select(c => new { c.Id, c.CitizenId })
+                .ToListAsync();
+            var closedAt = DateTime.UtcNow;
+            var actorName = lguUser.DepartmentFullName ?? lguUser.Department;
+            var citizenMessage = $"The LGU closed this concern as invalid or non-actionable. Reason: {reason}";
+            var closedCitizens = new List<string>();
+
+            foreach (var concern in eligible)
+            {
+                var updated = await _db.Concerns
+                    .Where(c => c.Id == concern.Id && c.Status == "Unresolved" && c.Category == lguUser.Department)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(c => c.Status, "Closed")
+                        .SetProperty(c => c.LguNotes, reason)
+                        .SetProperty(c => c.UpdatedAt, closedAt));
+                if (updated == 0) continue;
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concern.Id, EventType = "Concern Closed", Status = "Closed",
+                    Message = citizenMessage, ActorRole = "LGU", ActorName = actorName, CreatedAt = closedAt
+                });
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId, Title = "Your concern was closed after review",
+                    Message = citizenMessage, NotificationType = "ConcernUpdate", SenderRole = "LGU",
+                    SenderName = actorName, LinkUrl = "/User/Concerns", CreatedAt = closedAt
+                });
+                closedCitizens.Add(concern.CitizenId);
+            }
+
+            await _db.SaveChangesAsync();
+            foreach (var citizenId in closedCitizens)
+                await SendCitizenEmailIfEnabledAsync(citizenId, "Your Vox Angelos concern was closed after review", "Your concern was closed after review", citizenMessage);
+
+            await NotifyDepartmentsAsync(lguUser.Department);
+            var skipped = selectedIds.Length - closedCitizens.Count;
+            TempData[closedCitizens.Count > 0 ? "ConcernSuccess" : "ConcernError"] = closedCitizens.Count > 0
+                ? $"Closed {closedCitizens.Count} selected concern{(closedCitizens.Count == 1 ? "" : "s")}. {skipped} item{(skipped == 1 ? " was" : "s were")} skipped because it was no longer eligible."
+                : "None of the selected concerns could be closed.";
+            return RedirectToPage(new { filter = "Unresolved" });
+        }
+
+        public async Task<IActionResult> OnPostBulkUpdateStatusAsync(
+            int[] concernIds,
+            string? expectedStatus,
+            string? newStatus,
+            string? notes,
+            string? filter)
+        {
+            var validTransition = (expectedStatus, newStatus) switch
+            {
+                ("Chosen", "In Progress") => true,
+                ("In Progress", "Resolved") => true,
+                _ => false
+            };
+            if (!validTransition)
+                return BadRequest("Invalid batch status transition.");
+
+            notes = notes?.Trim();
+            if (string.IsNullOrWhiteSpace(notes) || notes.Length < 10 || notes.Length > 1000)
+            {
+                TempData["ConcernError"] = "Provide a public response between 10 and 1,000 characters.";
+                return RedirectToPage(new { filter = filter ?? expectedStatus });
+            }
+            var publicResponse = notes!;
+
+            var lguUser = await _userManager.GetUserAsync(User);
+            if (lguUser == null || string.IsNullOrWhiteSpace(lguUser.Department))
+                return Forbid();
+
+            var selectedIds = (concernIds ?? Array.Empty<int>()).Distinct().ToArray();
+            if (selectedIds.Length == 0)
+            {
+                TempData["ConcernError"] = "Select at least one concern to update.";
+                return RedirectToPage(new { filter = expectedStatus });
+            }
+
+            // Ownership and current status are checked here again, independent of what
+            // the browser submitted. Stale, foreign, or already-updated records are skipped.
+            var eligible = await _db.Concerns
+                .Where(concern => selectedIds.Contains(concern.Id) &&
+                                  concern.Category == lguUser.Department &&
+                                  concern.Status == expectedStatus)
+                .Select(concern => new { concern.Id, concern.CitizenId })
+                .ToListAsync();
+
+            var updatedAt = DateTime.UtcNow;
+            var actorName = lguUser.DepartmentFullName ?? lguUser.Department;
+            var eventType = newStatus == "In Progress" ? "Work Started" : "Concern Resolved";
+            var notificationTitle = newStatus == "In Progress"
+                ? "Work has started on your concern"
+                : "Your concern was resolved";
+            var updatedCitizens = new List<string>();
+
+            foreach (var concern in eligible)
+            {
+                var updated = await _db.Concerns
+                    .Where(record => record.Id == concern.Id &&
+                                     record.Category == lguUser.Department &&
+                                     record.Status == expectedStatus)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(record => record.Status, newStatus)
+                        .SetProperty(record => record.LguNotes, publicResponse)
+                        .SetProperty(record => record.UpdatedAt, updatedAt));
+                if (updated == 0) continue;
+
+                _db.ConcernTimelineEvents.Add(new ConcernTimelineEvent
+                {
+                    ConcernId = concern.Id,
+                    EventType = eventType,
+                    Status = newStatus,
+                    Message = publicResponse,
+                    ActorRole = "LGU",
+                    ActorName = actorName,
+                    CreatedAt = updatedAt
+                });
+                _db.UserNotifications.Add(new UserNotification
+                {
+                    RecipientUserId = concern.CitizenId,
+                    Title = notificationTitle,
+                    Message = publicResponse,
+                    NotificationType = "ConcernUpdate",
+                    SenderRole = "LGU",
+                    SenderName = actorName,
+                    LinkUrl = "/User/Concerns",
+                    CreatedAt = updatedAt
+                });
+                updatedCitizens.Add(concern.CitizenId);
+            }
+
+            await _db.SaveChangesAsync();
+            foreach (var citizenId in updatedCitizens)
+            {
+                await SendCitizenEmailIfEnabledAsync(
+                    citizenId,
+                    $"Vox Angelos concern status: {newStatus}",
+                    notificationTitle,
+                    publicResponse);
+            }
+
+            await NotifyDepartmentsAsync(lguUser.Department);
+            var skipped = selectedIds.Length - updatedCitizens.Count;
+            TempData[updatedCitizens.Count > 0 ? "ConcernSuccess" : "ConcernError"] = updatedCitizens.Count > 0
+                ? $"Updated {updatedCitizens.Count} concern{(updatedCitizens.Count == 1 ? "" : "s")} to {newStatus}. " +
+                  $"{skipped} selected item{(skipped == 1 ? " was" : "s were")} skipped because it no longer matched this queue."
+                : "None of the selected concerns could be updated because they no longer matched this queue.";
+
+            return RedirectToPage(new { filter = newStatus });
         }
 
         public async Task<IActionResult> OnPostCloseInvalidAsync(int concernId, string? reason)

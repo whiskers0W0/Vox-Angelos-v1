@@ -173,7 +173,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
             var roles = await _userManager.GetRolesAsync(user);
             if (roles.Contains("Admin")) return RedirectToPage("/Admin/Index");
-            if (roles.Contains("LGU")) return RedirectToPage("/LGU/Index");
+            if (roles.Contains("LGU")) return RedirectToPage("/LGU/Dashboard");
             if (roles.Contains("User"))
             {
                 // Citizens may return only to a local page inside their own workspace.
