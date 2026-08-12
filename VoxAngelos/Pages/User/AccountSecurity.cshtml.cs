@@ -57,6 +57,10 @@ namespace VoxAngelos.Pages.User
         public string CurrentEmail { get; private set; } = string.Empty;
         public PendingSecurityChangeType? PendingChangeType { get; private set; }
 
+        // Drives whether the page's copy says "email" or "email or phone number" —
+        // the security code is also sent by SMS whenever a phone number is on file.
+        public bool HasPhoneNumber { get; private set; }
+
         [TempData]
         public string? OtpPreview { get; set; }
 
@@ -107,7 +111,8 @@ namespace VoxAngelos.Pages.User
             }
 
             await StartOtpVerificationAsync(user, PendingSecurityChangeType.Password, PasswordInput.NewPassword);
-            TempData["SecuritySuccess"] = "A 6-digit verification code was sent to your current email address. Enter it below to change your password.";
+            var passwordOtpDestination = string.IsNullOrWhiteSpace(user.PhoneNumber) ? "your current email address" : "your current email address and phone number";
+            TempData["SecuritySuccess"] = $"A 6-digit verification code was sent to {passwordOtpDestination}. Enter it below to change your password.";
             return RedirectToPage();
         }
 
@@ -150,7 +155,8 @@ namespace VoxAngelos.Pages.User
             }
 
             await StartOtpVerificationAsync(user, PendingSecurityChangeType.Email, newEmail);
-            TempData["SecuritySuccess"] = "A 6-digit verification code was sent to your current email address. Enter it below to continue changing your email.";
+            var emailOtpDestination = string.IsNullOrWhiteSpace(user.PhoneNumber) ? "your current email address" : "your current email address and phone number";
+            TempData["SecuritySuccess"] = $"A 6-digit verification code was sent to {emailOtpDestination}. Enter it below to continue changing your email.";
             return RedirectToPage();
         }
 
@@ -322,6 +328,7 @@ namespace VoxAngelos.Pages.User
         {
             CurrentEmail = user.Email ?? string.Empty;
             PendingChangeType = GetPendingChange(user.Id)?.Type;
+            HasPhoneNumber = !string.IsNullOrWhiteSpace(user.PhoneNumber);
         }
 
         private PendingSecurityChange? GetPendingChange(string userId) =>

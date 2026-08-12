@@ -102,7 +102,7 @@
                     </div>
                 </div>
 
-                <div class="security-info-note">For your protection, confirm the change with your current password, then enter a 6-digit verification code sent to your current email.</div>
+                <div class="security-info-note">For your protection, confirm the change with your current password, then enter a 6-digit verification code sent to your current email@(Model.HasPhoneNumber ? " and phone number" : "").</div>
 
                 <form method="post" asp-page-handler="ChangePassword">
                     <div asp-validation-summary="ModelOnly" class="security-validation"></div>
@@ -160,7 +160,7 @@
                     </div>
                 </div>
 
-                <div class="security-info-note">For your protection, confirm the change with your current password and a 6-digit code sent to your current email. After that, a confirmation link will be sent to the new email address.</div>
+                <div class="security-info-note">For your protection, confirm the change with your current password and a 6-digit code sent to your current email@(Model.HasPhoneNumber ? " and phone number" : ""). After that, a confirmation link will be sent to the new email address.</div>
 
                 <form method="post" asp-page-handler="RequestEmailChange" autocomplete="off">
                     <div asp-validation-summary="ModelOnly" class="security-validation"></div>

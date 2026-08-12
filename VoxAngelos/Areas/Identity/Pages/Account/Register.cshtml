@@ -625,7 +625,17 @@
         const img = new Image();
         img.onload = function() {
         const ratio = img.naturalWidth / img.naturalHeight;
-        if (Math.abs(ratio - cfg.ratio) / cfg.ratio > 0.25) {
+        // Some mobile browsers report a captured photo's raw pixel dimensions
+        // rotated relative to what was actually filmed/displayed (a getUserMedia
+        // or EXIF-handling quirk, not a bad capture) — so a genuinely correct
+        // landscape ID can still arrive with portrait-shaped naturalWidth/Height.
+        // Accept either the expected orientation or its 90°-rotated (reciprocal)
+        // form; only reject something that matches neither, like an unrelated
+        // square/portrait photo.
+        const reciprocalRatio = 1 / cfg.ratio;
+        const matchesExpected = Math.abs(ratio - cfg.ratio) / cfg.ratio <= 0.25;
+        const matchesRotated = Math.abs(ratio - reciprocalRatio) / reciprocalRatio <= 0.25;
+        if (!matchesExpected && !matchesRotated) {
         showResultModal('error', 'Invalid Format', `Your ID photo doesn't look like a ${cfg.ratio > 1 ? 'landscape' : 'portrait'} ID photo. Please retake it so the whole ID fills the guide.`);
         resolve(false);
         } else resolve(true);

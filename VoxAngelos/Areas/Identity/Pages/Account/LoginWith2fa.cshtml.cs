@@ -47,6 +47,13 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         [TempData]
         public string GeneratedOtp { get; set; }
 
+        // Drives whether the page's copy says "email" or "email or phone number" —
+        // true only for citizens with a phone number on file, since LGU/Admin
+        // accounts never get the SMS leg. [TempData] so it survives the re-render
+        // after a failed OnPostAsync attempt, same as GeneratedOtp below.
+        [TempData]
+        public bool OtpSentBySms { get; set; }
+
         public class InputModel
         {
             [Required]
@@ -82,7 +89,8 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     emailBody);
 
                 // Citizens also get the code by SMS; LGU/Admin panel accounts stay email-only.
-                if (!string.IsNullOrWhiteSpace(user.PhoneNumber) && await _userManager.IsInRoleAsync(user, "User"))
+                OtpSentBySms = !string.IsNullOrWhiteSpace(user.PhoneNumber) && await _userManager.IsInRoleAsync(user, "User");
+                if (OtpSentBySms)
                 {
                     await _smsSender.SendSmsAsync(
                         user.PhoneNumber,
