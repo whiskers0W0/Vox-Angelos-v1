@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Pages.User
 {
@@ -19,6 +20,7 @@ namespace VoxAngelos.Pages.User
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
+        private readonly ISmsSender _smsSender;
         private readonly IMemoryCache _cache;
         private readonly bool _showOtpPreview;
 
@@ -29,6 +31,7 @@ namespace VoxAngelos.Pages.User
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailSender emailSender,
+            ISmsSender smsSender,
             IMemoryCache cache,
             IHostEnvironment environment,
             IConfiguration configuration)
@@ -36,6 +39,7 @@ namespace VoxAngelos.Pages.User
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
+            _smsSender = smsSender;
             _cache = cache;
             _showOtpPreview = environment.IsDevelopment()
                 && configuration.GetValue<bool>("Email:ShowOtpInBrowser");
@@ -305,6 +309,13 @@ namespace VoxAngelos.Pages.User
                 user.Email!,
                 "Your Vox Angelos account security code",
                 $"<p>Your 6-digit verification code is: <strong>{otp}</strong></p><p>This code expires shortly. Do not share it with anyone.</p>");
+
+            if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
+            {
+                await _smsSender.SendSmsAsync(
+                    user.PhoneNumber,
+                    $"Your Vox Angelos security code is {otp}. It expires shortly. Do not share this code.");
+            }
         }
 
         private void SetPageValues(ApplicationUser user)

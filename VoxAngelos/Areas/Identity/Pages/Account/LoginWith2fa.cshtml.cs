@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using VoxAngelos.Data;
+using VoxAngelos.Services;
 
 namespace VoxAngelos.Areas.Identity.Pages.Account
 {
@@ -17,19 +18,22 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginWith2faModel> _logger;
         private readonly IEmailSender _emailSender;
-        private readonly IConfiguration _configuration; 
+        private readonly ISmsSender _smsSender;
+        private readonly IConfiguration _configuration;
 
         public LoginWith2faModel(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             ILogger<LoginWith2faModel> logger,
             IEmailSender emailSender,
-            IConfiguration configuration) 
+            ISmsSender smsSender,
+            IConfiguration configuration)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _logger = logger;
             _emailSender = emailSender;
+            _smsSender = smsSender;
             _configuration = configuration;
         }
 
@@ -76,6 +80,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     user.Email,
                     "Your Vox Angelos Login Code",
                     emailBody);
+
+                // Citizens also get the code by SMS; LGU/Admin panel accounts stay email-only.
+                if (!string.IsNullOrWhiteSpace(user.PhoneNumber) && await _userManager.IsInRoleAsync(user, "User"))
+                {
+                    await _smsSender.SendSmsAsync(
+                        user.PhoneNumber,
+                        $"Your Vox Angelos login code is {otp}. It expires shortly. Do not share this code.");
+                }
 
                 GeneratedOtp = otp;
                 TempData.Remove("2FA_OTP");
