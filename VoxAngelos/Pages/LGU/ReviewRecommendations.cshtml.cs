@@ -46,6 +46,10 @@ namespace VoxAngelos.Pages.LGU
 
         public List<RecommendationViewModel> Recommendations { get; set; } = new();
         public string CurrentFilter { get; set; } = "Pending";
+        public string SearchTerm { get; set; } = string.Empty;
+        public DateTime? DateFrom { get; set; }
+        public DateTime? DateTo { get; set; }
+        public string SortOrder { get; set; } = "newest";
 
         public class RecommendationViewModel
         {
@@ -67,9 +71,20 @@ namespace VoxAngelos.Pages.LGU
             public List<string> AttachmentTypes { get; set; } = new();
         }
 
-        public async Task OnGetAsync(string filter = "Pending")
+        public async Task OnGetAsync(
+            string filter = "Pending",
+            string? search = null,
+            DateTime? dateFrom = null,
+            DateTime? dateTo = null,
+            string? sort = null)
         {
             CurrentFilter = filter;
+            SearchTerm = search?.Trim() ?? string.Empty;
+            DateFrom = dateFrom?.Date;
+            DateTo = dateTo?.Date;
+            SortOrder = string.Equals(sort, "oldest", StringComparison.OrdinalIgnoreCase)
+                ? "oldest"
+                : "newest";
 
             var user = await _userManager.GetUserAsync(User);
             var userDepartment = user?.Department;
@@ -91,9 +106,34 @@ namespace VoxAngelos.Pages.LGU
             if (filter != "All")
                 query = query.Where(r => r.Status == filter);
 
-            var recs = await query
-                .OrderByDescending(r => r.SubmittedAt)
-                .ToListAsync();
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                var searchPattern = $"%{SearchTerm}%";
+                query = query.Where(r =>
+                    EF.Functions.ILike(r.Title, searchPattern) ||
+                    EF.Functions.ILike(r.Description, searchPattern) ||
+                    EF.Functions.ILike(r.Justification, searchPattern) ||
+                    EF.Functions.ILike(r.Location, searchPattern) ||
+                    EF.Functions.ILike(r.Beneficiaries, searchPattern));
+            }
+
+            if (DateFrom.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(DateFrom.Value, DateTimeKind.Utc);
+                query = query.Where(r => r.SubmittedAt >= fromUtc);
+            }
+
+            if (DateTo.HasValue)
+            {
+                var untilUtc = DateTime.SpecifyKind(DateTo.Value.AddDays(1), DateTimeKind.Utc);
+                query = query.Where(r => r.SubmittedAt < untilUtc);
+            }
+
+            query = SortOrder == "oldest"
+                ? query.OrderBy(r => r.SubmittedAt)
+                : query.OrderByDescending(r => r.SubmittedAt);
+
+            var recs = await query.ToListAsync();
 
             Recommendations = recs.Select(r =>
             {

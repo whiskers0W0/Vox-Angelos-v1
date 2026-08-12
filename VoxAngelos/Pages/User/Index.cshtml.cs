@@ -55,22 +55,22 @@ namespace VoxAngelos.Pages.User
                 },
                 new Office
                 {
-                    Code = "ACDO",
-                    Name = "Agricultural and Cooperative Development Office"
+                    Code = "ACTDO",
+                    Name = "Angeles City Traffic Development Office"
                 },
                 new Office
                 {
                     Code = "PTRO",
-                    Name = "Public Transport and Traffic Regulation Office"
+                    Name = "Public Transportation and Regulatory Office"
                 },
                 new Office
                 {
                     Code = "OSCA",
-                    Name = "Office of the Senior Citizens Affairs"
+                    Name = "Office for Senior Citizens Affairs"
                 },
                 new Office
                 {
-                    Code = "PWDAO",
+                    Code = "PDAO",
                     Name = "Persons with Disability Affairs Office"
                 }
             };
@@ -82,6 +82,7 @@ namespace VoxAngelos.Pages.User
             public string? ProfileAvatarKey { get; set; }
             public string Category { get; set; } = string.Empty;
             public string AssignedOffice { get; set; } = string.Empty;
+            public string AssignedOfficeFullName { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
             public DateTime ApprovedAt { get; set; }
@@ -112,8 +113,11 @@ namespace VoxAngelos.Pages.User
                 .ToListAsync();
 
             var myRatings = await _ratingService.GetMyRatingsAsync(CurrentUserId);
+            var officeNames = await LoadOfficeNamesAsync();
 
-            Recommendations = recs.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
+            Recommendations = recs
+                .Select(r => MapToViewModel(r, myRatings, CurrentUserId, officeNames))
+                .ToList();
 
             if (_environment.IsDevelopment() &&
                 bool.TryParse(Request.Query["previewAttachments"].ToString(), out var showAttachmentPreview) &&
@@ -125,6 +129,7 @@ namespace VoxAngelos.Pages.User
                     CitizenName = "Development preview",
                     Category = "Infrastructure",
                     AssignedOffice = "CEO",
+                    AssignedOfficeFullName = ResolveOfficeName("CEO", officeNames),
                     Title = "Six-attachment layout preview",
                     Description = "Temporary preview data for checking the Discover attachment layout.",
                     ApprovedAt = DateTime.UtcNow,
@@ -146,11 +151,16 @@ namespace VoxAngelos.Pages.User
             }
 
             var topRated = await _ratingService.GetTopRecommendationsAsync(forLgu: false);
-            TopRated = topRated.Select(r => MapToViewModel(r, myRatings, CurrentUserId)).ToList();
+            TopRated = topRated
+                .Select(r => MapToViewModel(r, myRatings, CurrentUserId, officeNames))
+                .ToList();
         }
 
         private RecommendationCardViewModel MapToViewModel(
-            Recommendation r, Dictionary<int, RecommendationRating> myRatings, string currentUserId)
+            Recommendation r,
+            Dictionary<int, RecommendationRating> myRatings,
+            string currentUserId,
+            IReadOnlyDictionary<string, string> officeNames)
         {
             myRatings.TryGetValue(r.Id, out var mine);
             var availableAttachments = r.Attachments
@@ -168,6 +178,7 @@ namespace VoxAngelos.Pages.User
                 ProfileAvatarKey = ResolveAnimalAvatarKey(r.Citizen.ProfilePhotoUrl),
                 Category = r.Category,
                 AssignedOffice = r.AssignedOffice ?? string.Empty,
+                AssignedOfficeFullName = ResolveOfficeName(r.AssignedOffice, officeNames),
                 Title = r.Title,
                 Description = r.Description,
                 ApprovedAt = r.ReviewedAt ?? r.SubmittedAt,
@@ -184,6 +195,40 @@ namespace VoxAngelos.Pages.User
                 AttachmentPaths = availableAttachments.Select(a => a.FilePath).ToList(),
                 AttachmentTypes = availableAttachments.Select(a => a.FileType).ToList()
             };
+        }
+
+        private async Task<Dictionary<string, string>> LoadOfficeNamesAsync()
+        {
+            var lguUsers = await _userManager.GetUsersInRoleAsync("LGU");
+
+            return lguUsers
+                .Where(user => !string.IsNullOrWhiteSpace(user.Department))
+                .GroupBy(user => user.Department!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(user => user.DepartmentFullName)
+                        .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? group.Key,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveOfficeName(
+            string? officeCode,
+            IReadOnlyDictionary<string, string> officeNames)
+        {
+            if (string.IsNullOrWhiteSpace(officeCode))
+                return string.Empty;
+
+            if (officeNames.TryGetValue(officeCode, out var fullName))
+                return fullName;
+
+            var currentCode = officeCode.ToUpperInvariant() switch
+            {
+                "ACDO" => "ACTDO",
+                "PWDAO" => "PDAO",
+                _ => officeCode
+            };
+
+            return officeNames.TryGetValue(currentCode, out fullName) ? fullName : officeCode;
         }
 
         private static string? ResolveAnimalAvatarKey(string? profilePhotoUrl)

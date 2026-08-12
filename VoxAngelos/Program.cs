@@ -59,6 +59,11 @@ else
 
 builder.Services.AddHttpClient(nameof(VoxAngelos.Services.EmailSender));
 builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, VoxAngelos.Services.EmailSender>();
+builder.Services.AddSingleton<VoxAngelos.Services.BackgroundEmailQueue>();
+builder.Services.AddSingleton<VoxAngelos.Services.IBackgroundEmailQueue>(provider =>
+    provider.GetRequiredService<VoxAngelos.Services.BackgroundEmailQueue>());
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<VoxAngelos.Services.BackgroundEmailQueue>());
 
 builder.Services.AddHttpClient(nameof(VoxAngelos.Services.SmsSender));
 builder.Services.AddTransient<VoxAngelos.Services.ISmsSender, VoxAngelos.Services.SmsSender>();

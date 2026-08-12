@@ -10,7 +10,7 @@ namespace VoxAngelos.Pages.LGU
     [AllowAnonymous]
     public class LoginModel : PageModel
     {
-        private const string SharedLoginUrl = "/Identity/Account/Login?returnUrl=%2FLGU%2FIndex";
+        private const string SharedLoginUrl = "/Identity/Account/Login?returnUrl=%2FLGU%2FDashboard";
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;

@@ -49,7 +49,8 @@ namespace VoxAngelos.Pages.User
                 .OrderByDescending(r => r.SubmittedAt)
                 .ToListAsync();
 
-            Recommendations = records.Select(MapRecommendation).ToList();
+            var officeNames = await LoadOfficeNamesAsync();
+            Recommendations = records.Select(record => MapRecommendation(record, officeNames)).ToList();
         }
 
         public string GetTimeAgo(DateTime dateTime)
@@ -61,7 +62,9 @@ namespace VoxAngelos.Pages.User
             return $"{(int)elapsed.TotalDays}d ago";
         }
 
-        private RecommendationItemViewModel MapRecommendation(Recommendation recommendation)
+        private RecommendationItemViewModel MapRecommendation(
+            Recommendation recommendation,
+            IReadOnlyDictionary<string, string> officeNames)
         {
             var item = new RecommendationItemViewModel
             {
@@ -70,6 +73,7 @@ namespace VoxAngelos.Pages.User
                 Description = recommendation.Description,
                 Category = recommendation.Category,
                 AssignedOffice = recommendation.AssignedOffice,
+                AssignedOfficeFullName = ResolveOfficeName(recommendation.AssignedOffice, officeNames),
                 Location = recommendation.Location,
                 Status = recommendation.Status,
                 LguNotes = recommendation.LguNotes,
@@ -110,12 +114,46 @@ namespace VoxAngelos.Pages.User
                     Message = string.IsNullOrWhiteSpace(item.LguNotes)
                         ? $"Your recommendation was {item.Status.ToLowerInvariant()}."
                         : item.LguNotes,
-                    ActorName = item.AssignedOffice ?? "LGU Office",
+                    ActorName = item.AssignedOfficeFullName,
                     CreatedAt = item.ReviewedAt.Value
                 });
             }
 
             return item;
+        }
+
+        private async Task<Dictionary<string, string>> LoadOfficeNamesAsync()
+        {
+            var lguUsers = await _userManager.GetUsersInRoleAsync("LGU");
+
+            return lguUsers
+                .Where(user => !string.IsNullOrWhiteSpace(user.Department))
+                .GroupBy(user => user.Department!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(user => user.DepartmentFullName)
+                        .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? group.Key,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveOfficeName(
+            string? officeCode,
+            IReadOnlyDictionary<string, string> officeNames)
+        {
+            if (string.IsNullOrWhiteSpace(officeCode))
+                return "Awaiting office routing";
+
+            if (officeNames.TryGetValue(officeCode, out var fullName))
+                return fullName;
+
+            var currentCode = officeCode.ToUpperInvariant() switch
+            {
+                "ACDO" => "ACTDO",
+                "PWDAO" => "PDAO",
+                _ => officeCode
+            };
+
+            return officeNames.TryGetValue(currentCode, out fullName) ? fullName : officeCode;
         }
     }
 
@@ -126,6 +164,7 @@ namespace VoxAngelos.Pages.User
         public string Description { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public string? AssignedOffice { get; set; }
+        public string AssignedOfficeFullName { get; set; } = "Awaiting office routing";
         public string Location { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string? LguNotes { get; set; }

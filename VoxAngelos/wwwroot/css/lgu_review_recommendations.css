@@ -9,3 +9,35 @@
 .lgu-lightbox { position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; padding:32px; background:rgba(12,19,33,.85); }.lgu-lightbox.is-open { display:flex; }.lgu-lightbox > button { position:absolute; top:18px; right:23px; border:0; background:transparent; color:#fff; font-size:32px; line-height:1; cursor:pointer; }.lgu-lightbox > div { display:flex; align-items:center; justify-content:center; max-width:90vw; max-height:90vh; }.lgu-lightbox img,.lgu-lightbox video { display:none; max-width:90vw; max-height:90vh; border-radius:8px; object-fit:contain; }
 @media (max-width:760px) { .lgu-page-header,.lgu-queue-controls { align-items:flex-start; flex-direction:column; }.lgu-page-context { width:100%; }.rec-body { grid-template-columns:1fr; }.rec-facts { border-top:2px solid #d9e4f7; border-left:0; }.feed-filter-group { width:100%; }.filter-btn { flex:1 1 auto; text-align:center; } }
 @media (max-width:480px) { .rec-card { padding:15px; }.rec-card-header { gap:10px; }.rec-status { font-size:8px; }.rec-title { font-size:16px; }.rec-action-btns,.btn-approve,.btn-reject { width:100%; } }
+.lgu-advanced-filters {
+    display: grid;
+    grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(150px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+    margin: 0 0 14px;
+    padding: 14px 16px;
+    border: 1px solid #d5deed;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.filter-field { display: grid; gap: 6px; min-width: 0; }
+.filter-field > span { color: #63708a; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.filter-field input,
+.filter-field select { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #cbd6e8; border-radius: 8px; background: #fff; color: #10203d; font-family: inherit; font-size: 12px; }
+.filter-field input:focus,
+.filter-field select:focus { border-color: #164bac; outline: 2px solid rgba(22, 75, 172, .12); }
+.filter-actions { display: flex; gap: 8px; align-items: center; }
+.filter-actions .btn-va-primary,
+.filter-actions .btn-va-secondary { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; white-space: nowrap; text-decoration: none; }
+
+@media (max-width: 1050px) {
+    .lgu-advanced-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .filter-search { grid-column: span 2; }
+}
+
+@media (max-width: 620px) {
+    .lgu-advanced-filters { grid-template-columns: 1fr; }
+    .filter-search { grid-column: auto; }
+    .filter-actions > * { flex: 1; }
+}

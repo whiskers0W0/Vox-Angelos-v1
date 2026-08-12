@@ -95,8 +95,11 @@ namespace VoxAngelos.Pages.User
                 })
                 .ToListAsync();
 
+            var officeNames = await LoadOfficeNamesAsync();
+
             foreach (var concern in allConcerns)
             {
+                concern.OfficeFullName = ResolveOfficeName(concern.Category, officeNames);
                 var hasSavedTimeline = concern.Timeline.Any();
 
                 if (!concern.Timeline.Any(e => e.EventType == "Submitted"))
@@ -134,6 +137,40 @@ namespace VoxAngelos.Pages.User
 
             // Outbox — no LGU action yet
             Outbox = allConcerns;
+        }
+
+        private async Task<Dictionary<string, string>> LoadOfficeNamesAsync()
+        {
+            var lguUsers = await _userManager.GetUsersInRoleAsync("LGU");
+
+            return lguUsers
+                .Where(user => !string.IsNullOrWhiteSpace(user.Department))
+                .GroupBy(user => user.Department!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(user => user.DepartmentFullName)
+                        .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? group.Key,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveOfficeName(
+            string? officeCode,
+            IReadOnlyDictionary<string, string> officeNames)
+        {
+            if (string.IsNullOrWhiteSpace(officeCode))
+                return "Awaiting office routing";
+
+            if (officeNames.TryGetValue(officeCode, out var fullName))
+                return fullName;
+
+            var currentCode = officeCode.ToUpperInvariant() switch
+            {
+                "ACDO" => "ACTDO",
+                "PWDAO" => "PDAO",
+                _ => officeCode
+            };
+
+            return officeNames.TryGetValue(currentCode, out fullName) ? fullName : officeCode;
         }
 
         public async Task<IActionResult> OnPostMarkNotificationReadAsync(int notificationId)
@@ -208,6 +245,7 @@ namespace VoxAngelos.Pages.User
         public int Id { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
+        public string OfficeFullName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string LocationName { get; set; } = string.Empty;
         public double? Latitude { get; set; }

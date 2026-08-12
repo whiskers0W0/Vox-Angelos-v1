@@ -6,7 +6,15 @@
     <header class="lgu-page-header"><div><span class="lgu-page-eyebrow">Citizen proposal operations</span><h1>Recommendation review queue</h1><p>Assess submitted proposals, verify their department routing, and record the publication decision with a clear public response.</p></div><div class="lgu-page-context"><span>Current view</span><strong>@Model.CurrentFilter recommendations</strong></div></header>
     @if (TempData["RecError"] != null) { <div class="floating-toast toast-error" role="alert"><span>@TempData["RecError"]</span><div class="toast-progress"></div></div> }
     @if (TempData["RecSuccess"] != null) { <div class="floating-toast toast-success" role="status"><span>@TempData["RecSuccess"]</span><div class="toast-progress"></div></div> }
-    <section class="lgu-queue-controls" aria-label="Recommendation status filters"><div class="lgu-filter-label"><span>Review status</span><strong>Select a decision stage</strong></div><div class="feed-filter-group">@foreach (var f in new[] { "Pending", "Published", "Rejected", "All" }) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" href="?filter=@f">@f</a> }</div></section>
+    <section class="lgu-queue-controls" aria-label="Recommendation status filters"><div class="lgu-filter-label"><span>Review status</span><strong>Select a decision stage</strong></div><div class="feed-filter-group">@foreach (var f in new[] { "Pending", "Published", "Rejected", "All" }) { var isActive = Model.CurrentFilter == f ? "active" : ""; <a class="filter-btn @isActive" asp-page="/LGU/ReviewRecommendations" asp-route-filter="@f" asp-route-search="@Model.SearchTerm" asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))" asp-route-sort="@Model.SortOrder">@f</a> }</div></section>
+    <form method="get" class="lgu-advanced-filters" aria-label="Filter recommendations">
+        <input type="hidden" name="filter" value="@Model.CurrentFilter" />
+        <label class="filter-field filter-search"><span>Search words</span><input type="search" name="search" value="@Model.SearchTerm" placeholder="Search title, details, or location" /></label>
+        <label class="filter-field"><span>From</span><input type="date" name="dateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" /></label>
+        <label class="filter-field"><span>To</span><input type="date" name="dateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" /></label>
+        <label class="filter-field"><span>Order</span><select name="sort"><option value="newest" selected="@(Model.SortOrder == "newest")">Newest first</option><option value="oldest" selected="@(Model.SortOrder == "oldest")">Oldest first</option></select></label>
+        <div class="filter-actions"><button type="submit" class="btn-va-primary">Apply filters</button><a class="btn-va-secondary" asp-page="/LGU/ReviewRecommendations" asp-route-filter="@Model.CurrentFilter">Clear</a></div>
+    </form>
     <div class="selection-hint">Long-press a card to select it</div>
     <form method="post" asp-page="/LGU/ReviewRecommendations" asp-page-handler="BulkReassignOffice" id="bulk-reassign-rec-form">
         @Html.AntiForgeryToken()
