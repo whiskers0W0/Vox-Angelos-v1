@@ -153,6 +153,7 @@ builder.Services.AddSingleton<SensitiveMediaRetentionService>();
 builder.Services.AddHostedService(services =>
     services.GetRequiredService<SensitiveMediaRetentionService>());
 builder.Services.AddHostedService<IdentityMediaCloudBackupService>();
+builder.Services.AddHostedService<RejectedApplicationPurgeService>();
 
 // 5c. Location Density Score for the Urgency Algorithm (PostGIS-backed).
 builder.Services.AddScoped<UrgencyScoreService>();

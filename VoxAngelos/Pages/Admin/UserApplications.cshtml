@@ -27,7 +27,7 @@
     <header class="admin-applications-header">
         <div>
             <span class="admin-applications-eyebrow">Citizen account intake</span>
-            <h1>User applications</h1>
+            <h1>User Applications</h1>
             <p>Review identity verification submissions and move qualified citizen accounts through the approval queue.</p>
         </div>
         <div class="admin-applications-queue-summary" aria-label="Current queue view">
@@ -43,18 +43,45 @@
                 <span>Verification queue</span>
                 <h2 id="applicationsQueueHeading">Citizen application records</h2>
             </div>
-            <p>Use a status filter to focus the review list.</p>
+            <p>Filter by status, search by name, email, or contact number, and sort by application date.</p>
         </header>
 
+        @if (Model.FilterStatus == "Rejected")
+        {
+            <div class="admin-applications-alert" role="note">
+                <strong>Data privacy notice:</strong> rejected applications and all associated data are automatically and permanently deleted 7 days after rejection, in compliance with the Data Privacy Act. This cannot be undone or extended.
+            </div>
+        }
+
         <nav class="admin-applications-filters" aria-label="Filter applications by status">
-            <a href="?filterStatus=All" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
-            <a href="?filterStatus=Pending" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
-            <a href="?filterStatus=Approved" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
-            <a href="?filterStatus=Rejected" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="All" asp-route-faceMatchFilter="@Model.FaceMatchFilter" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending" asp-route-faceMatchFilter="@Model.FaceMatchFilter" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Approved" asp-route-faceMatchFilter="@Model.FaceMatchFilter" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Rejected" asp-route-faceMatchFilter="@Model.FaceMatchFilter" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
         </nav>
+
+        <form method="get" class="admin-applications-search-bar" aria-label="Search and sort applications">
+            <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+            <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+            <label class="admin-applications-search-field"><span>Search</span><input type="search" name="search" value="@Model.SearchTerm" placeholder="Search name, email, or contact number" /></label>
+            <label class="admin-applications-sort-field"><span>Sort</span><select name="sort"><option value="newest" selected="@(Model.SortOrder == "newest")">Newest first</option><option value="oldest" selected="@(Model.SortOrder == "oldest")">Oldest first</option></select></label>
+            <button type="submit" class="admin-applications-search-submit">Apply</button>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="@Model.FilterStatus" asp-route-faceMatchFilter="@Model.FaceMatchFilter" class="admin-applications-search-clear">Clear</a>
+        </form>
+
+        <div class="selection-hint">Long-press a row to select it</div>
 
         <div class="admin-applications-table-wrap">
             <table class="admin-applications-table">
+                <colgroup>
+                    <col style="width:20%" />
+                    <col style="width:22%" />
+                    <col style="width:14%" />
+                    <col style="width:12%" />
+                    <col style="width:12%" />
+                    <col style="width:10%" />
+                    <col style="width:10%" />
+                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col">Applicant</th>
@@ -66,7 +93,7 @@
                         <th scope="col"><span class="visually-hidden">Review application</span></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="appTableBody">
                     @if (!Model.Applications.Any())
                     {
                         <tr>
@@ -75,8 +102,8 @@
                     }
                     @foreach (var app in Model.Applications)
                     {
-                            <tr class="@(app.IsMock ? "admin-applications-mock-row" : "")">
-                            <td data-label="Applicant"><strong>@app.FullName</strong>@if (app.IsMock) { <span class="admin-applications-mock-label">Development mock</span> }</td>
+                            <tr class="app-row @(app.IsMock ? "admin-applications-mock-row" : "")" data-selectable="@(app.IsMock ? "false" : "true")">
+                            <td data-label="Applicant">@if (!app.IsMock) { <input type="checkbox" class="app-select" data-id="@app.UserId" hidden /> }<strong>@app.FullName</strong>@if (app.IsMock) { <span class="admin-applications-mock-label">Development mock</span> }</td>
                             <td data-label="Email address"><span class="admin-applications-email">@app.Email</span></td>
                             <td data-label="Contact number">@app.ContactNumber</td>
                             <td data-label="Applied"><time datetime="@app.DateApplied.ToString("yyyy-MM-dd")">@app.DateApplied.ToString("MM/dd/yyyy")</time></td>
@@ -108,8 +135,193 @@
     </section>
 </div>
 
+<form method="post" asp-page-handler="BulkApprove" id="bulk-approve-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sort" value="@Model.SortOrder" />
+</form>
+<form method="post" asp-page-handler="BulkDelete" id="bulk-delete-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sort" value="@Model.SortOrder" />
+</form>
+
+<div class="bulk-toolbar" id="appBulkToolbar" style="display:none;">
+    <span id="appBulkCount">0 selected</span>
+    <button type="button" class="btn-cancel" id="appSelectAllBtn">Select all</button>
+    <button type="button" class="btn-cancel" id="appClearSelectionBtn">Clear selection</button>
+    <button type="button" class="btn-approve" id="appBulkApproveBtn">Approve selected</button>
+    <button type="button" class="btn-reject" id="appBulkDeleteBtn">Delete selected</button>
+</div>
+
+<div id="approveSelectedModal" class="modal-overlay">
+    <div class="modal-box">
+        <span class="modal-eyebrow">Confirmation required</span>
+        <h3>Approve selected applications?</h3>
+        <p id="approveSelectedModalText"></p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeAppModals()">Cancel</button>
+            <button type="button" class="btn-approve" id="confirmBulkApproveBtn">Confirm approval</button>
+        </div>
+    </div>
+</div>
+<div id="deleteSelectedModal" class="modal-overlay">
+    <div class="modal-box">
+        <span class="modal-eyebrow modal-eyebrow--danger">Confirmation required</span>
+        <h3>Permanently delete selected applications?</h3>
+        <p id="deleteSelectedModalText"></p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeAppModals()">Cancel</button>
+            <button type="button" class="btn-reject" id="confirmBulkDeleteBtn">Confirm deletion</button>
+        </div>
+    </div>
+</div>
+
 <script>
     window.setTimeout(() => {
         document.querySelectorAll('.admin-action-toast').forEach(toast => toast.remove());
     }, 5000);
+
+    // Long-press multi-select — same gesture pattern as LGU/ReviewRecommendations,
+    // adapted from <article class="rec-card"> to <tr class="app-row"> rows.
+    (function () {
+        const APP_LONG_PRESS_MS = 500;
+        const tableBody = document.getElementById('appTableBody');
+        if (!tableBody) return;
+
+        let pressTimer = null;
+        let pressStart = null;
+
+        function isAppInteractiveTarget(target) {
+            return !!target.closest('button, a, input, select, textarea, label');
+        }
+
+        function anyAppRowSelected() {
+            return !!tableBody.querySelector('.app-select:checked');
+        }
+
+        function toggleAppRowSelection(row) {
+            const checkbox = row.querySelector('.app-select');
+            if (!checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            row.classList.toggle('app-row-selected', checkbox.checked);
+            if (navigator.vibrate) navigator.vibrate(15);
+            updateAppBulkToolbar();
+        }
+
+        function updateAppBulkToolbar() {
+            const count = tableBody.querySelectorAll('.app-select:checked').length;
+            const toolbar = document.getElementById('appBulkToolbar');
+            document.getElementById('appBulkCount').textContent = count + ' selected';
+            toolbar.style.display = count > 0 ? 'flex' : 'none';
+        }
+
+        tableBody.addEventListener('pointerdown', (e) => {
+            const row = e.target.closest('tr[data-selectable="true"]');
+            if (!row || isAppInteractiveTarget(e.target)) return;
+            pressStart = { x: e.clientX, y: e.clientY };
+            pressTimer = window.setTimeout(() => toggleAppRowSelection(row), APP_LONG_PRESS_MS);
+        });
+
+        tableBody.addEventListener('pointermove', (e) => {
+            if (!pressTimer || !pressStart) return;
+            if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) {
+                window.clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        });
+
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach((evt) => {
+            tableBody.addEventListener(evt, () => {
+                if (pressTimer) {
+                    window.clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            });
+        });
+
+        tableBody.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('tr[data-selectable="true"]')) e.preventDefault();
+        });
+
+        tableBody.addEventListener('click', (e) => {
+            const row = e.target.closest('tr[data-selectable="true"]');
+            if (!row || isAppInteractiveTarget(e.target)) return;
+            if (anyAppRowSelected()) toggleAppRowSelection(row);
+        });
+
+        document.getElementById('appSelectAllBtn').addEventListener('click', () => {
+            tableBody.querySelectorAll('tr[data-selectable="true"]').forEach((row) => {
+                const checkbox = row.querySelector('.app-select');
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    row.classList.add('app-row-selected');
+                }
+            });
+            updateAppBulkToolbar();
+        });
+
+        document.getElementById('appClearSelectionBtn').addEventListener('click', clearAppSelection);
+
+        function clearAppSelection() {
+            tableBody.querySelectorAll('.app-select:checked').forEach((checkbox) => {
+                checkbox.checked = false;
+                checkbox.closest('tr').classList.remove('app-row-selected');
+            });
+            updateAppBulkToolbar();
+        }
+
+        function selectedUserIds() {
+            return Array.from(tableBody.querySelectorAll('.app-select:checked')).map((cb) => cb.dataset.id);
+        }
+
+        function injectUserIds(form, ids) {
+            form.querySelectorAll('input[name="userIds"]').forEach((el) => el.remove());
+            ids.forEach((id) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'userIds';
+                input.value = id;
+                form.appendChild(input);
+            });
+        }
+
+        function closeAppModals() {
+            document.getElementById('approveSelectedModal').style.display = 'none';
+            document.getElementById('deleteSelectedModal').style.display = 'none';
+        }
+        window.closeAppModals = closeAppModals;
+
+        document.getElementById('appBulkApproveBtn').addEventListener('click', () => {
+            const ids = selectedUserIds();
+            if (ids.length === 0) return;
+            document.getElementById('approveSelectedModalText').textContent =
+                ids.length + ' application(s) will be approved and the applicants notified by email.';
+            document.getElementById('approveSelectedModal').style.display = 'flex';
+        });
+
+        document.getElementById('appBulkDeleteBtn').addEventListener('click', () => {
+            const ids = selectedUserIds();
+            if (ids.length === 0) return;
+            document.getElementById('deleteSelectedModalText').textContent =
+                ids.length + ' application(s) will be permanently deleted — this cannot be undone.';
+            document.getElementById('deleteSelectedModal').style.display = 'flex';
+        });
+
+        document.getElementById('confirmBulkApproveBtn').addEventListener('click', () => {
+            const form = document.getElementById('bulk-approve-form');
+            injectUserIds(form, selectedUserIds());
+            form.submit();
+        });
+
+        document.getElementById('confirmBulkDeleteBtn').addEventListener('click', () => {
+            const form = document.getElementById('bulk-delete-form');
+            injectUserIds(form, selectedUserIds());
+            form.submit();
+        });
+    })();
 </script>

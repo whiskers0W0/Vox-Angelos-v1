@@ -249,6 +249,22 @@ namespace VoxAngelos.Pages.Admin
 
                 await TryPurgeSensitiveMediaAsync(userId);
 
+                // Records when/why this application was rejected — the timestamp
+                // RejectedApplicationPurgeService reads to permanently delete the
+                // account 7 days later, per the Data Privacy Act retention policy.
+                var accountApproval = await _context.AccountApprovals
+                    .FirstOrDefaultAsync(a => a.UserId == userId);
+                if (accountApproval == null)
+                {
+                    accountApproval = new AccountApproval { UserId = userId };
+                    _context.AccountApprovals.Add(accountApproval);
+                }
+                accountApproval.Status = "Rejected";
+                accountApproval.RejectionReason = rejectionReason;
+                accountApproval.ReviewedAt = DateTime.UtcNow;
+                accountApproval.ReviewedByAdminId = _userManager.GetUserId(User);
+                await _context.SaveChangesAsync();
+
                 await _emailSender.SendEmailAsync(
                     user.Email!,
                     "Your Vox Angelos Account Application",

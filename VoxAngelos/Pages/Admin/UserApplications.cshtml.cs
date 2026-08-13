@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ namespace VoxAngelos.Pages.Admin
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _environment;
         private readonly SensitiveMediaRetentionService _mediaRetention;
+        private readonly IEmailSender _emailSender;
         private readonly ILogger<UserApplicationsModel> _logger;
 
         public UserApplicationsModel(
@@ -22,12 +24,14 @@ namespace VoxAngelos.Pages.Admin
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment environment,
             SensitiveMediaRetentionService mediaRetention,
+            IEmailSender emailSender,
             ILogger<UserApplicationsModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
             _mediaRetention = mediaRetention;
+            _emailSender = emailSender;
             _logger = logger;
         }
 
@@ -35,11 +39,21 @@ namespace VoxAngelos.Pages.Admin
 
         public string FilterStatus { get; set; } = "All";
         public string FaceMatchFilter { get; set; } = "All";
+        public string SearchTerm { get; set; } = string.Empty;
+        public string SortOrder { get; set; } = "newest";
 
-        public async Task OnGetAsync(string filterStatus = "All", string faceMatchFilter = "All")
+        public async Task OnGetAsync(
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string? search = null,
+            string? sort = null)
         {
             FilterStatus = filterStatus;
             FaceMatchFilter = faceMatchFilter;
+            SearchTerm = search?.Trim() ?? string.Empty;
+            SortOrder = string.Equals(sort, "oldest", StringComparison.OrdinalIgnoreCase)
+                ? "oldest"
+                : "newest";
 
             var citizenUsers = await _userManager.GetUsersInRoleAsync("User");
 
@@ -58,7 +72,7 @@ namespace VoxAngelos.Pages.Admin
                 .Where(f => userIds.Contains(f.UserId))
                 .ToListAsync();
 
-            foreach (var user in query.OrderBy(u => u.CreatedAt))
+            foreach (var user in query)
             {
                 var profile = profiles.FirstOrDefault(p => p.UserId == user.Id);
                 var face = faceVerifications.FirstOrDefault(f => f.UserId == user.Id);
@@ -84,6 +98,21 @@ namespace VoxAngelos.Pages.Admin
                     .Where(a => !a.HasFaceVerification || a.FaceMatchConfidence < 0.50m)
                     .ToList();
             }
+
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                Applications = Applications
+                    .Where(a =>
+                        a.FullName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        a.Email.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        a.ContactNumber.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            Applications = (SortOrder == "oldest"
+                ? Applications.OrderBy(a => a.DateApplied)
+                : Applications.OrderByDescending(a => a.DateApplied))
+                .ToList();
 
             if (_environment.IsDevelopment()
                 && faceMatchFilter != "Attention"
@@ -146,6 +175,115 @@ namespace VoxAngelos.Pages.Admin
                     ? "The citizen account could not be found."
                     : "This application has already received a final decision and cannot be changed.";
             return RedirectToPage(new { filterStatus = FilterStatus });
+        }
+
+        public async Task<IActionResult> OnPostBulkApproveAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string? search = null,
+            string? sort = null)
+        {
+            var approved = 0;
+            var skipped = 0;
+
+            foreach (var userId in userIds ?? Array.Empty<string>())
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null || user.ApprovalStatus != "Pending")
+                {
+                    skipped++;
+                    continue;
+                }
+
+                user.ApprovalStatus = "Approved";
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                await TryPurgeSensitiveMediaAsync(userId);
+
+                await _emailSender.SendEmailAsync(
+                    user.Email!,
+                    "Your Vox Angelos Account Has Been Approved",
+                    $"<div style='font-family:Arial,sans-serif; max-width:480px; margin:0 auto;'>" +
+                    $"<h2 style='color:#1a237e;'>Account Approved!</h2>" +
+                    $"<p>Hello,</p>" +
+                    $"<p>Great news! Your <strong>Vox Angelos</strong> citizen account has been reviewed and <strong style='color:#2e7d32;'>approved</strong>.</p>" +
+                    $"<p>You can now log in and start using the platform.</p>" +
+                    $"<div style='text-align:center; margin:2rem 0;'>" +
+                    $"<a href='https://localhost:7244/Identity/Account/Login' " +
+                    $"style='background:#1a237e; color:#ffffff; padding:12px 28px; text-decoration:none; border-radius:6px; font-weight:bold; display:inline-block;'>" +
+                    $"Log In to Vox Angelos</a>" +
+                    $"</div>" +
+                    $"<p style='color:#888; font-size:0.85rem;'>If you did not register for this account, please ignore this email.</p>" +
+                    $"<p style='color:#888; font-size:0.85rem;'>— The Vox Angelos Team</p>" +
+                    $"</div>");
+
+                _logger.LogInformation("Admin bulk-approved citizen {UserId}", userId);
+                approved++;
+            }
+
+            TempData["AdminSuccess"] = skipped == 0
+                ? $"{approved} application(s) approved and notified successfully."
+                : $"{approved} application(s) approved. {skipped} were skipped (already decided or not found).";
+
+            return RedirectToPage(new { filterStatus, faceMatchFilter, search, sort });
+        }
+
+        public async Task<IActionResult> OnPostBulkDeleteAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string? search = null,
+            string? sort = null)
+        {
+            var deleted = 0;
+            var skipped = 0;
+
+            foreach (var userId in userIds ?? Array.Empty<string>())
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                await TryPurgeSensitiveMediaAsync(userId);
+
+                var result = await _userManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    _logger.LogWarning("Admin permanently deleted citizen application {UserId}", userId);
+                    deleted++;
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+
+            TempData["AdminSuccess"] = skipped == 0
+                ? $"{deleted} application(s) permanently deleted."
+                : $"{deleted} application(s) permanently deleted. {skipped} could not be deleted.";
+
+            return RedirectToPage(new { filterStatus, faceMatchFilter, search, sort });
         }
 
         private async Task TryPurgeSensitiveMediaAsync(string userId)

@@ -143,7 +143,7 @@
 }
 
 .admin-applications-alert {
-    margin-bottom: 16px;
+    margin: 16px 20px 0;
     padding: 11px 13px;
     border: 1px solid #efbdc4;
     border-left: 3px solid var(--applications-red);
@@ -223,6 +223,102 @@
     color: #ffffff;
 }
 
+.admin-applications-search-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--applications-line);
+    background: var(--applications-surface);
+}
+
+.admin-applications-search-field,
+.admin-applications-sort-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.admin-applications-search-field {
+    flex: 1 1 220px;
+    min-width: 200px;
+}
+
+.admin-applications-sort-field {
+    flex: 0 0 auto;
+}
+
+.admin-applications-search-field span,
+.admin-applications-sort-field span {
+    color: var(--applications-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.admin-applications-search-field input,
+.admin-applications-sort-field select {
+    min-height: 34px;
+    padding: 0 10px;
+    border: 1px solid #cbd6e8;
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--applications-ink);
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.admin-applications-search-field input:focus,
+.admin-applications-sort-field select:focus {
+    border-color: var(--applications-blue);
+    outline: 2px solid rgba(22, 70, 160, .12);
+}
+
+.admin-applications-search-submit,
+.admin-applications-search-clear {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 750;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.admin-applications-search-submit {
+    border: 1px solid var(--applications-blue);
+    background: var(--applications-blue);
+    color: #ffffff;
+}
+
+.admin-applications-search-submit:hover {
+    border-color: var(--applications-blue-dark);
+    background: var(--applications-blue-dark);
+}
+
+.admin-applications-search-clear {
+    border: 1px solid #cfd8e6;
+    background: #ffffff;
+    color: var(--applications-body);
+}
+
+.admin-applications-search-clear:hover {
+    border-color: #aebdce;
+    color: var(--applications-ink);
+}
+
+@media (max-width: 760px) {
+    .admin-applications-search-bar {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+}
+
 .admin-applications-table-wrap {
     width: 100%;
     overflow-x: auto;
@@ -232,9 +328,14 @@
     width: 100%;
     min-width: 860px;
     border-collapse: collapse;
+    table-layout: fixed;
     color: #334057;
     font-size: 12px;
     text-align: left;
+}
+
+.admin-applications-table td {
+    overflow-wrap: break-word;
 }
 
 .admin-applications-table th {
@@ -454,4 +555,158 @@
     letter-spacing: .04em;
     text-transform: uppercase;
     vertical-align: middle;
+}
+
+/* Long-press multi-select — ported from lgu_review_recommendations.css. */
+.selection-hint {
+    margin: 12px 20px 10px;
+    color: var(--applications-muted);
+    font-size: 10.5px;
+}
+
+tr.app-row-selected td {
+    background: var(--applications-blue-soft) !important;
+    box-shadow: inset 3px 0 0 var(--applications-blue);
+}
+
+.bulk-toolbar {
+    display: flex;
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 1050;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid #b7c9ec;
+    border-radius: 12px;
+    background: #f2f6fd;
+    box-shadow: 0 12px 32px rgba(23, 32, 51, .22);
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.bulk-toolbar span {
+    color: var(--applications-blue);
+    font-size: 11px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+/* Confirmation modals — same pattern as admin-reviewapplication.css, self-contained
+   with its own custom properties since these elements sit outside .admin-applications-workspace. */
+.modal-overlay {
+    --applications-blue: #1646a0;
+    --applications-blue-dark: #0b2e6f;
+    --applications-ink: #172033;
+    --applications-body: #5c687b;
+    --applications-line: #dfe5ed;
+    --applications-red: #c43f4b;
+    --applications-red-soft: #fbecef;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, .5);
+}
+
+.modal-box {
+    width: min(100%, 420px);
+    padding: 22px;
+    border: 1px solid var(--applications-line);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, .2);
+}
+
+.modal-eyebrow {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--applications-blue);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.modal-eyebrow--danger {
+    color: var(--applications-red);
+}
+
+.modal-box h3 {
+    margin: 0;
+    color: var(--applications-ink);
+    font-size: 18px;
+    letter-spacing: -.02em;
+}
+
+.modal-box p {
+    margin: 9px 0 0;
+    color: var(--applications-body);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.btn-cancel,
+.btn-reject,
+.btn-approve {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 11px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    font-weight: 750;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    border: 1px solid #cfd8e6;
+    background: #fff;
+    color: var(--applications-body);
+}
+
+.btn-reject {
+    border: 1px solid #e5abb2;
+    background: #fff;
+    color: var(--applications-red);
+}
+
+.btn-approve {
+    border: 1px solid var(--applications-blue);
+    background: var(--applications-blue);
+    color: #fff;
+}
+
+.btn-cancel:hover {
+    border-color: #aebdce;
+    color: var(--applications-ink);
+}
+
+.btn-reject:hover {
+    background: var(--applications-red-soft);
+}
+
+.btn-approve:hover {
+    border-color: var(--applications-blue-dark);
+    background: var(--applications-blue-dark);
+}
+
+#bulk-approve-form,
+#bulk-delete-form {
+    display: none;
 }
