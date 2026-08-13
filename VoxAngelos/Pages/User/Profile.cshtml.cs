@@ -81,10 +81,7 @@ namespace VoxAngelos.Pages.User
                 ? profile!.BirthDate
                 : null;
 
-            var verifiedBarangay = ocrVerification?.LocalityMatched == true
-                ? ocrVerification.DetectedLocality
-                : null;
-            var verifiedCity = ocrVerification?.LocalityMatched == true
+            var verifiedCity = ocrVerification?.CityProvinceMatched == true
                 ? "Angeles City"
                 : null;
             var verifiedProvince = ocrVerification?.CityProvinceMatched == true
@@ -97,8 +94,8 @@ namespace VoxAngelos.Pages.User
                 MiddleName = profile?.MiddleName,
                 LastName = profile?.LastName,
                 PhoneNumber = user.PhoneNumber,
-                StreetAddress = profile?.StreetAddress ?? ocrVerification?.DetectedStreetAddress,
-                Barangay = profile?.Barangay ?? verifiedBarangay,
+                StreetAddress = profile?.StreetAddress ?? ocrVerification?.DetectedAddress,
+                Barangay = profile?.Barangay,
                 City = profile?.City ?? verifiedCity,
                 Province = profile?.Province ?? verifiedProvince,
                 EmailAddress = user.Email,

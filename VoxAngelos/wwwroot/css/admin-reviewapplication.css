@@ -5,6 +5,43 @@
 @media (max-width:900px) { .review-grid { grid-template-columns:1fr; }.review-left { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }.review-left .review-card { margin-bottom:0; } } @media (max-width:680px) { .review-header,.review-decision { align-items:flex-start; flex-direction:column; }.review-header-actions { width:100%; justify-content:space-between; }.review-decision,.action-buttons,.action-buttons a,.action-buttons button { width:100%; }.action-buttons { justify-content:stretch; }.photos-grid,.review-left { grid-template-columns:1fr; }.review-photo,.photo-placeholder { height:230px; }.info-row { grid-template-columns:1fr; gap:4px; } }
 
 
+/* Reject-reason fields inside the reject modal. */
+.modal-field {
+    margin-top: 16px;
+}
+
+.modal-field label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--review-body);
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.modal-field select,
+.modal-field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--review-line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--review-ink);
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.modal-field textarea {
+    resize: vertical;
+}
+
+.modal-field select:focus,
+.modal-field textarea:focus {
+    border-color: var(--review-blue);
+    outline: 2px solid rgba(22, 70, 160, .12);
+}
+
 /* Modal action feedback: make every decision button visibly interactive. */
 .modal-actions button,
 .modal-actions a {

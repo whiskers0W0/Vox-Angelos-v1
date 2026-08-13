@@ -68,7 +68,8 @@ builder.Services.AddHostedService(provider =>
 builder.Services.AddHttpClient(nameof(VoxAngelos.Services.SmsSender));
 builder.Services.AddTransient<VoxAngelos.Services.ISmsSender, VoxAngelos.Services.SmsSender>();
 
-builder.Services.AddScoped<OcrService>();
+builder.Services.AddHttpClient(nameof(GeminiOcrService), c => c.Timeout = TimeSpan.FromSeconds(90));
+builder.Services.AddScoped<GeminiOcrService>();
 builder.Services.AddScoped<HfConcernClassifierService>();
 builder.Services.AddScoped<ConcernClassificationService>();
 builder.Services.AddMemoryCache();
