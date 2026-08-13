@@ -195,6 +195,7 @@
 
         let pressTimer = null;
         let pressStart = null;
+        let justLongPressed = false;
 
         function isAppInteractiveTarget(target) {
             return !!target.closest('button, a, input, select, textarea, label');
@@ -224,7 +225,13 @@
             const row = e.target.closest('tr[data-selectable="true"]');
             if (!row || isAppInteractiveTarget(e.target)) return;
             pressStart = { x: e.clientX, y: e.clientY };
-            pressTimer = window.setTimeout(() => toggleAppRowSelection(row), APP_LONG_PRESS_MS);
+            pressTimer = window.setTimeout(() => {
+                toggleAppRowSelection(row);
+                // The pointerup that follows (releasing the still-held button/finger)
+                // fires a native click on this same row right after — without this
+                // flag that click immediately toggles the selection back off.
+                justLongPressed = true;
+            }, APP_LONG_PRESS_MS);
         });
 
         tableBody.addEventListener('pointermove', (e) => {
@@ -249,6 +256,10 @@
         });
 
         tableBody.addEventListener('click', (e) => {
+            if (justLongPressed) {
+                justLongPressed = false;
+                return;
+            }
             const row = e.target.closest('tr[data-selectable="true"]');
             if (!row || isAppInteractiveTarget(e.target)) return;
             if (anyAppRowSelected()) toggleAppRowSelection(row);

@@ -566,6 +566,9 @@
 
 tr.app-row-selected td {
     background: var(--applications-blue-soft) !important;
+}
+
+tr.app-row-selected td:first-child {
     box-shadow: inset 3px 0 0 var(--applications-blue);
 }
 
@@ -589,7 +592,7 @@ tr.app-row-selected td {
 }
 
 .bulk-toolbar span {
-    color: var(--applications-blue);
+    color: #1646a0;
     font-size: 11px;
     font-weight: 750;
     white-space: nowrap;
@@ -677,33 +680,33 @@ tr.app-row-selected td {
 .btn-cancel {
     border: 1px solid #cfd8e6;
     background: #fff;
-    color: var(--applications-body);
+    color: #5c687b;
 }
 
 .btn-reject {
     border: 1px solid #e5abb2;
     background: #fff;
-    color: var(--applications-red);
+    color: #c43f4b;
 }
 
 .btn-approve {
-    border: 1px solid var(--applications-blue);
-    background: var(--applications-blue);
+    border: 1px solid #1646a0;
+    background: #1646a0;
     color: #fff;
 }
 
 .btn-cancel:hover {
     border-color: #aebdce;
-    color: var(--applications-ink);
+    color: #172033;
 }
 
 .btn-reject:hover {
-    background: var(--applications-red-soft);
+    background: #fbecef;
 }
 
 .btn-approve:hover {
-    border-color: var(--applications-blue-dark);
-    background: var(--applications-blue-dark);
+    border-color: #0b2e6f;
+    background: #0b2e6f;
 }
 
 #bulk-approve-form,

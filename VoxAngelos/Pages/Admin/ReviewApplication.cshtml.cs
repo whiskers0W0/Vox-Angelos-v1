@@ -289,6 +289,40 @@ namespace VoxAngelos.Pages.Admin
             return RedirectToPage("/Admin/UserApplications");
         }
 
+        // Permanently removes a rejected application's account/data on demand, rather
+        // than waiting for RejectedApplicationPurgeService's 7-day sweep. No email —
+        // matches the same semantics as UserApplicationsModel.OnPostBulkDeleteAsync.
+        public async Task<IActionResult> OnPostDeleteAsync(string userId)
+        {
+            if (_environment.IsDevelopment() && userId == DevelopmentMockCitizenId)
+            {
+                TempData["AdminError"] = "Development mock only: no account was deleted.";
+                return RedirectToPage("/Admin/UserApplications");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["AdminError"] = "The citizen account could not be found.";
+                return RedirectToPage("/Admin/UserApplications");
+            }
+
+            await TryPurgeSensitiveMediaAsync(userId);
+
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                _logger.LogWarning("Admin permanently deleted citizen application {UserId}", userId);
+                TempData["AdminSuccess"] = "The application was permanently deleted.";
+            }
+            else
+            {
+                TempData["AdminError"] = "Could not delete this application — it may have just been changed by another admin.";
+            }
+
+            return RedirectToPage("/Admin/UserApplications");
+        }
+
         private async Task TryPurgeSensitiveMediaAsync(string userId)
         {
             try
