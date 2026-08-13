@@ -111,6 +111,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 return Page();
             }
 
+            // Accounts created before lockout was enabled for new users can be stuck with
+            // LockoutEnabled = false, which silently disables lockout even though failed
+            // attempts keep being counted. Backfill it here so every account is covered.
+            if (!user.LockoutEnabled)
+            {
+                await _userManager.SetLockoutEnabledAsync(user, true);
+            }
+
             // Check lockout
             if (await _userManager.IsLockedOutAsync(user))
             {
@@ -124,6 +132,17 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (!passwordValid)
             {
                 await _userManager.AccessFailedAsync(user);
+
+                // This attempt may have just crossed MaxFailedAccessAttempts. Re-check
+                // immediately so the account locks out on the attempt that trips it,
+                // instead of waiting for the user to try once more.
+                if (await _userManager.IsLockedOutAsync(user))
+                {
+                    TempData["LockedOutEmail"] = Input.Email;
+                    _logger.LogWarning("User account locked out.");
+                    return RedirectToPage("./Lockout");
+                }
+
                 ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                 return Page();
             }
