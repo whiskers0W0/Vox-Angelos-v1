@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="~/css/index.css?v=home-hero-fullbleed-v2" asp-append-version="true" />
 </head>
 <body>
+    <main id="main-content">
 
     <!-- Main stage -->
     <div class="stage position-relative d-flex flex-column align-items-center justify-content-center text-center w-100" style="z-index:10">
@@ -43,12 +44,12 @@
 
         <!-- Submission-first hero: presentation-only, with no form, request, route, or persistence contract. -->
         <div class="home-submission-hero" id="heroModeSwitcher" data-mode="concern">
-            <div class="hero-brand" aria-label="Vox Angelos"><img src="~/assets/VoxAngelosLogo.png" alt="" /></div>
+            <div class="hero-brand"><img src="~/assets/VoxAngelosLogo.png" alt="Vox Angelos" /></div>
             <div class="hero-copy"><span class="hero-kicker">A clearer path to civic action</span><h1 id="heroModeTitle">What concern needs attention?</h1></div>
             <div class="hero-mode-switcher" role="radiogroup" aria-label="Choose a submission type"><button type="button" class="hero-mode-button is-active" data-mode="concern" role="radio" aria-checked="true">Report a concern</button><button type="button" class="hero-mode-button" data-mode="recommendation" role="radio" aria-checked="false">Propose an idea</button></div>
             <div class="hero-composer" aria-live="polite">
                 <div class="hero-composer-heading"><label for="heroModeMessage" id="heroModeLabel">Describe the concern</label><span class="hero-mode-badge" id="heroModeBadge">Concern report</span></div><textarea id="heroModeMessage" rows="3" autocomplete="off" placeholder="Example: The streetlight near our barangay hall has been out for several nights."></textarea><div class="hero-composer-footer"><span id="heroModeHelper">Keep it specific: include the issue, where it is happening, and who it affects.</span><span class="hero-composer-scope">Non-urgent matters only</span></div><div class="hero-composer-submit-row">
-                <button id="heroModeSubmit" class="hero-submit-button" type="button">
+                <button id="heroModeSubmit" class="hero-submit-button" type="button" aria-label="Continue concern">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 2L11 13"></path>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
@@ -220,6 +221,8 @@
         </div>
 
     </section>
+
+    </main>
 
     <!-- Copyright and Footer -->
     <footer class="footer-section">
