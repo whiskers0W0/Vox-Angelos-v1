@@ -94,6 +94,29 @@ public sealed class CloudinaryAttachmentStorage
         return new CloudinaryAttachmentUpload(uploadResult.SecureUrl.ToString(), fileType);
     }
 
+    /// <summary>
+    /// Deletes a public concern or recommendation attachment from Cloudinary.
+    /// Legacy local paths are deliberately ignored and treated as already handled.
+    /// </summary>
+    public async Task<bool> DeleteAsync(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) ||
+            !TryGetCloudinaryAsset(filePath, out var publicId, out var resourceType))
+        {
+            return true;
+        }
+
+        var result = await CreateCloudinary().DestroyAsync(new DeletionParams(publicId)
+        {
+            ResourceType = resourceType,
+            Invalidate = true
+        });
+
+        return string.Equals(result.Result, "ok", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(result.Result, "not found", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(result.Result, "not_found", StringComparison.OrdinalIgnoreCase);
+    }
+
     private Cloudinary CreateCloudinary()
     {
         var cloudName = _configuration["Cloudinary:CloudName"];
@@ -136,5 +159,72 @@ public sealed class CloudinaryAttachmentStorage
     {
         return file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) ||
                Path.GetExtension(file.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryGetCloudinaryAsset(
+        string filePath,
+        out string publicId,
+        out ResourceType resourceType)
+    {
+        publicId = string.Empty;
+        resourceType = ResourceType.Image;
+
+        if (!Uri.TryCreate(filePath, UriKind.Absolute, out var uri) ||
+            !uri.Host.Equals("res.cloudinary.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var segments = uri.AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .ToArray();
+
+        var uploadIndex = Array.FindIndex(
+            segments,
+            segment => segment.Equals("upload", StringComparison.OrdinalIgnoreCase));
+
+        if (uploadIndex < 1 || uploadIndex + 1 >= segments.Length)
+            return false;
+
+        resourceType = segments[uploadIndex - 1].ToLowerInvariant() switch
+        {
+            "image" => ResourceType.Image,
+            "video" => ResourceType.Video,
+            "raw" => ResourceType.Raw,
+            _ => ResourceType.Image
+        };
+
+        var publicIdStart = uploadIndex + 1;
+        if (publicIdStart < segments.Length &&
+            segments[publicIdStart].Length > 1 &&
+            segments[publicIdStart][0] == 'v' &&
+            segments[publicIdStart][1..].All(char.IsDigit))
+        {
+            publicIdStart++;
+        }
+
+        if (publicIdStart >= segments.Length)
+            return false;
+
+        publicId = string.Join('/', segments[publicIdStart..]);
+
+        if (!publicId.StartsWith("voxangelos/concerns/", StringComparison.OrdinalIgnoreCase) &&
+            !publicId.StartsWith("voxangelos/recommendations/", StringComparison.OrdinalIgnoreCase))
+        {
+            publicId = string.Empty;
+            return false;
+        }
+
+        // Image and video delivery URLs include a format extension that is not
+        // part of the Cloudinary public ID. Raw-file public IDs may include it.
+        if (resourceType is ResourceType.Image or ResourceType.Video)
+        {
+            var extension = Path.GetExtension(publicId);
+            if (!string.IsNullOrWhiteSpace(extension))
+                publicId = publicId[..^extension.Length];
+        }
+
+        return !string.IsNullOrWhiteSpace(publicId);
     }
 }
