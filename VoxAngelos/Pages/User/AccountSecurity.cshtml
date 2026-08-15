@@ -7,6 +7,186 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/citizen-account-security.css" asp-append-version="true" />
+    <style>
+        .citizen-shell .security-card.security-danger-zone {
+            grid-column: 1 / -1;
+            border-top-color: #c62828;
+        }
+
+        .citizen-shell .security-card.security-danger-zone .security-card-heading {
+            border-bottom-color: #f3cccc;
+        }
+
+        .citizen-shell .security-danger-icon {
+            color: #b42318;
+            background: #feeceb;
+        }
+
+        .citizen-shell .security-info-note.security-danger-copy {
+            border-left-color: #c62828;
+            background: #fff1f0;
+            color: #7a271a;
+        }
+
+        .citizen-shell .security-primary-btn.security-danger-btn {
+            background: #b42318;
+            box-shadow: 0 6px 14px rgba(180, 35, 24, .22);
+        }
+
+        .citizen-shell .security-primary-btn.security-danger-btn:hover {
+            background: #912018;
+        }
+
+        .security-delete-dialog {
+            position: fixed;
+            inset: 0;
+            width: min(520px, calc(100vw - 32px));
+            max-width: none;
+            max-height: calc(100dvh - 32px);
+            margin: auto;
+            overflow: auto;
+            overscroll-behavior: contain;
+            padding: 0;
+            border: 0;
+            border-top: 4px solid #c62828;
+            border-radius: 18px;
+            color: #101828;
+            box-shadow: 0 24px 70px rgba(16, 24, 40, .28);
+            z-index: 10000;
+        }
+
+        .security-delete-dialog::backdrop {
+            background: rgba(15, 23, 42, .62);
+        }
+
+        .security-delete-dialog-content {
+            padding: 26px;
+        }
+
+        .security-delete-dialog-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #eaecf0;
+        }
+
+        .security-delete-dialog-header h2 {
+            margin: 0 0 4px;
+            color: #1e293b;
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .security-delete-dialog-header p,
+        .security-delete-warning {
+            margin: 0;
+            color: #667085;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .security-delete-close {
+            display: grid;
+            flex: 0 0 38px;
+            width: 38px;
+            height: 38px;
+            place-items: center;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: #667085;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .security-delete-close:hover {
+            background: #fff1f0;
+            color: #b42318;
+        }
+
+        .security-delete-warning {
+            margin: 18px 0;
+            padding: 12px 14px;
+            border-left: 3px solid #c62828;
+            border-radius: 10px;
+            background: #fff3f2;
+            color: #7a271a;
+        }
+
+        .security-delete-dialog .security-fields {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 0;
+        }
+
+        .security-delete-dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .security-delete-cancel {
+            border: 1px solid #d0d5dd;
+            border-radius: 9px;
+            padding: 11px 18px;
+            background: #fff;
+            color: #344054;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .security-delete-confirm {
+            border: 0;
+            border-radius: 9px;
+            padding: 11px 18px;
+            background: #b42318;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 2px 4px 8px rgba(180, 35, 24, .22);
+            cursor: pointer;
+        }
+
+        .security-delete-confirm:disabled {
+            border-color: #f0a8a3;
+            background: #f0a8a3;
+            cursor: not-allowed;
+        }
+
+        @@media (max-width: 560px) {
+            .security-delete-dialog {
+                width: calc(100vw - 24px);
+                max-height: calc(100dvh - 24px);
+                border-radius: 14px;
+            }
+
+            .security-delete-dialog-content {
+                padding: 19px;
+            }
+
+            .security-delete-dialog-header {
+                gap: 12px;
+            }
+
+            .security-delete-dialog-header h2 {
+                font-size: 18px;
+            }
+
+            .security-delete-dialog-actions {
+                flex-direction: column-reverse;
+            }
+
+            .security-delete-dialog-actions button {
+                width: 100%;
+            }
+        }
+    </style>
 }
 
 <div class="security-page">
@@ -185,6 +365,66 @@
                     <button type="submit" class="security-primary-btn">Send Verification Code</button>
                 </form>
             </section>
+
+            <section class="security-card security-danger-zone">
+                <div class="security-card-heading">
+                    <div class="security-icon security-danger-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v5M14 11v5" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2>Delete Account</h2>
+                        <p>Permanently close your Vox Angelos citizen account.</p>
+                    </div>
+                </div>
+
+                <p class="security-info-note security-danger-copy">
+                    Your private account data and unpublished submissions will be removed. Public concerns or recommendations that were already acted on or published may remain as anonymized civic records without your identity.
+                </p>
+
+                <button type="button" class="security-primary-btn security-danger-btn" id="openDeleteAccountDialog">Delete account</button>
+            </section>
+
+            <dialog class="security-delete-dialog" id="deleteAccountDialog" aria-labelledby="deleteAccountTitle">
+                <div class="security-delete-dialog-content">
+                    <div class="security-delete-dialog-header">
+                        <div>
+                            <h2 id="deleteAccountTitle">Delete your account?</h2>
+                            <p>This action is permanent and cannot be undone.</p>
+                        </div>
+                        <button type="button" class="security-delete-close" id="closeDeleteAccountDialog" aria-label="Close">&times;</button>
+                    </div>
+
+                    <p class="security-delete-warning">
+                        To protect your account, enter your current password and type <strong>DELETE</strong> exactly.
+                    </p>
+
+                    <form method="post" asp-page-handler="DeleteAccount" id="deleteAccountForm">
+                        <div asp-validation-summary="ModelOnly" class="security-validation"></div>
+                        <div class="security-fields">
+                            <div class="security-field">
+                                <label asp-for="DeletionInput.CurrentPassword">Current Password</label>
+                                <input asp-for="DeletionInput.CurrentPassword" autocomplete="current-password" />
+                                <span asp-validation-for="DeletionInput.CurrentPassword"></span>
+                            </div>
+                            <div class="security-field">
+                                <label asp-for="DeletionInput.Confirmation">Type DELETE to confirm</label>
+                                <input asp-for="DeletionInput.Confirmation" autocomplete="off" placeholder="DELETE" />
+                                <span asp-validation-for="DeletionInput.Confirmation"></span>
+                            </div>
+                        </div>
+
+                        <div class="security-delete-dialog-actions">
+                            <button type="button" class="security-delete-cancel" id="cancelDeleteAccount">Cancel</button>
+                            <button type="submit" class="security-delete-confirm" id="confirmDeleteAccountButton" disabled>Permanently delete account</button>
+                        </div>
+                    </form>
+                </div>
+            </dialog>
         }
     </div>
 </div>
@@ -203,6 +443,38 @@
                 button.setAttribute('aria-pressed', String(!isVisible));
                 button.setAttribute('aria-label', `${isVisible ? 'Show' : 'Hide'} ${button.dataset.target.includes('Confirm') ? 'password confirmation' : 'password'}`);
             });
+        });
+
+        const deleteDialog = document.getElementById('deleteAccountDialog');
+        const openDeleteDialogButton = document.getElementById('openDeleteAccountDialog');
+        const closeDeleteDialogButton = document.getElementById('closeDeleteAccountDialog');
+        const cancelDeleteButton = document.getElementById('cancelDeleteAccount');
+        const deletePasswordInput = document.getElementById('DeletionInput_CurrentPassword');
+        const deleteConfirmationInput = document.getElementById('DeletionInput_Confirmation');
+        const confirmDeleteButton = document.getElementById('confirmDeleteAccountButton');
+
+        const updateDeleteButton = () => {
+            if (!confirmDeleteButton) return;
+            confirmDeleteButton.disabled = !deletePasswordInput?.value || deleteConfirmationInput?.value.trim() !== 'DELETE';
+        };
+
+        const closeDeleteDialog = () => {
+            if (deleteDialog?.open) deleteDialog.close();
+        };
+
+        openDeleteDialogButton?.addEventListener('click', () => {
+            if (deleteDialog && !deleteDialog.open) {
+                deleteDialog.showModal();
+                deletePasswordInput?.focus();
+            }
+        });
+
+        closeDeleteDialogButton?.addEventListener('click', closeDeleteDialog);
+        cancelDeleteButton?.addEventListener('click', closeDeleteDialog);
+        deletePasswordInput?.addEventListener('input', updateDeleteButton);
+        deleteConfirmationInput?.addEventListener('input', updateDeleteButton);
+        deleteDialog?.addEventListener('click', event => {
+            if (event.target === deleteDialog) closeDeleteDialog();
         });
     </script>
 }
