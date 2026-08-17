@@ -92,16 +92,25 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (!ModelState.IsValid)
                 return Page();
 
-            var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
-            if (string.IsNullOrWhiteSpace(recaptchaToken))
-            {
-                ModelState.AddModelError(string.Empty,
-                    "Please confirm that you are not a robot before signing in.");
-                return Page();
-            }
+            // Functional-test escape hatch: a real reCAPTCHA token can only come from a
+            // live browser widget, so automated HTTP-level tests can never produce one.
+            // Off by default (absent from appsettings.json); only set when explicitly
+            // launching the app for the xUnit functional-test suite.
+            var bypassRecaptcha = _configuration.GetValue<bool>("Testing:BypassRecaptcha");
 
-            if (!await VerifyRecaptchaAsync(recaptchaToken))
-                return Page();
+            if (!bypassRecaptcha)
+            {
+                var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
+                if (string.IsNullOrWhiteSpace(recaptchaToken))
+                {
+                    ModelState.AddModelError(string.Empty,
+                        "Please confirm that you are not a robot before signing in.");
+                    return Page();
+                }
+
+                if (!await VerifyRecaptchaAsync(recaptchaToken))
+                    return Page();
+            }
 
             // Find user by email
             var user = await _userManager.FindByEmailAsync(Input.Email);

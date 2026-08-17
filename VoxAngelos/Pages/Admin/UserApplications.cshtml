@@ -142,6 +142,13 @@
     <input type="hidden" name="search" value="@Model.SearchTerm" />
     <input type="hidden" name="sort" value="@Model.SortOrder" />
 </form>
+<form method="post" asp-page-handler="BulkReject" id="bulk-reject-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sort" value="@Model.SortOrder" />
+</form>
 <form method="post" asp-page-handler="BulkDelete" id="bulk-delete-form">
     @Html.AntiForgeryToken()
     <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
@@ -155,6 +162,7 @@
     <button type="button" class="btn-cancel" id="appSelectAllBtn">Select all</button>
     <button type="button" class="btn-cancel" id="appClearSelectionBtn">Clear selection</button>
     <button type="button" class="btn-approve" id="appBulkApproveBtn">Approve selected</button>
+    <button type="button" class="btn-reject" id="appBulkRejectBtn">Reject selected</button>
     <button type="button" class="btn-reject" id="appBulkDeleteBtn">Delete selected</button>
 </div>
 
@@ -166,6 +174,17 @@
         <div class="modal-actions">
             <button type="button" class="btn-cancel" onclick="closeAppModals()">Cancel</button>
             <button type="button" class="btn-approve" id="confirmBulkApproveBtn">Confirm approval</button>
+        </div>
+    </div>
+</div>
+<div id="rejectSelectedModal" class="modal-overlay">
+    <div class="modal-box">
+        <span class="modal-eyebrow modal-eyebrow--danger">Confirmation required</span>
+        <h3>Reject selected applications?</h3>
+        <p id="rejectSelectedModalText"></p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeAppModals()">Cancel</button>
+            <button type="button" class="btn-reject" id="confirmBulkRejectBtn">Confirm rejection</button>
         </div>
     </div>
 </div>
@@ -303,6 +322,7 @@
 
         function closeAppModals() {
             document.getElementById('approveSelectedModal').style.display = 'none';
+            document.getElementById('rejectSelectedModal').style.display = 'none';
             document.getElementById('deleteSelectedModal').style.display = 'none';
         }
         window.closeAppModals = closeAppModals;
@@ -315,6 +335,14 @@
             document.getElementById('approveSelectedModal').style.display = 'flex';
         });
 
+        document.getElementById('appBulkRejectBtn').addEventListener('click', () => {
+            const ids = selectedUserIds();
+            if (ids.length === 0) return;
+            document.getElementById('rejectSelectedModalText').textContent =
+                ids.length + ' application(s) will be rejected and the applicants notified by email.';
+            document.getElementById('rejectSelectedModal').style.display = 'flex';
+        });
+
         document.getElementById('appBulkDeleteBtn').addEventListener('click', () => {
             const ids = selectedUserIds();
             if (ids.length === 0) return;
@@ -325,6 +353,12 @@
 
         document.getElementById('confirmBulkApproveBtn').addEventListener('click', () => {
             const form = document.getElementById('bulk-approve-form');
+            injectUserIds(form, selectedUserIds());
+            form.submit();
+        });
+
+        document.getElementById('confirmBulkRejectBtn').addEventListener('click', () => {
+            const form = document.getElementById('bulk-reject-form');
             injectUserIds(form, selectedUserIds());
             form.submit();
         });

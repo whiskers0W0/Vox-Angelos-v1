@@ -565,11 +565,7 @@
 }
 
 tr.app-row-selected td {
-    background: var(--applications-blue-soft) !important;
-}
-
-tr.app-row-selected td:first-child {
-    box-shadow: inset 3px 0 0 var(--applications-blue);
+    background: var(--applications-green-soft) !important;
 }
 
 .bulk-toolbar {
@@ -710,6 +706,7 @@ tr.app-row-selected td:first-child {
 }
 
 #bulk-approve-form,
+#bulk-reject-form,
 #bulk-delete-form {
     display: none;
 }

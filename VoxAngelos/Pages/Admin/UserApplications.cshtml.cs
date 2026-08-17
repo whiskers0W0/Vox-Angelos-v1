@@ -240,6 +240,80 @@ namespace VoxAngelos.Pages.Admin
             return RedirectToPage(new { filterStatus, faceMatchFilter, search, sort });
         }
 
+        public async Task<IActionResult> OnPostBulkRejectAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string? search = null,
+            string? sort = null)
+        {
+            var rejected = 0;
+            var skipped = 0;
+
+            foreach (var userId in userIds ?? Array.Empty<string>())
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null || user.ApprovalStatus != "Pending")
+                {
+                    skipped++;
+                    continue;
+                }
+
+                user.ApprovalStatus = "Rejected";
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                await TryPurgeSensitiveMediaAsync(userId);
+
+                // Records when this application was rejected — the timestamp
+                // RejectedApplicationPurgeService reads to permanently delete the
+                // account 7 days later, per the Data Privacy Act retention policy.
+                var accountApproval = await _context.AccountApprovals
+                    .FirstOrDefaultAsync(a => a.UserId == userId);
+                if (accountApproval == null)
+                {
+                    accountApproval = new AccountApproval { UserId = userId };
+                    _context.AccountApprovals.Add(accountApproval);
+                }
+                accountApproval.Status = "Rejected";
+                accountApproval.RejectionReason = null;
+                accountApproval.ReviewedAt = DateTime.UtcNow;
+                accountApproval.ReviewedByAdminId = _userManager.GetUserId(User);
+                await _context.SaveChangesAsync();
+
+                await _emailSender.SendEmailAsync(
+                    user.Email!,
+                    "Your Vox Angelos Account Application",
+                    $"<div style='font-family:Arial,sans-serif; max-width:480px; margin:0 auto;'>" +
+                    $"<h2 style='color:#c62828;'>Application Update</h2>" +
+                    $"<p>Hello,</p>" +
+                    $"<p>We regret to inform you that your Vox Angelos citizen account has been <strong style='color:#c62828;'>rejected</strong>.</p>" +
+                    $"<p><strong>Reason:</strong> Does not meet verification requirements.</p>" +
+                    $"<p>If you believe this is an error, please contact support.</p>" +
+                    $"<p style='color:#888; font-size:0.85rem;'>— The Vox Angelos Team</p>" +
+                    $"</div>");
+
+                _logger.LogInformation("Admin bulk-rejected citizen {UserId}", userId);
+                rejected++;
+            }
+
+            TempData["AdminSuccess"] = skipped == 0
+                ? $"{rejected} application(s) rejected and notified successfully."
+                : $"{rejected} application(s) rejected. {skipped} were skipped (already decided or not found).";
+
+            return RedirectToPage(new { filterStatus, faceMatchFilter, search, sort });
+        }
+
         public async Task<IActionResult> OnPostBulkDeleteAsync(
             string[] userIds,
             string filterStatus = "All",

@@ -17,6 +17,7 @@ namespace VoxAngelos.Services
         private readonly IHostEnvironment _env;
         private readonly ILogger<EmailSender> _logger;
         private readonly HttpClient _httpClient;
+        private readonly bool _suppressSend;
 
         public EmailSender(IConfiguration configuration, IHostEnvironment env, ILogger<EmailSender> logger, IHttpClientFactory httpClientFactory)
         {
@@ -25,6 +26,10 @@ namespace VoxAngelos.Services
             _env = env;
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient(nameof(EmailSender));
+            // Off by default (absent from appsettings.json); only set when launching the
+            // app for the xUnit integration-test suite, so real teammate inboxes aren't
+            // spammed by repeated automated test runs.
+            _suppressSend = configuration.GetValue<bool>("Testing:SuppressExternalNotifications");
 
             if (string.IsNullOrEmpty(_apiKey) && !_env.IsDevelopment())
                 throw new InvalidOperationException("Brevo:ApiKey is not configured.");
@@ -39,6 +44,12 @@ namespace VoxAngelos.Services
                 _logger.LogWarning(
                     "\n==================== DEV EMAIL ====================\nTo: {Email}\nSubject: {Subject}\n----------------------------------------------------\n{Body}\n=====================================================",
                     email, subject, StripHtml(htmlMessage));
+            }
+
+            if (_suppressSend)
+            {
+                _logger.LogWarning("SUPPRESSED EMAIL (Testing:SuppressExternalNotifications) To: {Email} Subject: {Subject}", email, subject);
+                return;
             }
 
             if (string.IsNullOrEmpty(_apiKey))

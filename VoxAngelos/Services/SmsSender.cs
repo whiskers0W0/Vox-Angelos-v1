@@ -19,6 +19,7 @@ namespace VoxAngelos.Services
         private readonly IHostEnvironment _env;
         private readonly ILogger<SmsSender> _logger;
         private readonly HttpClient _httpClient;
+        private readonly bool _suppressSend;
 
         public SmsSender(IConfiguration configuration, IHostEnvironment env, ILogger<SmsSender> logger, IHttpClientFactory httpClientFactory)
         {
@@ -27,6 +28,9 @@ namespace VoxAngelos.Services
             _env = env;
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient(nameof(SmsSender));
+            // Off by default; only set when launching the app for the xUnit integration-test
+            // suite, so repeated automated test runs never incur real per-message SMS cost.
+            _suppressSend = configuration.GetValue<bool>("Testing:SuppressExternalNotifications");
 
             if ((string.IsNullOrEmpty(_apiToken) || string.IsNullOrEmpty(_senderId)) && !_env.IsDevelopment())
                 throw new InvalidOperationException("PhilSms:ApiToken and PhilSms:SenderId must both be configured.");
@@ -41,6 +45,12 @@ namespace VoxAngelos.Services
                 _logger.LogWarning(
                     "\n==================== DEV SMS ====================\nTo: {Phone}\n--------------------------------------------------\n{Body}\n===================================================",
                     phoneNumber, message);
+            }
+
+            if (_suppressSend)
+            {
+                _logger.LogWarning("SUPPRESSED SMS (Testing:SuppressExternalNotifications) To: {Phone}", phoneNumber);
+                return;
             }
 
             if (string.IsNullOrEmpty(_apiToken) || string.IsNullOrEmpty(_senderId))
