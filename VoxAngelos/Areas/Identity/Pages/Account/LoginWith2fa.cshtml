@@ -37,6 +37,12 @@
 
             <section class="panel-right" aria-labelledby="twoFactorHeading">
                 <div class="two-factor-form">
+                    <div class="top-part">
+                        <a asp-area="" asp-page="/Index" class="back-link">
+                            <span class="back-link-arrow" aria-hidden="true">←</span>
+                            Back to Home Page
+                        </a>
+                    </div>
                     <span class="eyebrow">Identity verification</span>
                     <h2 id="twoFactorHeading">Confirm your access</h2>
                     <p class="two-factor-intro">A 6-digit verification code has been sent to your @(Model.OtpSentBySms ? "email and phone number" : "email"). Enter it below to authorize this session.</p>

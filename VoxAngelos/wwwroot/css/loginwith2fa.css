@@ -65,6 +65,12 @@ body {
 .portal-points span { color: #91b1e6; font-size: 8px; font-weight: 800; letter-spacing: .08em; }
 
 .two-factor-form { width: min(100%, 390px); }
+.top-part { display: flex; width: 110%; min-height: 63px; justify-content: flex-end; padding: 10px; }
+.back-link { display: inline-flex; min-height: 44px; max-width: 100%; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; border: 1px solid var(--auth-blue); border-radius: 7px; background: transparent; color: var(--auth-blue) !important; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-decoration: none; text-transform: uppercase; white-space: nowrap; transition: border-color .16s ease, color .16s ease, transform .16s ease; }
+.back-link:hover { border-color: var(--auth-blue-dark); color: var(--auth-blue) !important; transform: translateY(-1px); }
+.back-link:focus-visible { outline: 3px solid rgba(22,70,160,.22); outline-offset: 3px; }
+.back-link-arrow { font-size: 16px; line-height: 1; transition: transform .16s ease; }
+.back-link:hover .back-link-arrow { transform: translateX(-2px); }
 .two-factor-form h2 { margin: 0; color: var(--auth-ink); font-size: 29px; font-weight: 760; letter-spacing: -.04em; }
 .two-factor-intro { margin: 9px 0 29px; color: var(--auth-body); font-size: 12.5px; line-height: 1.55; }
 .form-text-label { display: block; margin-bottom: 7px; color: #687488; font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
@@ -110,6 +116,7 @@ body {
     .portal-brand { margin-bottom: 29px; }
     .portal-points { display: none; }
     .panel-right { padding: 34px 28px !important; }
+    .top-part { width: 100%; }
 }
 
 @media (max-width: 480px) {
