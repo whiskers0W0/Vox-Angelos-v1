@@ -825,6 +825,12 @@
         document.getElementById('btnNewProposal').addEventListener('click', () => {
             currentStep = 1;
             selectedCategory = '';
+            recommendationSubmitting = false;
+            setSubmissionInteractionLock(recommendationFormSurface, false);
+            btnNext.disabled = false;
+            btnSaveDraft.disabled = false;
+            btnNext.textContent = 'Next';
+            recommendationStatus.textContent = '';
             document.getElementById('projectJustification').value = '';
             document.getElementById('projectTitle').value = '';
             document.getElementById('projectLocation').value = '';
@@ -1592,6 +1598,7 @@
                 throw new Error(result.message || 'Your concern could not be submitted. Please try again.');
             }
 
+            setSubmissionInteractionLock(form, false);
             form.style.display = 'none';
             concernSuccessState.classList.add('active');
         }

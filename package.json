@@ -1,0 +1,27 @@
+{
+  "name": "vox-angelos-v1",
+  "version": "1.0.0",
+  "description": "- [Manual Override Feature](docs/manual-override-feature.md) — LGU re-routing of misclassified concerns\r - [API Rate-Limiting](docs/rate-limiting.md) — Denial of Wallet mitigation on registration/submission\r - [Urgency Algorithm — Location Density Score](docs/urgency-algorithm-location-density-score.md) — PostGIS-backed density scoring\r - [Sensitive Media Retention](docs/sensitive-media-retention.md) — 3-day auto-delete of ID/selfie images\r - [Realtime Updates](docs/realtime-updates.md) — SignalR push for concerns/posts/ratings\r - [500-case NLP test dataset](docs/test-data/README.md) — English/Tagalog/Kapampangan/Taglish concern test cases",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whiskers0W0/Vox-Angelos-v1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/whiskers0W0/Vox-Angelos-v1/issues"
+  },
+  "homepage": "https://github.com/whiskers0W0/Vox-Angelos-v1#readme",
+  "devDependencies": {
+    "cypress": "^15.20.1"
+  }
+}
