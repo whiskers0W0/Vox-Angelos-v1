@@ -47,15 +47,19 @@
         </header>
 
         <nav class="admin-applications-filters" aria-label="Filter applications by status">
-            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="All" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
-            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
-            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Approved" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
-            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Rejected" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="All" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Approved" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Rejected" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
         </nav>
 
         <form method="get" class="admin-applications-date-filters" id="applicationDateFilters">
             <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
             <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+            <label>
+                <span>Search</span>
+                <input type="search" name="search" value="@Model.SearchTerm" placeholder="Name, email, or contact" />
+            </label>
             <label>
                 <span>Date range</span>
                 <select name="dateRange" id="dateRangeFilter">
@@ -88,7 +92,7 @@
 
         <div class="admin-applications-selection-hint">
             <span aria-hidden="true">&#9745;</span>
-            Long-press a pending application to select it. Once selection starts, tap other pending rows to add them.
+            Long-press an application to select it. Once selection starts, tap other rows to add them.
         </div>
 
         <div class="admin-applications-table-wrap">
@@ -113,7 +117,7 @@
                     }
                     @foreach (var app in Model.Applications)
                     {
-                        var isSelectable = !app.IsMock && app.ApprovalStatus == "Pending";
+                        var isSelectable = !app.IsMock;
                         <tr class="app-row @(app.IsMock ? "admin-applications-mock-row" : "")"
                             data-selectable="@isSelectable.ToString().ToLowerInvariant()">
                             <td data-label="Applicant">
@@ -161,6 +165,7 @@
     <input type="hidden" name="dateRange" value="@Model.DateRange" />
     <input type="hidden" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
     <input type="hidden" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
     <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
 </form>
 <form method="post" asp-page-handler="BulkReject" id="bulkRejectForm" class="admin-applications-hidden-form">
@@ -170,15 +175,27 @@
     <input type="hidden" name="dateRange" value="@Model.DateRange" />
     <input type="hidden" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
     <input type="hidden" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+</form>
+<form method="post" asp-page-handler="BulkDelete" id="bulkDeleteForm" class="admin-applications-hidden-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="dateRange" value="@Model.DateRange" />
+    <input type="hidden" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
     <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
 </form>
 
 <div class="admin-applications-bulk-toolbar" id="appBulkToolbar" hidden role="region" aria-label="Bulk application decisions">
     <strong id="appBulkCount">0 selected</strong>
-    <button type="button" class="bulk-secondary" id="appSelectAllBtn">Select all pending</button>
+    <button type="button" class="bulk-secondary" id="appSelectAllBtn">Select all shown</button>
     <button type="button" class="bulk-secondary" id="appClearSelectionBtn">Clear</button>
     <button type="button" class="bulk-approve" id="appBulkApproveBtn">Approve selected</button>
     <button type="button" class="bulk-reject" id="appBulkRejectBtn">Reject selected</button>
+    <button type="button" class="bulk-reject" id="appBulkDeleteBtn">Delete selected</button>
 </div>
 
 <div class="admin-applications-modal" id="bulkDecisionModal" hidden role="dialog" aria-modal="true" aria-labelledby="bulkDecisionTitle">
@@ -292,12 +309,15 @@
             if (!count) return;
             pendingDecision = decision;
             const approve = decision === 'approve';
+            const deleting = decision === 'delete';
             document.getElementById('bulkDecisionEyebrow').classList.toggle('danger', !approve);
-            document.getElementById('bulkDecisionTitle').textContent = `${approve ? 'Approve' : 'Reject'} selected applications?`;
-            document.getElementById('bulkDecisionText').textContent =
-                `${count} pending application${count === 1 ? '' : 's'} will be ${approve ? 'approved' : 'rejected'}. Each applicant will be notified.`;
+            document.getElementById('bulkDecisionTitle').textContent =
+                `${approve ? 'Approve' : deleting ? 'Permanently delete' : 'Reject'} selected applications?`;
+            document.getElementById('bulkDecisionText').textContent = deleting
+                ? `${count} application${count === 1 ? '' : 's'} and all associated data will be permanently deleted. This cannot be undone.`
+                : `${count} selected application${count === 1 ? '' : 's'} will be ${approve ? 'approved' : 'rejected'}. Pending applicants will be notified.`;
             const confirmButton = document.getElementById('confirmBulkDecisionBtn');
-            confirmButton.textContent = approve ? 'Confirm approval' : 'Confirm rejection';
+            confirmButton.textContent = approve ? 'Confirm approval' : deleting ? 'Confirm permanent deletion' : 'Confirm rejection';
             confirmButton.className = approve ? 'bulk-approve' : 'bulk-reject';
             modal.hidden = false;
             confirmButton.focus();
@@ -310,13 +330,17 @@
 
         document.getElementById('appBulkApproveBtn').addEventListener('click', () => openDecisionModal('approve'));
         document.getElementById('appBulkRejectBtn').addEventListener('click', () => openDecisionModal('reject'));
+        document.getElementById('appBulkDeleteBtn').addEventListener('click', () => openDecisionModal('delete'));
         document.getElementById('cancelBulkDecisionBtn').addEventListener('click', closeDecisionModal);
         modal.addEventListener('click', event => { if (event.target === modal) closeDecisionModal(); });
         document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modal.hidden) closeDecisionModal(); });
 
         document.getElementById('confirmBulkDecisionBtn').addEventListener('click', () => {
             if (!pendingDecision) return;
-            const form = document.getElementById(pendingDecision === 'approve' ? 'bulkApproveForm' : 'bulkRejectForm');
+            const formId = pendingDecision === 'approve'
+                ? 'bulkApproveForm'
+                : pendingDecision === 'delete' ? 'bulkDeleteForm' : 'bulkRejectForm';
+            const form = document.getElementById(formId);
             form.querySelectorAll('input[name="userIds"]').forEach(input => input.remove());
             selectedCheckboxes().forEach(checkbox => {
                 const input = document.createElement('input');

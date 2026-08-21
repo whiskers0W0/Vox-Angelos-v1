@@ -42,6 +42,7 @@ namespace VoxAngelos.Pages.Admin
         public string DateRange { get; set; } = "All";
         public DateOnly? DateFrom { get; set; }
         public DateOnly? DateTo { get; set; }
+        public string SearchTerm { get; set; } = string.Empty;
         public string SortOrder { get; set; } = "Newest";
 
         public async Task OnGetAsync(
@@ -50,6 +51,7 @@ namespace VoxAngelos.Pages.Admin
             string dateRange = "All",
             DateOnly? dateFrom = null,
             DateOnly? dateTo = null,
+            string? search = null,
             string sortOrder = "Newest")
         {
             FilterStatus = new[] { "All", "Pending", "Approved", "Rejected" }.Contains(filterStatus)
@@ -61,6 +63,7 @@ namespace VoxAngelos.Pages.Admin
             DateTo = dateTo;
             if (DateFrom.HasValue && DateTo.HasValue && DateFrom > DateTo)
                 (DateFrom, DateTo) = (DateTo, DateFrom);
+            SearchTerm = search?.Trim() ?? string.Empty;
             SortOrder = string.Equals(sortOrder, "Oldest", StringComparison.OrdinalIgnoreCase)
                 ? "Oldest" : "Newest";
 
@@ -146,6 +149,16 @@ namespace VoxAngelos.Pages.Admin
                     .ToList();
             }
 
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                Applications = Applications
+                    .Where(a =>
+                        a.FullName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        a.Email.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        a.ContactNumber.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
             if (_environment.IsDevelopment()
                 && faceMatchFilter != "Attention"
                 && (filterStatus == "All" || filterStatus == "Pending"))
@@ -222,8 +235,9 @@ namespace VoxAngelos.Pages.Admin
             string dateRange = "All",
             DateOnly? dateFrom = null,
             DateOnly? dateTo = null,
+            string? search = null,
             string sortOrder = "Newest") =>
-            ApplyBulkDecisionAsync(userIds, "Approved", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, sortOrder);
+            ApplyBulkDecisionAsync(userIds, "Approved", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, search, sortOrder);
 
         public Task<IActionResult> OnPostBulkRejectAsync(
             string[] userIds,
@@ -232,8 +246,9 @@ namespace VoxAngelos.Pages.Admin
             string dateRange = "All",
             DateOnly? dateFrom = null,
             DateOnly? dateTo = null,
+            string? search = null,
             string sortOrder = "Newest") =>
-            ApplyBulkDecisionAsync(userIds, "Rejected", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, sortOrder);
+            ApplyBulkDecisionAsync(userIds, "Rejected", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, search, sortOrder);
 
         private async Task<IActionResult> ApplyBulkDecisionAsync(
             string[] userIds,
@@ -243,6 +258,7 @@ namespace VoxAngelos.Pages.Admin
             string dateRange,
             DateOnly? dateFrom,
             DateOnly? dateTo,
+            string? search,
             string sortOrder)
         {
             var decided = 0;
@@ -316,6 +332,67 @@ namespace VoxAngelos.Pages.Admin
                 dateRange,
                 dateFrom = dateFrom?.ToString("yyyy-MM-dd"),
                 dateTo = dateTo?.ToString("yyyy-MM-dd"),
+                search,
+                sortOrder
+            });
+        }
+
+        public async Task<IActionResult> OnPostBulkDeleteAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string? search = null,
+            string sortOrder = "Newest")
+        {
+            var deleted = 0;
+            var skipped = 0;
+
+            foreach (var userId in (userIds ?? Array.Empty<string>())
+                         .Where(id => !string.IsNullOrWhiteSpace(id))
+                         .Distinct(StringComparer.Ordinal)
+                         .Take(100))
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null || !await _userManager.IsInRoleAsync(user, "User"))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                await TryPurgeSensitiveMediaAsync(userId);
+                var result = await _userManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    deleted++;
+                    _logger.LogWarning("Admin permanently deleted citizen application {UserId}", userId);
+                }
+                else
+                    skipped++;
+            }
+
+            if (deleted == 0)
+                TempData["AdminError"] = "None of the selected applications could be deleted.";
+            else
+                TempData["AdminSuccess"] = $"{deleted} application(s) permanently deleted." +
+                    (skipped > 0 ? $" {skipped} could not be deleted." : "");
+
+            return RedirectToPage(new
+            {
+                filterStatus,
+                faceMatchFilter,
+                dateRange,
+                dateFrom = dateFrom?.ToString("yyyy-MM-dd"),
+                dateTo = dateTo?.ToString("yyyy-MM-dd"),
+                search,
                 sortOrder
             });
         }
