@@ -230,6 +230,23 @@
                                         </div>
                                         <div id="awsLivenessRoot" class="aws-liveness-shell"
                                              data-config='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { region = Model.AwsRegion, identityPoolId = Model.AwsIdentityPoolId }))'></div>
+                                        <div id="faceVerificationSuccess" class="face-verification-success" role="status" aria-live="polite" hidden>
+                                            <span class="face-verification-success__icon" aria-hidden="true">✓</span>
+                                            <span>
+                                                <strong>Identity verified</strong>
+                                                <small>Your live face matched the photo on your ID.</small>
+                                            </span>
+                                        </div>
+                                        <div class="face-check-guide" id="faceCheckGuide">
+                                            <strong>Before you begin</strong>
+                                            <ul>
+                                                <li>Use a well-lit area and face the light.</li>
+                                                <li>Remove masks, hats, and sunglasses.</li>
+                                                <li>Center your whole face and look directly at the camera.</li>
+                                                <li>Hold your phone steady and follow the on-screen instructions.</li>
+                                                <li>Use your live camera—not a photo, recording, or screen.</li>
+                                            </ul>
+                                        </div>
                                         <div class="camera-controls" id="cameraControls">
                                             <button type="button" id="btnStartCamera" onclick="startAwsLiveness()" class="face-check-start">Start secure face check <span aria-hidden="true">→</span></button>
                                         </div>
@@ -241,7 +258,7 @@
 
                             <div class="d-flex gap-3 mt-3">
                                 <button type="button" class="cta-back" onclick="goToStep1()">Back</button>
-                                <button type="button" id="step2NextBtn" class="cta flex-grow-1" onclick="goToStep3()">
+                                <button type="button" id="step2NextBtn" class="cta flex-grow-1" onclick="goToStep3()" disabled>
                                     Next Step <span class="cta-arr ms-2"></span>
                                 </button>
                             </div>
@@ -404,6 +421,11 @@
         function resetFaceVerification() {
         livenessCompleted = false;
         document.getElementById('faceVerificationToken').value = '';
+        document.getElementById('faceVerificationSuccess').hidden = true;
+        document.getElementById('faceCheckCard').classList.remove('is-verified');
+        const nextButton = document.getElementById('step2NextBtn');
+        nextButton.disabled = true;
+        nextButton.innerHTML = 'Next Step <span class="cta-arr ms-2"></span>';
         setStatus('', '');
         }
 
@@ -437,13 +459,15 @@
         headers: { RequestVerificationToken: document.querySelector('input[name="__RequestVerificationToken"]').value }
         });
         const data = await response.json();
-        const metricText = data.metrics
-        ? ` Liveness: ${data.metrics.liveness}%. Face similarity: ${data.metrics.similarity}%. Required: ${data.metrics.requiredSimilarity}%.`
-        : '';
-        if (!response.ok || !data.success) throw new Error((data.error || 'Face verification failed.') + metricText);
+        if (!response.ok || !data.success) throw new Error(data.error || 'Face verification failed.');
         document.getElementById('faceVerificationToken').value = data.verificationToken;
         livenessCompleted = true;
-        setStatus('Live face verified against your ID.' + metricText, 'success');
+        document.getElementById('faceCheckCard').classList.add('is-verified');
+        document.getElementById('faceVerificationSuccess').hidden = false;
+        const nextButton = document.getElementById('step2NextBtn');
+        nextButton.disabled = false;
+        nextButton.innerHTML = 'Continue to Secure Account <span class="cta-arr ms-2">→</span>';
+        setStatus('Verification complete. Continue when you are ready.', 'success');
         } catch (error) {
         resetFaceVerification();
         setStatus(error.message, 'error');
@@ -648,7 +672,7 @@
         const dimensionOk = await checkIdDimensions(idFile, cfg);
         if (!dimensionOk) return;
 
-        showResultModal('success', 'Verified', 'Identity check successful.', () => showStep(2, 3));
+        showStep(2, 3);
         }
 
         function normalizeImageOrientation(file) {

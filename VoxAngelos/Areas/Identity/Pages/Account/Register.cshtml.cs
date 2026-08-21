@@ -193,6 +193,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             }
         }
 
+        public IActionResult OnPostCancelFaceLiveness()
+        {
+            // Releases only the short-lived "currently active" lock. The attempt
+            // remains counted because AWS already created a paid liveness session.
+            _faceLivenessUsageGuard.End(GetFaceLivenessClientKey());
+            return new JsonResult(new { success = true });
+        }
+
         public async Task<IActionResult> OnPostCompleteFaceLivenessAsync(
             IFormFile idPhoto, string idType, string sessionId)
         {
@@ -217,13 +225,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                     return new JsonResult(new
                     {
                         success = false,
-                        error = result.Error ?? "Face verification failed.",
-                        metrics = _environment.IsDevelopment() ? new
-                        {
-                            liveness = Math.Round(result.LivenessConfidence, 1),
-                            similarity = Math.Round(result.Similarity, 1),
-                            requiredSimilarity = _awsFaceVerificationService.SimilarityThreshold
-                        } : null
+                        error = result.Error ?? "Face verification failed."
                     });
 
                 var token = _faceTicketStore.Create(new RegistrationFaceTicket(
@@ -236,13 +238,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 return new JsonResult(new
                 {
                     success = true,
-                    verificationToken = token,
-                    metrics = _environment.IsDevelopment() ? new
-                    {
-                        liveness = Math.Round(result.LivenessConfidence, 1),
-                        similarity = Math.Round(result.Similarity, 1),
-                        requiredSimilarity = _awsFaceVerificationService.SimilarityThreshold
-                    } : null
+                    verificationToken = token
                 });
             }
             catch (Exception ex)
