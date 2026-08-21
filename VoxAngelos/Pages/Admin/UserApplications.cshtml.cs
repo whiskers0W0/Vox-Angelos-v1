@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ namespace VoxAngelos.Pages.Admin
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _environment;
         private readonly SensitiveMediaRetentionService _mediaRetention;
+        private readonly IEmailSender _emailSender;
         private readonly ILogger<UserApplicationsModel> _logger;
 
         public UserApplicationsModel(
@@ -22,12 +24,14 @@ namespace VoxAngelos.Pages.Admin
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment environment,
             SensitiveMediaRetentionService mediaRetention,
+            IEmailSender emailSender,
             ILogger<UserApplicationsModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
             _mediaRetention = mediaRetention;
+            _emailSender = emailSender;
             _logger = logger;
         }
 
@@ -208,6 +212,127 @@ namespace VoxAngelos.Pages.Admin
                     ? "The citizen account could not be found."
                     : "This application has already received a final decision and cannot be changed.";
             return RedirectToPage(new { filterStatus = FilterStatus });
+        }
+
+        public Task<IActionResult> OnPostBulkApproveAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string sortOrder = "Newest") =>
+            ApplyBulkDecisionAsync(userIds, "Approved", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, sortOrder);
+
+        public Task<IActionResult> OnPostBulkRejectAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string sortOrder = "Newest") =>
+            ApplyBulkDecisionAsync(userIds, "Rejected", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, sortOrder);
+
+        private async Task<IActionResult> ApplyBulkDecisionAsync(
+            string[] userIds,
+            string decision,
+            string filterStatus,
+            string faceMatchFilter,
+            string dateRange,
+            DateOnly? dateFrom,
+            DateOnly? dateTo,
+            string sortOrder)
+        {
+            var decided = 0;
+            var skipped = 0;
+            var notificationFailures = 0;
+            var isApproval = decision == "Approved";
+
+            foreach (var userId in (userIds ?? Array.Empty<string>())
+                         .Where(id => !string.IsNullOrWhiteSpace(id))
+                         .Distinct(StringComparer.Ordinal)
+                         .Take(100))
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null || user.ApprovalStatus != "Pending" || !await _userManager.IsInRoleAsync(user, "User"))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                user.ApprovalStatus = decision;
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                await TryPurgeSensitiveMediaAsync(userId);
+                decided++;
+                _logger.LogInformation("Admin bulk-{Decision} citizen {UserId}", decision.ToLowerInvariant(), userId);
+
+                if (!string.IsNullOrWhiteSpace(user.Email))
+                {
+                    try
+                    {
+                        await SendDecisionEmailAsync(user.Email, isApproval);
+                    }
+                    catch (Exception ex)
+                    {
+                        notificationFailures++;
+                        _logger.LogWarning(ex, "Bulk decision email failed for citizen {UserId}", userId);
+                    }
+                }
+            }
+
+            if (decided == 0)
+                TempData["AdminError"] = skipped == 0
+                    ? "No applications were selected."
+                    : "None of the selected applications could be changed. They may already have a final decision.";
+            else
+            {
+                var action = isApproval ? "approved" : "rejected";
+                TempData["AdminSuccess"] = $"{decided} application(s) {action}." +
+                    (skipped > 0 ? $" {skipped} skipped because they were already decided or unavailable." : "") +
+                    (notificationFailures > 0 ? $" {notificationFailures} email notification(s) could not be sent." : " Applicants were notified.");
+            }
+
+            return RedirectToPage(new
+            {
+                filterStatus,
+                faceMatchFilter,
+                dateRange,
+                dateFrom = dateFrom?.ToString("yyyy-MM-dd"),
+                dateTo = dateTo?.ToString("yyyy-MM-dd"),
+                sortOrder
+            });
+        }
+
+        private Task SendDecisionEmailAsync(string email, bool approved)
+        {
+            var subject = approved
+                ? "Your Vox Angelos Account Has Been Approved"
+                : "Your Vox Angelos Account Application";
+            var heading = approved ? "Account Approved!" : "Application Update";
+            var color = approved ? "#2e7d32" : "#c62828";
+            var message = approved
+                ? "Your Vox Angelos citizen account has been reviewed and approved. You can now log in and use the platform."
+                : "Your Vox Angelos citizen account application was rejected because it did not meet the verification requirements.";
+
+            return _emailSender.SendEmailAsync(
+                email,
+                subject,
+                $"<div style='font-family:Arial,sans-serif;max-width:480px;margin:0 auto'>" +
+                $"<h2 style='color:{color}'>{heading}</h2><p>Hello,</p><p>{message}</p>" +
+                "<p style='color:#888;font-size:.85rem'>— The Vox Angelos Team</p></div>");
         }
 
         private async Task TryPurgeSensitiveMediaAsync(string userId)
