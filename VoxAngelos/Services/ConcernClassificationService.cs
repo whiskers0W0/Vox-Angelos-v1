@@ -26,15 +26,18 @@ namespace VoxAngelos.Services
         private readonly ApplicationDbContext _db;
         private readonly ILogger<ConcernClassificationService> _logger;
         private readonly HfConcernClassifierService _hfClassifier;
+        private readonly GeminiConcernClassifierService _geminiClassifier;
 
         public ConcernClassificationService(
             ApplicationDbContext db,
             ILogger<ConcernClassificationService> logger,
-            HfConcernClassifierService hfClassifier)
+            HfConcernClassifierService hfClassifier,
+            GeminiConcernClassifierService geminiClassifier)
         {
             _db = db;
             _logger = logger;
             _hfClassifier = hfClassifier;
+            _geminiClassifier = geminiClassifier;
         }
 
         // Departments this classifier can route to — used to validate corrections.
@@ -87,6 +90,14 @@ namespace VoxAngelos.Services
                 "dswd", "social protection", "human services",
                 "family assistance", "crisis", "humanitarian", "charity",
                 "senior benefits", "burial", "burial assistance",
+                // Neighbor/community disturbances (noise, videoke, house parties past curfew) are
+                // routed here as a peace-and-order/community-welfare concern rather than to
+                // CENRO (industrial/environmental noise pollution) or PTRO (traffic) — this LGU's
+                // barangay-level nuisance complaints go through Social Welfare, not those offices.
+                "noise", "loud", "loud noise", "loud music", "noisy",
+                "karaoke", "videoke", "sing", "singing", "loud singing",
+                "noise complaint", "disturbance", "disturbing the peace", "public disturbance",
+                "neighbor dispute", "neighbor complaint", "peace and order", "curfew violation",
                 // Filipino / Tagalog
                 "tulong", "ayuda", "benepisyo", "mahirap", "pamilya",
                 "bata", "batang", "kabataan", "kababaihan", "babae",
@@ -94,6 +105,8 @@ namespace VoxAngelos.Services
                 "gutom", "pagkain", "likas", "lindol", "bagyo", "sakuna", "kalamidad",
                 "lumikas", "pabahay", "subsidyo", "hanapbuhay",
                 "nasunog", "nawala", "nawalan", "biktima", "nasalanta",
+                "ingay", "maingay", "malakas na tunog", "malakas na musika",
+                "kumakanta", "away ng kapitbahay", "gulo sa kapitbahayan",
                 // Kapampangan
                 "saup", "tutulungan", "masalat", "pengari", "anak", "babai",
                 "kekatamu", "kapamilya"
@@ -342,15 +355,23 @@ namespace VoxAngelos.Services
         private const int MinConfidentClassificationScore = 2;
 
         /// <summary>
-        /// Primary: our self-trained TF-IDF + SVM concern classifier (HF Space). A low-confidence
-        /// HF prediction is treated as evidence the text is off-topic/troll noise and rejected
-        /// outright — it does NOT get a second opinion from local keyword scoring, since a
-        /// keyword coincidentally matching off-topic text is exactly the kind of false positive
-        /// that got spam through before. Local keyword/learned-weight scoring only runs as a
-        /// fallback when the HF Space itself is unreachable (an availability issue, not a content
-        /// signal). Vulgar or too-sparse text is rejected before ever calling the HF Space. The
-        /// LGU "Close as Invalid" action remains the last resort for anything that still slips
-        /// past these checks.
+        /// Two-stage pipeline. Stage 1 is our self-trained TF-IDF + SVM concern classifier
+        /// (HF Space) plus the keyword-matching signal (built-in list + admin-curated tags +
+        /// learned weights from LGU corrections) — this is the NLP layer, and it runs on every
+        /// submission first. Stage 2 hands the text to Gemini alongside both stage-1 signals as
+        /// advisory context (grounding it against the same department vocabulary the keyword
+        /// scorer uses) and takes Gemini's verdict as final — it catches cases where the NLP
+        /// model's category or the keyword overlap doesn't match what the citizen actually meant.
+        /// Confidence-threshold rejection on the raw HF score is disabled for now (pending panel
+        /// review of where to set MinHfConfidence) — every HF prediction is passed through to
+        /// stage 2 regardless of confidence.
+        ///
+        /// Gemini being unreachable (rate limit, no billing credits, network issue) is an
+        /// availability problem, not a content signal, so it falls back to the original
+        /// HF → learned weights → keyword chain rather than punishing the citizen for an outage.
+        /// Vulgar or too-sparse text is rejected before either stage ever runs. The LGU
+        /// "Close as Invalid" action remains the last resort for anything that still slips past
+        /// these checks.
         /// </summary>
         public async Task<ClassificationResult> ClassifyAsync(string description)
         {
@@ -369,52 +390,69 @@ namespace VoxAngelos.Services
                     "Please provide more detail — describe what's happening and where, so we can route it to the right office.");
             }
 
+            // ── Stage 1: NLP signals (HF model + keyword matching) ──────────────────────
+
             var hfPrediction = await _hfClassifier.ClassifyAsync(description);
 
+            // Admin-assigned category→department mapping (Office Management) wins over the
+            // HF Space's own office_map.json — this is what lets a FUTURE_EXPANSION category
+            // get a real office later without redeploying the Space.
+            var categoryDepartments = await LoadCategoryDepartmentsAsync();
+            string? hfDepartment = null;
             if (hfPrediction?.Category != null)
             {
-                // Confidence-threshold rejection is disabled for now (pending panel review of
-                // where to set MinHfConfidence) — every HF prediction is accepted regardless of
-                // confidence. To re-enable, restore the block below.
-                // var hfIsConfident = hfPrediction.Confidence == null || hfPrediction.Confidence >= MinHfConfidence;
-                //
-                // if (!hfIsConfident)
-                // {
-                //     _logger.LogInformation(
-                //         "HF classifier LOW CONFIDENCE: category={Category} confidence={Confidence} — rejecting as likely off-topic",
-                //         hfPrediction.Category, hfPrediction.Confidence);
-                //     return new ClassificationResult(null, "Rejected", true,
-                //         "We couldn't confirm this is a specific local concern. Please add more detail — what's happening, and where — so we can route it to the right office.",
-                //         Confidence: hfPrediction.Confidence);
-                // }
-
-                // Admin-assigned category→department mapping (Office Management) wins over
-                // the HF Space's own office_map.json — this is what lets a FUTURE_EXPANSION
-                // category get a real office later without redeploying the Space.
-                var categoryDepartments = await LoadCategoryDepartmentsAsync();
                 if (categoryDepartments.TryGetValue(hfPrediction.Category, out var mappedDepartment))
-                {
-                    _logger.LogInformation(
-                        "HF classifier CLASSIFIED: category={Category} department={Department} confidence={Confidence} (admin mapping)",
-                        hfPrediction.Category, mappedDepartment, hfPrediction.Confidence);
-                    return new ClassificationResult(mappedDepartment, "HF Model", Confidence: hfPrediction.Confidence);
-                }
+                    hfDepartment = mappedDepartment;
+                else if (!string.IsNullOrWhiteSpace(hfPrediction.Office)
+                    && hfPrediction.Office != "FUTURE_EXPANSION" && Departments.Contains(hfPrediction.Office))
+                    hfDepartment = hfPrediction.Office;
+            }
 
-                var office = hfPrediction.Office;
-                if (!string.IsNullOrWhiteSpace(office) && office != "FUTURE_EXPANSION" && Departments.Contains(office))
+            var learned = await LoadLearnedWeightsAsync();
+            var departmentTags = await LoadDepartmentTagsAsync();
+            var keywordScores = ScoreAllDepartments(description, learned, departmentTags);
+
+            // ── Stage 2: Gemini verification — trusted over stage 1 when it answers ─────
+
+            var geminiVerdict = await _geminiClassifier.ClassifyAsync(
+                description, hfDepartment, hfPrediction?.Category, keywordScores);
+
+            if (geminiVerdict != null)
+            {
+                if (geminiVerdict.Department != null)
                 {
                     _logger.LogInformation(
                         "HF classifier CLASSIFIED: category={Category} department={Department} confidence={Confidence}",
-                        hfPrediction.Category, office, hfPrediction.Confidence);
-                    return new ClassificationResult(office, "HF Model", Confidence: hfPrediction.Confidence);
+                        hfPrediction?.Category, geminiVerdict.Department, hfPrediction?.Confidence ?? geminiVerdict.Confidence);
+                    return new ClassificationResult(
+                        geminiVerdict.Department, "HF Model", Confidence: hfPrediction?.Confidence ?? geminiVerdict.Confidence);
                 }
 
+                _logger.LogInformation(
+                    "HF classifier predicted category={Category} confidence={Confidence} — no usable department, accepting as Uncategorized",
+                    hfPrediction?.Category, hfPrediction?.Confidence ?? geminiVerdict.Confidence);
+                return new ClassificationResult(
+                    null, "HF Model (Future Expansion)", Confidence: hfPrediction?.Confidence ?? geminiVerdict.Confidence);
+            }
+
+            // ── Fallback chain (Gemini unavailable) ──────────────────────────────────────
+
+            if (hfDepartment != null)
+            {
+                _logger.LogInformation(
+                    "HF classifier CLASSIFIED: category={Category} department={Department} confidence={Confidence}",
+                    hfPrediction!.Category, hfDepartment, hfPrediction.Confidence);
+                return new ClassificationResult(hfDepartment, "HF Model", Confidence: hfPrediction.Confidence);
+            }
+
+            if (hfPrediction?.Category != null)
+            {
                 // Confidently a real, known category — just no office mapped to it yet. This is
                 // a legitimate concern, not spam, so it's accepted as Uncategorized rather than
                 // rejected.
                 _logger.LogInformation(
-                    "HF classifier predicted category={Category} office={Office} confidence={Confidence} — no usable department, accepting as Uncategorized",
-                    hfPrediction.Category, office ?? "(none)", hfPrediction.Confidence);
+                    "HF classifier predicted category={Category} confidence={Confidence} — no usable department, accepting as Uncategorized",
+                    hfPrediction.Category, hfPrediction.Confidence);
                 return new ClassificationResult(null, "HF Model (Future Expansion)", Confidence: hfPrediction.Confidence);
             }
 
@@ -422,8 +460,6 @@ namespace VoxAngelos.Services
             // availability issue, not evidence this text is spam. Fall back to local scoring
             // rather than punishing the citizen for an outage.
             _logger.LogInformation("HF classifier unavailable — falling back to local scoring");
-
-            var learned = await LoadLearnedWeightsAsync();
 
             var confidentLearnedResult = ClassifyFromLearnedWeightsOnly(description, learned);
             if (confidentLearnedResult != null)
@@ -433,7 +469,6 @@ namespace VoxAngelos.Services
                 return new ClassificationResult(confidentLearnedResult, "Learned Weights");
             }
 
-            var departmentTags = await LoadDepartmentTagsAsync();
             var keywordResult = Classify(description, learned, departmentTags);
             if (keywordResult != null)
             {
@@ -491,8 +526,32 @@ namespace VoxAngelos.Services
             IReadOnlyDictionary<string, Dictionary<string, int>>? learnedWeights = null,
             IReadOnlyDictionary<string, List<string>>? departmentTags = null)
         {
-            if (string.IsNullOrWhiteSpace(description))
+            var scores = ScoreAllDepartments(description, learnedWeights, departmentTags);
+            if (scores.Count == 0)
                 return null;
+
+            var ranked = scores.OrderByDescending(s => s.Value).ToList();
+            var isConfident = ranked[0].Value >= MinConfidentClassificationScore
+                && (ranked.Count == 1 || ranked[0].Value > ranked[1].Value);
+
+            return isConfident ? ranked[0].Key : null;
+        }
+
+        /// <summary>
+        /// Raw per-department keyword scores — built-in list + admin-curated tags (Office
+        /// Management, weighted 2x as a deliberate routing signal) + learned weights from LGU
+        /// corrections — with no confidence threshold applied. <see cref="Classify"/> uses this
+        /// and requires the top score to clearly beat the runner-up before trusting it standalone;
+        /// <see cref="ClassifyAsync"/> also passes the raw scores to Gemini as advisory grounding,
+        /// since even a sub-threshold signal is still useful context for its own verdict.
+        /// </summary>
+        private static Dictionary<string, int> ScoreAllDepartments(
+            string description,
+            IReadOnlyDictionary<string, Dictionary<string, int>>? learnedWeights = null,
+            IReadOnlyDictionary<string, List<string>>? departmentTags = null)
+        {
+            if (string.IsNullOrWhiteSpace(description))
+                return [];
 
             var lower = description.ToLowerInvariant();
             var scores = new Dictionary<string, int>();
@@ -530,14 +589,7 @@ namespace VoxAngelos.Services
                 }
             }
 
-            if (scores.Count == 0)
-                return null;
-
-            var ranked = scores.OrderByDescending(s => s.Value).ToList();
-            var isConfident = ranked[0].Value >= MinConfidentClassificationScore
-                && (ranked.Count == 1 || ranked[0].Value > ranked[1].Value);
-
-            return isConfident ? ranked[0].Key : null;
+            return scores;
         }
 
         /// <summary>
