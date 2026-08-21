@@ -72,6 +72,8 @@ builder.Services.AddScoped<OcrService>();
 builder.Services.AddScoped<HfConcernClassifierService>();
 builder.Services.AddScoped<ConcernClassificationService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<RegistrationFaceTicketStore>();
+builder.Services.AddSingleton<FaceLivenessUsageGuard>();
 builder.Services.AddScoped<RecommendationRatingService>();
 builder.Services.AddScoped<CloudinaryAttachmentStorage>();
 builder.Services.AddScoped<PrivateIdentityMediaStorage>();
@@ -141,6 +143,7 @@ builder.Services.AddAuthorization(options =>
 // 5. Register Face and ID Verification Service ← ADDED
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<FaceVerificationService>();
+builder.Services.AddScoped<AwsFaceVerificationService>();
 builder.Services.AddScoped<IdValidationService>();
 
 // 5a. Realtime feed (SignalR) — pushes new concerns/posts/ratings to connected
