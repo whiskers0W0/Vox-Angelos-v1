@@ -249,6 +249,22 @@ namespace VoxAngelos.Pages.Admin
 
                 await TryPurgeSensitiveMediaAsync(userId);
 
+                // Records when/why this application was rejected — the timestamp
+                // RejectedApplicationPurgeService reads to permanently delete the
+                // account 7 days later, per the Data Privacy Act retention policy.
+                var accountApproval = await _context.AccountApprovals
+                    .FirstOrDefaultAsync(a => a.UserId == userId);
+                if (accountApproval == null)
+                {
+                    accountApproval = new AccountApproval { UserId = userId };
+                    _context.AccountApprovals.Add(accountApproval);
+                }
+                accountApproval.Status = "Rejected";
+                accountApproval.RejectionReason = rejectionReason;
+                accountApproval.ReviewedAt = DateTime.UtcNow;
+                accountApproval.ReviewedByAdminId = _userManager.GetUserId(User);
+                await _context.SaveChangesAsync();
+
                 await _emailSender.SendEmailAsync(
                     user.Email!,
                     "Your Vox Angelos Account Application",
@@ -270,6 +286,40 @@ namespace VoxAngelos.Pages.Admin
                     ? "The citizen account could not be found."
                     : "This application has already received a final decision and cannot be changed.";
             }
+            return RedirectToPage("/Admin/UserApplications");
+        }
+
+        // Permanently removes a rejected application's account/data on demand, rather
+        // than waiting for RejectedApplicationPurgeService's 7-day sweep. No email —
+        // matches the same semantics as UserApplicationsModel.OnPostBulkDeleteAsync.
+        public async Task<IActionResult> OnPostDeleteAsync(string userId)
+        {
+            if (_environment.IsDevelopment() && userId == DevelopmentMockCitizenId)
+            {
+                TempData["AdminError"] = "Development mock only: no account was deleted.";
+                return RedirectToPage("/Admin/UserApplications");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["AdminError"] = "The citizen account could not be found.";
+                return RedirectToPage("/Admin/UserApplications");
+            }
+
+            await TryPurgeSensitiveMediaAsync(userId);
+
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                _logger.LogWarning("Admin permanently deleted citizen application {UserId}", userId);
+                TempData["AdminSuccess"] = "The application was permanently deleted.";
+            }
+            else
+            {
+                TempData["AdminError"] = "Could not delete this application — it may have just been changed by another admin.";
+            }
+
             return RedirectToPage("/Admin/UserApplications");
         }
 

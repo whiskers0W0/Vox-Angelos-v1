@@ -68,7 +68,8 @@ builder.Services.AddHostedService(provider =>
 builder.Services.AddHttpClient(nameof(VoxAngelos.Services.SmsSender));
 builder.Services.AddTransient<VoxAngelos.Services.ISmsSender, VoxAngelos.Services.SmsSender>();
 
-builder.Services.AddScoped<OcrService>();
+builder.Services.AddHttpClient(nameof(GeminiOcrService), c => c.Timeout = TimeSpan.FromSeconds(90));
+builder.Services.AddScoped<GeminiOcrService>();
 builder.Services.AddScoped<HfConcernClassifierService>();
 builder.Services.AddScoped<ConcernClassificationService>();
 builder.Services.AddMemoryCache();
@@ -154,6 +155,7 @@ builder.Services.AddSingleton<SensitiveMediaRetentionService>();
 builder.Services.AddHostedService(services =>
     services.GetRequiredService<SensitiveMediaRetentionService>());
 builder.Services.AddHostedService<IdentityMediaCloudBackupService>();
+builder.Services.AddHostedService<RejectedApplicationPurgeService>();
 
 // 5c. Location Density Score for the Urgency Algorithm (PostGIS-backed).
 builder.Services.AddScoped<UrgencyScoreService>();

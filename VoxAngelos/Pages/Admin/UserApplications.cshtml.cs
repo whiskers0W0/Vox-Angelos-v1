@@ -203,6 +203,7 @@ namespace VoxAngelos.Pages.Admin
                     TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
                 else
                 {
+                    await RecordRejectionAsync(userId);
                     await TryPurgeSensitiveMediaAsync(userId);
                     TempData["AdminSuccess"] = "The citizen account was rejected successfully.";
                 }
@@ -275,6 +276,9 @@ namespace VoxAngelos.Pages.Admin
                     continue;
                 }
 
+                if (!isApproval)
+                    await RecordRejectionAsync(userId);
+
                 await TryPurgeSensitiveMediaAsync(userId);
                 decided++;
                 _logger.LogInformation("Admin bulk-{Decision} citizen {UserId}", decision.ToLowerInvariant(), userId);
@@ -333,6 +337,22 @@ namespace VoxAngelos.Pages.Admin
                 $"<div style='font-family:Arial,sans-serif;max-width:480px;margin:0 auto'>" +
                 $"<h2 style='color:{color}'>{heading}</h2><p>Hello,</p><p>{message}</p>" +
                 "<p style='color:#888;font-size:.85rem'>— The Vox Angelos Team</p></div>");
+        }
+
+        private async Task RecordRejectionAsync(string userId)
+        {
+            var approval = await _context.AccountApprovals.FirstOrDefaultAsync(a => a.UserId == userId);
+            if (approval == null)
+            {
+                approval = new AccountApproval { UserId = userId };
+                _context.AccountApprovals.Add(approval);
+            }
+
+            approval.Status = "Rejected";
+            approval.RejectionReason = null;
+            approval.ReviewedAt = DateTime.UtcNow;
+            approval.ReviewedByAdminId = _userManager.GetUserId(User);
+            await _context.SaveChangesAsync();
         }
 
         private async Task TryPurgeSensitiveMediaAsync(string userId)

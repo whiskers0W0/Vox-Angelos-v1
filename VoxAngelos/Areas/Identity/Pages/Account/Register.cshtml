@@ -494,9 +494,19 @@
         return;
         }
         container.classList.add('has-photo');
-        container.innerHTML = `<img src="${URL.createObjectURL(idFile)}" alt="ID photo" />`;
+        container.innerHTML = `<img src="${URL.createObjectURL(idFile)}" alt="ID photo" />` +
+        '<button type="button" class="id-preview-remove" onclick="clearIdPhoto()" aria-label="Remove ID photo" title="Remove photo">×</button>';
         status.textContent = 'Captured. Tap Scan or Upload again to retake.';
         status.className = 'id-capture-status success';
+        }
+
+        // Lets the applicant explicitly clear a captured/uploaded ID photo instead of
+        // the only path being Scan/Upload again, which silently overwrote it with no
+        // way back.
+        function clearIdPhoto() {
+        idFile = null;
+        syncIdHiddenInput(null);
+        renderIdPreview();
         }
 
         // ── ID Capture Modal ────────────────────────────────────────────

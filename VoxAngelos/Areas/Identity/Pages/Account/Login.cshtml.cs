@@ -92,16 +92,25 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (!ModelState.IsValid)
                 return Page();
 
-            var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
-            if (string.IsNullOrWhiteSpace(recaptchaToken))
-            {
-                ModelState.AddModelError(string.Empty,
-                    "Please confirm that you are not a robot before signing in.");
-                return Page();
-            }
+            // Functional-test escape hatch: a real reCAPTCHA token can only come from a
+            // live browser widget, so automated HTTP-level tests can never produce one.
+            // Off by default (absent from appsettings.json); only set when explicitly
+            // launching the app for the xUnit functional-test suite.
+            var bypassRecaptcha = _configuration.GetValue<bool>("Testing:BypassRecaptcha");
 
-            if (!await VerifyRecaptchaAsync(recaptchaToken))
-                return Page();
+            if (!bypassRecaptcha)
+            {
+                var recaptchaToken = Request.Form["g-recaptcha-response"].ToString();
+                if (string.IsNullOrWhiteSpace(recaptchaToken))
+                {
+                    ModelState.AddModelError(string.Empty,
+                        "Please confirm that you are not a robot before signing in.");
+                    return Page();
+                }
+
+                if (!await VerifyRecaptchaAsync(recaptchaToken))
+                    return Page();
+            }
 
             // Find user by email
             var user = await _userManager.FindByEmailAsync(Input.Email);
@@ -109,6 +118,14 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             {
                 ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                 return Page();
+            }
+
+            // Accounts created before lockout was enabled for new users can be stuck with
+            // LockoutEnabled = false, which silently disables lockout even though failed
+            // attempts keep being counted. Backfill it here so every account is covered.
+            if (!user.LockoutEnabled)
+            {
+                await _userManager.SetLockoutEnabledAsync(user, true);
             }
 
             // Check lockout
@@ -124,6 +141,17 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             if (!passwordValid)
             {
                 await _userManager.AccessFailedAsync(user);
+
+                // This attempt may have just crossed MaxFailedAccessAttempts. Re-check
+                // immediately so the account locks out on the attempt that trips it,
+                // instead of waiting for the user to try once more.
+                if (await _userManager.IsLockedOutAsync(user))
+                {
+                    TempData["LockedOutEmail"] = Input.Email;
+                    _logger.LogWarning("User account locked out.");
+                    return RedirectToPage("./Lockout");
+                }
+
                 ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                 return Page();
             }

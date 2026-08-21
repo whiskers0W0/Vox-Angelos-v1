@@ -87,7 +87,7 @@ namespace VoxAngelos.Data
                 .HasOne(ufv => ufv.User)
                 .WithMany(u => u.FaceVerifications)
                 .HasForeignKey(ufv => ufv.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // One-to-many: UserIdentityDocument <-> UserFaceVerification
             builder.Entity<UserFaceVerification>()
@@ -101,7 +101,7 @@ namespace VoxAngelos.Data
                 .HasOne(uov => uov.User)
                 .WithMany(u => u.OcrVerifications)
                 .HasForeignKey(uov => uov.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // One-to-many: UserIdentityDocument <-> UserOcrVerification
             builder.Entity<UserOcrVerification>()
