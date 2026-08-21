@@ -43,7 +43,9 @@ public sealed class AwsFaceVerificationService
 
         var livenessConfidence = liveness.Confidence ?? 0f;
         if (liveness.Status != LivenessSessionStatus.SUCCEEDED || livenessConfidence < LivenessThreshold)
-            return AwsFaceResult.Failed("Liveness check did not pass.", livenessConfidence);
+            return AwsFaceResult.Failed(
+                "We couldn't confirm that a live person was in front of the camera. Use your live front camera in a well-lit area, keep your whole face visible, remove masks, hats, and sunglasses, then try again.",
+                livenessConfidence);
 
         var referenceBytes = liveness.ReferenceImage?.Bytes?.ToArray();
         if (referenceBytes is not { Length: > 0 })
@@ -69,7 +71,9 @@ public sealed class AwsFaceVerificationService
 
         return similarity >= SimilarityThreshold
             ? new AwsFaceResult(true, livenessConfidence, similarity, referenceBytes, null)
-            : AwsFaceResult.Failed("The live face did not match the ID portrait.", livenessConfidence, similarity);
+            : AwsFaceResult.Failed(
+                "Your live face did not match the photo on the ID. Make sure the ID belongs to you and its portrait is clear, then face the camera directly without glasses, a hat, or a mask and try again.",
+                livenessConfidence, similarity);
     }
 }
 
