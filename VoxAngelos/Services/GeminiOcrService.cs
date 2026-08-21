@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -79,6 +80,13 @@ namespace VoxAngelos.Services
             _model = config["Gemini:Model"] ?? "gemini-flash-latest";
         }
 
+        // Gemini's free-tier key gets rate-limited (429) under burst traffic — e.g. several
+        // people scanning IDs back-to-back during a live demo — and that's an availability
+        // blip, not a real OCR failure. Retry a couple of times with backoff before giving up,
+        // honoring Retry-After when Gemini sends one. 503 (model overloaded) is the same story.
+        private const int MaxRetries = 2;
+        private static readonly TimeSpan[] RetryDelays = { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5) };
+
         public async Task<OcrResult> ExtractIdDataAsync(string idPhotoPath)
         {
             try
@@ -111,15 +119,39 @@ namespace VoxAngelos.Services
                 };
 
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-                using var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+                var requestJson = JsonSerializer.Serialize(requestBody);
 
-                var response = await _httpClient.PostAsync(url, content);
-                var json = await response.Content.ReadAsStringAsync();
+                HttpResponseMessage response;
+                string json;
+                int attempt = 0;
+
+                while (true)
+                {
+                    using var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+                    response = await _httpClient.PostAsync(url, content);
+                    json = await response.Content.ReadAsStringAsync();
+
+                    var isRetryable = response.StatusCode == HttpStatusCode.TooManyRequests
+                        || response.StatusCode == HttpStatusCode.ServiceUnavailable;
+
+                    if (response.IsSuccessStatusCode || !isRetryable || attempt >= MaxRetries)
+                        break;
+
+                    var delay = response.Headers.RetryAfter?.Delta ?? RetryDelays[attempt];
+                    _logger.LogWarning(
+                        "Gemini OCR returned {StatusCode} (attempt {Attempt}/{Max}) — retrying in {Delay}s",
+                        response.StatusCode, attempt + 1, MaxRetries, delay.TotalSeconds);
+                    await Task.Delay(delay);
+                    attempt++;
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Gemini OCR returned {StatusCode}: {Body}", response.StatusCode, json);
-                    return new OcrResult { Success = false, Error = $"Gemini returned {response.StatusCode}." };
+                    var error = response.StatusCode == HttpStatusCode.TooManyRequests
+                        ? "Gemini rate limit exceeded — please try again shortly."
+                        : $"Gemini returned {response.StatusCode}.";
+                    return new OcrResult { Success = false, Error = error };
                 }
 
                 var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(json,
