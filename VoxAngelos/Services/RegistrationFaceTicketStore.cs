@@ -2,8 +2,12 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace VoxAngelos.Services;
 
-public sealed record RegistrationFaceTicket(string IdImageHash, byte[] ReferenceImage,
-    decimal LivenessConfidence, decimal Similarity, DateTimeOffset ExpiresAt);
+public sealed record RegistrationFaceTicket(
+    string IdImageHash,
+    byte[] ReferenceImage,
+    decimal LivenessConfidence,
+    decimal Similarity,
+    DateTimeOffset ExpiresAt);
 
 public sealed class RegistrationFaceTicketStore(IMemoryCache cache)
 {

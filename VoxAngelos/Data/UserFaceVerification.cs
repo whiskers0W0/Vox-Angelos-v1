@@ -23,6 +23,9 @@ namespace VoxAngelos.Data
         public string? LiveSelfieCloudinaryFormat { get; set; }
 
         [Column(TypeName = "decimal(5,4)")]
+        public decimal? LivenessConfidence { get; set; }
+
+        [Column(TypeName = "decimal(5,4)")]
         public decimal? MatchConfidence { get; set; }
 
         [MaxLength(50)]

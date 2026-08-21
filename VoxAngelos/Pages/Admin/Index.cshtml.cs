@@ -126,7 +126,8 @@ namespace VoxAngelos.Pages.Admin
                 .ToListAsync();
 
             TotalFaceChecks = faceChecks.Count;
-            LowFaceMatchCount = faceChecks.Count(f => f.MatchConfidence < FaceMatchFailureThreshold);
+            LowFaceMatchCount = faceChecks.Count(f =>
+                VoxAngelos.Services.FaceMatchConfidenceScale.Normalize(f.MatchConfidence) < FaceMatchFailureThreshold);
             MissingFaceMatchCount = allUserIds.Count - faceChecks
                 .Select(f => f.UserId)
                 .Distinct()

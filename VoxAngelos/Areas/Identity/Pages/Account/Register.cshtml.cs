@@ -41,7 +41,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         private readonly ApplicationDbContext _context;
         private readonly FaceVerificationService _faceVerificationService;
         private readonly IdValidationService _idValidationService;
-        private readonly OcrService _ocrService;
+        private readonly GeminiOcrService _ocrService;
         private readonly PrivateIdentityMediaStorage _privateIdentityMediaStorage;
         private readonly AwsFaceVerificationService _awsFaceVerificationService;
         private readonly RegistrationFaceTicketStore _faceTicketStore;
@@ -57,7 +57,7 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             ApplicationDbContext context,
             FaceVerificationService faceVerificationService,
             IdValidationService idValidationService,
-            OcrService ocrService,
+            GeminiOcrService ocrService,
             PrivateIdentityMediaStorage privateIdentityMediaStorage,
             AwsFaceVerificationService awsFaceVerificationService,
             RegistrationFaceTicketStore faceTicketStore,
@@ -180,7 +180,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
                 Response.Headers.RetryAfter = limit.RetryAfterSeconds.ToString(CultureInfo.InvariantCulture);
                 return new JsonResult(new { success = false, error = limit.Error }) { StatusCode = 429 };
             }
-
             try
             {
                 var sessionId = await _awsFaceVerificationService.CreateLivenessSessionAsync(HttpContext.RequestAborted);
@@ -290,7 +289,6 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             var address = $"{directAddress}|{forwardedAddress ?? directAddress}";
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(address)));
         }
-
         // Mirrors the reason codes returned by /validate-id on the HF Space, mapped to a
         // specific, actionable message instead of relaying the Space's raw text verbatim —
         // keeps the citizen-facing wording consistent even if the Space's phrasing changes.
@@ -624,13 +622,12 @@ if (savedFileName != null)
         UserId = user.Id,
         IdentityDocumentId = identityDocument.Id,
         RawFullText = ocrResult.RawFullText,
+        DetectedFirstName = ocrResult.DetectedFirstName,
+        DetectedMiddleName = ocrResult.DetectedMiddleName,
+        DetectedLastName = ocrResult.DetectedLastName,
         DetectedBirthDate = ocrResult.DetectedBirthDate,
         DetectedCardExpirationDate = ocrResult.DetectedCardExpiration,
         DetectedAddress = ocrResult.DetectedAddress,
-        DetectedStreetAddress = ocrResult.DetectedStreetAddress,
-        DetectedLocality = ocrResult.DetectedLocality,
-        DetectedProvince = ocrResult.DetectedProvince,
-        LocalityMatched = ocrResult.LocalityMatched,
         CityProvinceMatched = ocrResult.CityProvinceMatched,
         OcrConfidence = ocrResult.OcrConfidence,
         DetectionType = ocrResult.DetectionType,
@@ -639,36 +636,26 @@ if (savedFileName != null)
     };
     _context.UserOcrVerifications.Add(ocrVerification);
 
-    // Keep the citizen profile limited to verified values.  The OCR service only
-    // marks LocalityMatched when it identifies a supported Angeles City barangay,
-    // so we never infer an address from unverified free text.
-    if (DateOnly.TryParse(ocrResult.DetectedBirthDate, out var detectedBirthDate)
+    // Keep the citizen profile limited to verified values — the address is a single
+    // detected string now (different ID types format it too inconsistently to split),
+    // so it only gets attributed to the profile once the city/province check passes.
+    if (DateOnly.TryParseExact(ocrResult.DetectedBirthDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var detectedBirthDate)
         && IsPlausibleBirthDate(detectedBirthDate))
     {
         profile.BirthDate = detectedBirthDate;
     }
 
-    if (!string.IsNullOrWhiteSpace(ocrResult.DetectedStreetAddress))
-    {
-        profile.StreetAddress = ocrResult.DetectedStreetAddress;
-    }
-
-    if (ocrResult.LocalityMatched && !string.IsNullOrWhiteSpace(ocrResult.DetectedLocality))
-    {
-        profile.Barangay = ocrResult.DetectedLocality;
-        profile.City = "Angeles City";
-    }
-
-    // The city/province match (not the barangay match) is the actual signal that this
-    // is an Angeles City ID — a barangay name is easy to OCR-misread across 33 similar
-    // options, while "Angeles City, Pampanga" printed on the card is a much more direct
-    // and reliable check for whether this application belongs on the platform at all.
+    // The city/province match is the actual signal that this is an Angeles City ID —
+    // "Angeles City, Pampanga" printed on the card is a direct, reliable check for
+    // whether this application belongs on the platform at all.
     if (ocrResult.CityProvinceMatched)
     {
+        profile.StreetAddress = ocrResult.DetectedAddress;
+        profile.City = "Angeles City";
         profile.Province = "Pampanga";
     }
 
-    if (DateOnly.TryParse(ocrResult.DetectedCardExpiration, out var detectedCardExpiration))
+    if (DateOnly.TryParseExact(ocrResult.DetectedCardExpiration, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var detectedCardExpiration))
     {
         identityDocument.CardExpirationDate = detectedCardExpiration;
     }
@@ -676,34 +663,12 @@ if (savedFileName != null)
     await _context.SaveChangesAsync();
 
     _logger.LogInformation(
-        "OCR completed for user {UserId}. LocalityMatched: {LocalityMatch} CityProvinceMatched: {CityMatch}",
-        user.Id, ocrResult.LocalityMatched, ocrResult.CityProvinceMatched);
+        "OCR completed for user {UserId}. CityProvinceMatched: {CityMatch}",
+        user.Id, ocrResult.CityProvinceMatched);
 
-    // Vox Angelos is only for Angeles City, Pampanga residents — an ID that doesn't show
-    // that city/province gets auto-rejected rather than left Pending, so it doesn't sit
-    // in the admin queue looking like a normal application awaiting review. An admin can
-    // still override this from Review Application if the OCR match was a false negative
-    // (e.g. a blurry photo), same as any other rejection.
-    if (!ocrResult.CityProvinceMatched)
-    {
-        user.ApprovalStatus = "Rejected";
-        await _userManager.UpdateAsync(user);
-
-        await _emailSender.SendEmailAsync(
-            Input.Email,
-            "Your Vox Angelos Account Application",
-            $"<div style='font-family:Arial,sans-serif; max-width:480px; margin:0 auto;'>" +
-            $"<h2 style='color:#c62828;'>Application Update</h2>" +
-            $"<p>Hello,</p>" +
-            $"<p>We regret to inform you that your Vox Angelos citizen account has been <strong style='color:#c62828;'>rejected</strong>.</p>" +
-            $"<p><strong>Reason:</strong> We could not confirm that your ID shows an Angeles City, Pampanga address. Vox Angelos is currently only available to residents of Angeles City.</p>" +
-            $"<p>If you believe this is an error, please contact support.</p>" +
-            $"<p style='color:#888; font-size:0.85rem;'>— The Vox Angelos Team</p>" +
-            $"</div>");
-
-        _logger.LogInformation(
-            "Auto-rejected citizen {UserId} — ID did not show an Angeles City, Pampanga address.", user.Id);
-    }
+    // No auto-approve/reject here — every application is left "Pending" and goes
+    // through manual admin review on the Review Application page, which shows the
+    // OCR-detected fields (including the Angeles City match) for the admin to decide.
 }
 
                     // Face verification
@@ -712,7 +677,11 @@ if (savedFileName != null)
 
                     if (savedFileName != null && savedSelfieFileName != null)
                     {
+                        string idPhotoFullPathForFaceMatch = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
+                        string selfiePhotoFullPath = Path.Combine(IdentityDocumentStorage.SelfiesFolder(_environment), savedSelfieFileName);
                         isMatch = true;
+                        // The registration ticket has already normalized Rekognition's
+                        // 0-100 similarity to the application's canonical 0-1 scale.
                         confidence = Math.Clamp(faceTicket.Similarity, 0m, 1m);
                     }
 

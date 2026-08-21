@@ -11,7 +11,9 @@ public sealed class AwsFaceVerificationService
     private readonly IConfiguration _configuration;
     private readonly ILogger<AwsFaceVerificationService> _logger;
 
-    public AwsFaceVerificationService(IConfiguration configuration, ILogger<AwsFaceVerificationService> logger)
+    public AwsFaceVerificationService(
+        IConfiguration configuration,
+        ILogger<AwsFaceVerificationService> logger)
     {
         _configuration = configuration;
         _logger = logger;
@@ -38,6 +40,7 @@ public sealed class AwsFaceVerificationService
     {
         var liveness = await _client.GetFaceLivenessSessionResultsAsync(
             new GetFaceLivenessSessionResultsRequest { SessionId = sessionId }, cancellationToken);
+
         var livenessConfidence = liveness.Confidence ?? 0f;
         if (liveness.Status != LivenessSessionStatus.SUCCEEDED || livenessConfidence < LivenessThreshold)
             return AwsFaceResult.Failed("Liveness check did not pass.", livenessConfidence);
@@ -50,6 +53,9 @@ public sealed class AwsFaceVerificationService
         {
             SourceImage = new Image { Bytes = new MemoryStream(idImage) },
             TargetImage = new Image { Bytes = new MemoryStream(referenceBytes) },
+            // Ask AWS to return the candidate and apply our calibrated decision threshold
+            // below. Passing the decision threshold here hides the actual similarity for
+            // rejected comparisons, making safe threshold calibration impossible.
             SimilarityThreshold = 0,
             QualityFilter = QualityFilter.AUTO
         }, cancellationToken);
@@ -67,8 +73,12 @@ public sealed class AwsFaceVerificationService
     }
 }
 
-public sealed record AwsFaceResult(bool IsMatch, float LivenessConfidence, float Similarity,
-    byte[]? ReferenceImage, string? Error)
+public sealed record AwsFaceResult(
+    bool IsMatch,
+    float LivenessConfidence,
+    float Similarity,
+    byte[]? ReferenceImage,
+    string? Error)
 {
     public static AwsFaceResult Failed(string error, float liveness = 0, float similarity = 0) =>
         new(false, liveness, similarity, null, error);

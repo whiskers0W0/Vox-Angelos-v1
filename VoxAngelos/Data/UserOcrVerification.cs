@@ -15,16 +15,20 @@ namespace VoxAngelos.Data
         public int IdentityDocumentId { get; set; }
 
         public string? RawFullText { get; set; }
+        public string? DetectedFirstName { get; set; }
+        public string? DetectedMiddleName { get; set; }
+        public string? DetectedLastName { get; set; }
+
+        // The whole address block as one string — different ID types (National ID,
+        // Passport, Voter's ID, Driver's License) format addresses too inconsistently
+        // to reliably split into street/barangay/municipality/province.
         public string? DetectedAddress { get; set; }
-        public string? DetectedStreetAddress { get; set; }
-        public string? DetectedLocality { get; set; }
-        public string? DetectedProvince { get; set; }
+
         public string? DetectedBirthDate { get; set; }
         public string? DetectedCardExpirationDate { get; set; }
-        public bool LocalityMatched { get; set; }
 
         // The actual accept/reject signal: whether "Angeles [City], Pampanga" was found
-        // anywhere on the ID, independent of whether a specific barangay was also matched.
+        // anywhere in the detected address.
         public bool CityProvinceMatched { get; set; }
 
         [Column(TypeName = "decimal(5,4)")]

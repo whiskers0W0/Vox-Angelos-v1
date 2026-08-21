@@ -735,6 +735,9 @@ namespace VoxAngelos.Migrations
                     b.Property<string>("LiveSelfiePath")
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("LivenessConfidence")
+                        .HasColumnType("decimal(5,4)");
+
                     b.Property<decimal?>("MatchConfidence")
                         .HasColumnType("decimal(5,4)");
 
@@ -912,16 +915,16 @@ namespace VoxAngelos.Migrations
                     b.Property<string>("DetectedCardExpirationDate")
                         .HasColumnType("text");
 
+                    b.Property<string>("DetectedFirstName")
+                        .HasColumnType("text");
+
                     b.Property<string>("DetectedLanguageCode")
                         .HasColumnType("text");
 
-                    b.Property<string>("DetectedLocality")
+                    b.Property<string>("DetectedLastName")
                         .HasColumnType("text");
 
-                    b.Property<string>("DetectedProvince")
-                        .HasColumnType("text");
-
-                    b.Property<string>("DetectedStreetAddress")
+                    b.Property<string>("DetectedMiddleName")
                         .HasColumnType("text");
 
                     b.Property<string>("DetectionType")
@@ -929,9 +932,6 @@ namespace VoxAngelos.Migrations
 
                     b.Property<int>("IdentityDocumentId")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("LocalityMatched")
-                        .HasColumnType("boolean");
 
                     b.Property<decimal?>("OcrConfidence")
                         .HasColumnType("decimal(5,4)");
@@ -1165,7 +1165,7 @@ namespace VoxAngelos.Migrations
                     b.HasOne("VoxAngelos.Data.ApplicationUser", "User")
                         .WithMany("FaceVerifications")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("IdentityDocument");
@@ -1217,7 +1217,7 @@ namespace VoxAngelos.Migrations
                     b.HasOne("VoxAngelos.Data.ApplicationUser", "User")
                         .WithMany("OcrVerifications")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("IdentityDocument");

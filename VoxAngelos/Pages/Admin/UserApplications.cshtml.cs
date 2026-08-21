@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ namespace VoxAngelos.Pages.Admin
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _environment;
         private readonly SensitiveMediaRetentionService _mediaRetention;
+        private readonly IEmailSender _emailSender;
         private readonly ILogger<UserApplicationsModel> _logger;
 
         public UserApplicationsModel(
@@ -22,12 +24,14 @@ namespace VoxAngelos.Pages.Admin
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment environment,
             SensitiveMediaRetentionService mediaRetention,
+            IEmailSender emailSender,
             ILogger<UserApplicationsModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
             _mediaRetention = mediaRetention;
+            _emailSender = emailSender;
             _logger = logger;
         }
 
@@ -35,18 +39,75 @@ namespace VoxAngelos.Pages.Admin
 
         public string FilterStatus { get; set; } = "All";
         public string FaceMatchFilter { get; set; } = "All";
+        public string DateRange { get; set; } = "All";
+        public DateOnly? DateFrom { get; set; }
+        public DateOnly? DateTo { get; set; }
+        public string SearchTerm { get; set; } = string.Empty;
+        public string SortOrder { get; set; } = "Newest";
 
-        public async Task OnGetAsync(string filterStatus = "All", string faceMatchFilter = "All")
+        public async Task OnGetAsync(
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string? search = null,
+            string sortOrder = "Newest")
         {
-            FilterStatus = filterStatus;
+            FilterStatus = new[] { "All", "Pending", "Approved", "Rejected" }.Contains(filterStatus)
+                ? filterStatus : "All";
             FaceMatchFilter = faceMatchFilter;
+            DateRange = new[] { "All", "Week", "Month", "Year" }.Contains(dateRange)
+                ? dateRange : "All";
+            DateFrom = dateFrom;
+            DateTo = dateTo;
+            if (DateFrom.HasValue && DateTo.HasValue && DateFrom > DateTo)
+                (DateFrom, DateTo) = (DateTo, DateFrom);
+            SearchTerm = search?.Trim() ?? string.Empty;
+            SortOrder = string.Equals(sortOrder, "Oldest", StringComparison.OrdinalIgnoreCase)
+                ? "Oldest" : "Newest";
 
             var citizenUsers = await _userManager.GetUsersInRoleAsync("User");
 
-            var query = citizenUsers.AsQueryable();
+            // GetUsersInRoleAsync has already materialized the users; continue with
+            // in-memory filtering so Manila-local calendar rules can be applied safely.
+            var query = citizenUsers.AsEnumerable();
 
-            if (filterStatus != "All")
-                query = query.Where(u => u.ApprovalStatus == filterStatus);
+            if (FilterStatus != "All")
+                query = query.Where(u => u.ApprovalStatus == FilterStatus);
+
+            var manilaZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaZone));
+            var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+
+            DateOnly ManilaDate(DateTime createdAt)
+            {
+                var utc = createdAt.Kind == DateTimeKind.Utc
+                    ? createdAt
+                    : DateTime.SpecifyKind(createdAt, DateTimeKind.Utc);
+                return DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utc, manilaZone));
+            }
+
+            bool MatchesDate(DateTime createdAt)
+            {
+                var appliedDate = ManilaDate(createdAt);
+                if (DateFrom.HasValue || DateTo.HasValue)
+                {
+                    var from = DateFrom ?? DateTo!.Value;
+                    var to = DateTo ?? DateFrom!.Value;
+                    return appliedDate >= from && appliedDate <= to;
+                }
+
+                return DateRange switch
+                {
+                    "Week" => appliedDate >= weekStart && appliedDate <= today,
+                    "Month" => appliedDate.Year == today.Year && appliedDate.Month == today.Month,
+                    "Year" => appliedDate.Year == today.Year,
+                    _ => true
+                };
+            }
+
+            query = query.Where(u => MatchesDate(u.CreatedAt));
 
             var userIds = query.Select(u => u.Id).ToList();
 
@@ -58,7 +119,7 @@ namespace VoxAngelos.Pages.Admin
                 .Where(f => userIds.Contains(f.UserId))
                 .ToListAsync();
 
-            foreach (var user in query.OrderBy(u => u.CreatedAt))
+            foreach (var user in query)
             {
                 var profile = profiles.FirstOrDefault(p => p.UserId == user.Id);
                 var face = faceVerifications.FirstOrDefault(f => f.UserId == user.Id);
@@ -71,9 +132,12 @@ namespace VoxAngelos.Pages.Admin
                         : user.Email,
                     Email = user.Email,
                     ContactNumber = user.PhoneNumber ?? "N/A",
-                    DateApplied = user.CreatedAt,
+                    DateApplied = ManilaDate(user.CreatedAt).ToDateTime(TimeOnly.FromDateTime(
+                        TimeZoneInfo.ConvertTimeFromUtc(
+                            user.CreatedAt.Kind == DateTimeKind.Utc ? user.CreatedAt : DateTime.SpecifyKind(user.CreatedAt, DateTimeKind.Utc),
+                            manilaZone))),
                     ApprovalStatus = user.ApprovalStatus,
-                    FaceMatchConfidence = face?.MatchConfidence,
+                    FaceMatchConfidence = FaceMatchConfidenceScale.Normalize(face?.MatchConfidence),
                     HasFaceVerification = face != null
                 });
             }
@@ -85,23 +149,38 @@ namespace VoxAngelos.Pages.Admin
                     .ToList();
             }
 
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                Applications = Applications
+                    .Where(a =>
+                        a.FullName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        a.Email.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        a.ContactNumber.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
             if (_environment.IsDevelopment()
                 && faceMatchFilter != "Attention"
                 && (filterStatus == "All" || filterStatus == "Pending"))
             {
-                Applications.Add(new CitizenApplicationViewModel
+                var mockCreatedAt = DateTime.UtcNow.AddDays(-1);
+                if (MatchesDate(mockCreatedAt)) Applications.Add(new CitizenApplicationViewModel
                 {
                     UserId = ReviewApplicationModel.DevelopmentMockCitizenId,
                     FullName = "Mock Citizen (Development)",
                     Email = "mock.citizen@example.test",
                     ContactNumber = "(000) 000-0000",
-                    DateApplied = DateTime.UtcNow.AddDays(-1),
+                    DateApplied = TimeZoneInfo.ConvertTimeFromUtc(mockCreatedAt, manilaZone),
                     ApprovalStatus = "Pending",
                     FaceMatchConfidence = 0.87m,
                     HasFaceVerification = true,
                     IsMock = true
                 });
             }
+
+            Applications = SortOrder == "Oldest"
+                ? Applications.OrderBy(a => a.DateApplied).ToList()
+                : Applications.OrderByDescending(a => a.DateApplied).ToList();
         }
 
         public async Task<IActionResult> OnPostApproveAsync(string userId)
@@ -137,6 +216,7 @@ namespace VoxAngelos.Pages.Admin
                     TempData["AdminError"] = "Could not update this application — it may have just been changed by another admin.";
                 else
                 {
+                    await RecordRejectionAsync(userId);
                     await TryPurgeSensitiveMediaAsync(userId);
                     TempData["AdminSuccess"] = "The citizen account was rejected successfully.";
                 }
@@ -146,6 +226,210 @@ namespace VoxAngelos.Pages.Admin
                     ? "The citizen account could not be found."
                     : "This application has already received a final decision and cannot be changed.";
             return RedirectToPage(new { filterStatus = FilterStatus });
+        }
+
+        public Task<IActionResult> OnPostBulkApproveAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string? search = null,
+            string sortOrder = "Newest") =>
+            ApplyBulkDecisionAsync(userIds, "Approved", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, search, sortOrder);
+
+        public Task<IActionResult> OnPostBulkRejectAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string? search = null,
+            string sortOrder = "Newest") =>
+            ApplyBulkDecisionAsync(userIds, "Rejected", filterStatus, faceMatchFilter, dateRange, dateFrom, dateTo, search, sortOrder);
+
+        private async Task<IActionResult> ApplyBulkDecisionAsync(
+            string[] userIds,
+            string decision,
+            string filterStatus,
+            string faceMatchFilter,
+            string dateRange,
+            DateOnly? dateFrom,
+            DateOnly? dateTo,
+            string? search,
+            string sortOrder)
+        {
+            var decided = 0;
+            var skipped = 0;
+            var notificationFailures = 0;
+            var isApproval = decision == "Approved";
+
+            foreach (var userId in (userIds ?? Array.Empty<string>())
+                         .Where(id => !string.IsNullOrWhiteSpace(id))
+                         .Distinct(StringComparer.Ordinal)
+                         .Take(100))
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null || user.ApprovalStatus != "Pending" || !await _userManager.IsInRoleAsync(user, "User"))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                user.ApprovalStatus = decision;
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                if (!isApproval)
+                    await RecordRejectionAsync(userId);
+
+                await TryPurgeSensitiveMediaAsync(userId);
+                decided++;
+                _logger.LogInformation("Admin bulk-{Decision} citizen {UserId}", decision.ToLowerInvariant(), userId);
+
+                if (!string.IsNullOrWhiteSpace(user.Email))
+                {
+                    try
+                    {
+                        await SendDecisionEmailAsync(user.Email, isApproval);
+                    }
+                    catch (Exception ex)
+                    {
+                        notificationFailures++;
+                        _logger.LogWarning(ex, "Bulk decision email failed for citizen {UserId}", userId);
+                    }
+                }
+            }
+
+            if (decided == 0)
+                TempData["AdminError"] = skipped == 0
+                    ? "No applications were selected."
+                    : "None of the selected applications could be changed. They may already have a final decision.";
+            else
+            {
+                var action = isApproval ? "approved" : "rejected";
+                TempData["AdminSuccess"] = $"{decided} application(s) {action}." +
+                    (skipped > 0 ? $" {skipped} skipped because they were already decided or unavailable." : "") +
+                    (notificationFailures > 0 ? $" {notificationFailures} email notification(s) could not be sent." : " Applicants were notified.");
+            }
+
+            return RedirectToPage(new
+            {
+                filterStatus,
+                faceMatchFilter,
+                dateRange,
+                dateFrom = dateFrom?.ToString("yyyy-MM-dd"),
+                dateTo = dateTo?.ToString("yyyy-MM-dd"),
+                search,
+                sortOrder
+            });
+        }
+
+        public async Task<IActionResult> OnPostBulkDeleteAsync(
+            string[] userIds,
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string? search = null,
+            string sortOrder = "Newest")
+        {
+            var deleted = 0;
+            var skipped = 0;
+
+            foreach (var userId in (userIds ?? Array.Empty<string>())
+                         .Where(id => !string.IsNullOrWhiteSpace(id))
+                         .Distinct(StringComparer.Ordinal)
+                         .Take(100))
+            {
+                if (userId == ReviewApplicationModel.DevelopmentMockCitizenId)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null || !await _userManager.IsInRoleAsync(user, "User"))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                await TryPurgeSensitiveMediaAsync(userId);
+                var result = await _userManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    deleted++;
+                    _logger.LogWarning("Admin permanently deleted citizen application {UserId}", userId);
+                }
+                else
+                    skipped++;
+            }
+
+            if (deleted == 0)
+                TempData["AdminError"] = "None of the selected applications could be deleted.";
+            else
+                TempData["AdminSuccess"] = $"{deleted} application(s) permanently deleted." +
+                    (skipped > 0 ? $" {skipped} could not be deleted." : "");
+
+            return RedirectToPage(new
+            {
+                filterStatus,
+                faceMatchFilter,
+                dateRange,
+                dateFrom = dateFrom?.ToString("yyyy-MM-dd"),
+                dateTo = dateTo?.ToString("yyyy-MM-dd"),
+                search,
+                sortOrder
+            });
+        }
+
+        private Task SendDecisionEmailAsync(string email, bool approved)
+        {
+            var subject = approved
+                ? "Your Vox Angelos Account Has Been Approved"
+                : "Your Vox Angelos Account Application";
+            var heading = approved ? "Account Approved!" : "Application Update";
+            var color = approved ? "#2e7d32" : "#c62828";
+            var message = approved
+                ? "Your Vox Angelos citizen account has been reviewed and approved. You can now log in and use the platform."
+                : "Your Vox Angelos citizen account application was rejected because it did not meet the verification requirements.";
+
+            return _emailSender.SendEmailAsync(
+                email,
+                subject,
+                $"<div style='font-family:Arial,sans-serif;max-width:480px;margin:0 auto'>" +
+                $"<h2 style='color:{color}'>{heading}</h2><p>Hello,</p><p>{message}</p>" +
+                "<p style='color:#888;font-size:.85rem'>— The Vox Angelos Team</p></div>");
+        }
+
+        private async Task RecordRejectionAsync(string userId)
+        {
+            var approval = await _context.AccountApprovals.FirstOrDefaultAsync(a => a.UserId == userId);
+            if (approval == null)
+            {
+                approval = new AccountApproval { UserId = userId };
+                _context.AccountApprovals.Add(approval);
+            }
+
+            approval.Status = "Rejected";
+            approval.RejectionReason = null;
+            approval.ReviewedAt = DateTime.UtcNow;
+            approval.ReviewedByAdminId = _userManager.GetUserId(User);
+            await _context.SaveChangesAsync();
         }
 
         private async Task TryPurgeSensitiveMediaAsync(string userId)

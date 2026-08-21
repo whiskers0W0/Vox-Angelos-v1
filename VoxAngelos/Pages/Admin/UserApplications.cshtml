@@ -43,15 +43,57 @@
                 <span>Verification queue</span>
                 <h2 id="applicationsQueueHeading">Citizen application records</h2>
             </div>
-            <p>Use a status filter to focus the review list.</p>
+            <p>Filter by status and application date, then choose how results are ordered.</p>
         </header>
 
         <nav class="admin-applications-filters" aria-label="Filter applications by status">
-            <a href="?filterStatus=All" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
-            <a href="?filterStatus=Pending" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
-            <a href="?filterStatus=Approved" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
-            <a href="?filterStatus=Rejected" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="All" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Approved" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Rejected" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-search="@Model.SearchTerm" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
         </nav>
+
+        <form method="get" class="admin-applications-date-filters" id="applicationDateFilters">
+            <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+            <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+            <label>
+                <span>Search</span>
+                <input type="search" name="search" value="@Model.SearchTerm" placeholder="Name, email, or contact" />
+            </label>
+            <label>
+                <span>Date range</span>
+                <select name="dateRange" id="dateRangeFilter">
+                    <option value="All" selected="@(Model.DateRange == "All")">All dates</option>
+                    <option value="Week" selected="@(Model.DateRange == "Week")">This week</option>
+                    <option value="Month" selected="@(Model.DateRange == "Month")">This month</option>
+                    <option value="Year" selected="@(Model.DateRange == "Year")">This year</option>
+                </select>
+            </label>
+            <label>
+                <span>From date</span>
+                <input type="date" name="dateFrom" class="customDateFilter" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+            </label>
+            <label>
+                <span>To date <small>(optional)</small></span>
+                <input type="date" name="dateTo" class="customDateFilter" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+            </label>
+            <label>
+                <span>Sort by</span>
+                <select name="sortOrder">
+                    <option value="Newest" selected="@(Model.SortOrder == "Newest")">Newest first</option>
+                    <option value="Oldest" selected="@(Model.SortOrder == "Oldest")">Oldest first</option>
+                </select>
+            </label>
+            <div class="admin-applications-filter-actions">
+                <button type="submit">Apply filters</button>
+                <a asp-page="/Admin/UserApplications" asp-route-filterStatus="@Model.FilterStatus">Clear</a>
+            </div>
+        </form>
+
+        <div class="admin-applications-selection-hint">
+            <span aria-hidden="true">&#9745;</span>
+            Long-press an application to select it. Once selection starts, tap other rows to add them.
+        </div>
 
         <div class="admin-applications-table-wrap">
             <table class="admin-applications-table">
@@ -66,7 +108,7 @@
                         <th scope="col"><span class="visually-hidden">Review application</span></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="appTableBody">
                     @if (!Model.Applications.Any())
                     {
                         <tr>
@@ -75,11 +117,19 @@
                     }
                     @foreach (var app in Model.Applications)
                     {
-                            <tr class="@(app.IsMock ? "admin-applications-mock-row" : "")">
-                            <td data-label="Applicant"><strong>@app.FullName</strong>@if (app.IsMock) { <span class="admin-applications-mock-label">Development mock</span> }</td>
+                        var isSelectable = !app.IsMock;
+                        <tr class="app-row @(app.IsMock ? "admin-applications-mock-row" : "")"
+                            data-selectable="@isSelectable.ToString().ToLowerInvariant()">
+                            <td data-label="Applicant">
+                                @if (isSelectable)
+                                {
+                                    <input type="checkbox" class="app-select" data-id="@app.UserId" tabindex="-1" aria-hidden="true" />
+                                }
+                                <strong>@app.FullName</strong>@if (app.IsMock) { <span class="admin-applications-mock-label">Development mock</span> }
+                            </td>
                             <td data-label="Email address"><span class="admin-applications-email">@app.Email</span></td>
                             <td data-label="Contact number">@app.ContactNumber</td>
-                            <td data-label="Applied"><time datetime="@app.DateApplied.ToString("yyyy-MM-dd")">@app.DateApplied.ToString("MM/dd/yyyy")</time></td>
+                            <td data-label="Applied"><time datetime="@app.DateApplied.ToString("s")">@app.DateApplied.ToString("MMM dd, yyyy")<small>@app.DateApplied.ToString("h:mm tt")</small></time></td>
                             <td data-label="Face match">
                                 @if (!app.HasFaceVerification)
                                 {
@@ -108,8 +158,199 @@
     </section>
 </div>
 
+<form method="post" asp-page-handler="BulkApprove" id="bulkApproveForm" class="admin-applications-hidden-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="dateRange" value="@Model.DateRange" />
+    <input type="hidden" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+</form>
+<form method="post" asp-page-handler="BulkReject" id="bulkRejectForm" class="admin-applications-hidden-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="dateRange" value="@Model.DateRange" />
+    <input type="hidden" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+</form>
+<form method="post" asp-page-handler="BulkDelete" id="bulkDeleteForm" class="admin-applications-hidden-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+    <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+    <input type="hidden" name="dateRange" value="@Model.DateRange" />
+    <input type="hidden" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="search" value="@Model.SearchTerm" />
+    <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+</form>
+
+<div class="admin-applications-bulk-toolbar" id="appBulkToolbar" hidden role="region" aria-label="Bulk application decisions">
+    <strong id="appBulkCount">0 selected</strong>
+    <button type="button" class="bulk-secondary" id="appSelectAllBtn">Select all shown</button>
+    <button type="button" class="bulk-secondary" id="appClearSelectionBtn">Clear</button>
+    <button type="button" class="bulk-approve" id="appBulkApproveBtn">Approve selected</button>
+    <button type="button" class="bulk-reject" id="appBulkRejectBtn">Reject selected</button>
+    <button type="button" class="bulk-reject" id="appBulkDeleteBtn">Delete selected</button>
+</div>
+
+<div class="admin-applications-modal" id="bulkDecisionModal" hidden role="dialog" aria-modal="true" aria-labelledby="bulkDecisionTitle">
+    <div class="admin-applications-modal-card">
+        <span class="admin-applications-modal-eyebrow" id="bulkDecisionEyebrow">Confirmation required</span>
+        <h2 id="bulkDecisionTitle">Confirm bulk decision</h2>
+        <p id="bulkDecisionText"></p>
+        <div class="admin-applications-modal-actions">
+            <button type="button" class="bulk-secondary" id="cancelBulkDecisionBtn">Cancel</button>
+            <button type="button" class="bulk-approve" id="confirmBulkDecisionBtn">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    document.getElementById('dateRangeFilter')?.addEventListener('change', event => {
+        if (event.target.value !== 'All') document.querySelectorAll('.customDateFilter').forEach(input => input.value = '');
+    });
+    document.querySelectorAll('.customDateFilter').forEach(input => input.addEventListener('change', event => {
+        if (event.target.value) document.getElementById('dateRangeFilter').value = 'All';
+    }));
     window.setTimeout(() => {
         document.querySelectorAll('.admin-action-toast').forEach(toast => toast.remove());
     }, 5000);
+
+    (() => {
+        const tableBody = document.getElementById('appTableBody');
+        const toolbar = document.getElementById('appBulkToolbar');
+        const modal = document.getElementById('bulkDecisionModal');
+        if (!tableBody || !toolbar || !modal) return;
+
+        const longPressMilliseconds = 500;
+        let pressTimer;
+        let pressStart;
+        let ignoreNextClick = false;
+        let pendingDecision = null;
+
+        const selectableRows = () => Array.from(tableBody.querySelectorAll('tr[data-selectable="true"]'));
+        const selectedCheckboxes = () => Array.from(tableBody.querySelectorAll('.app-select:checked'));
+        const isInteractive = target => !!target.closest('a, button, input, select, textarea, label');
+
+        function updateSelectionUi() {
+            const count = selectedCheckboxes().length;
+            document.getElementById('appBulkCount').textContent = `${count} selected`;
+            toolbar.hidden = count === 0;
+        }
+
+        function setRowSelected(row, selected) {
+            const checkbox = row.querySelector('.app-select');
+            if (!checkbox) return;
+            checkbox.checked = selected;
+            row.classList.toggle('app-row-selected', selected);
+            updateSelectionUi();
+        }
+
+        function toggleRow(row) {
+            const checkbox = row.querySelector('.app-select');
+            if (!checkbox) return;
+            setRowSelected(row, !checkbox.checked);
+            if (navigator.vibrate) navigator.vibrate(15);
+        }
+
+        tableBody.addEventListener('pointerdown', event => {
+            const row = event.target.closest('tr[data-selectable="true"]');
+            if (!row || isInteractive(event.target)) return;
+            pressStart = { x: event.clientX, y: event.clientY };
+            pressTimer = window.setTimeout(() => {
+                toggleRow(row);
+                ignoreNextClick = true;
+            }, longPressMilliseconds);
+        });
+
+        tableBody.addEventListener('pointermove', event => {
+            if (!pressTimer || !pressStart) return;
+            if (Math.abs(event.clientX - pressStart.x) > 10 || Math.abs(event.clientY - pressStart.y) > 10) {
+                window.clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        });
+
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(name => {
+            tableBody.addEventListener(name, () => {
+                window.clearTimeout(pressTimer);
+                pressTimer = null;
+            });
+        });
+
+        tableBody.addEventListener('contextmenu', event => {
+            if (event.target.closest('tr[data-selectable="true"]')) event.preventDefault();
+        });
+
+        tableBody.addEventListener('click', event => {
+            const row = event.target.closest('tr[data-selectable="true"]');
+            if (!row || isInteractive(event.target)) return;
+            if (ignoreNextClick) {
+                ignoreNextClick = false;
+                return;
+            }
+            if (selectedCheckboxes().length > 0) toggleRow(row);
+        });
+
+        document.getElementById('appSelectAllBtn').addEventListener('click', () => {
+            selectableRows().forEach(row => setRowSelected(row, true));
+        });
+        document.getElementById('appClearSelectionBtn').addEventListener('click', () => {
+            selectableRows().forEach(row => setRowSelected(row, false));
+        });
+
+        function openDecisionModal(decision) {
+            const count = selectedCheckboxes().length;
+            if (!count) return;
+            pendingDecision = decision;
+            const approve = decision === 'approve';
+            const deleting = decision === 'delete';
+            document.getElementById('bulkDecisionEyebrow').classList.toggle('danger', !approve);
+            document.getElementById('bulkDecisionTitle').textContent =
+                `${approve ? 'Approve' : deleting ? 'Permanently delete' : 'Reject'} selected applications?`;
+            document.getElementById('bulkDecisionText').textContent = deleting
+                ? `${count} application${count === 1 ? '' : 's'} and all associated data will be permanently deleted. This cannot be undone.`
+                : `${count} selected application${count === 1 ? '' : 's'} will be ${approve ? 'approved' : 'rejected'}. Pending applicants will be notified.`;
+            const confirmButton = document.getElementById('confirmBulkDecisionBtn');
+            confirmButton.textContent = approve ? 'Confirm approval' : deleting ? 'Confirm permanent deletion' : 'Confirm rejection';
+            confirmButton.className = approve ? 'bulk-approve' : 'bulk-reject';
+            modal.hidden = false;
+            confirmButton.focus();
+        }
+
+        function closeDecisionModal() {
+            modal.hidden = true;
+            pendingDecision = null;
+        }
+
+        document.getElementById('appBulkApproveBtn').addEventListener('click', () => openDecisionModal('approve'));
+        document.getElementById('appBulkRejectBtn').addEventListener('click', () => openDecisionModal('reject'));
+        document.getElementById('appBulkDeleteBtn').addEventListener('click', () => openDecisionModal('delete'));
+        document.getElementById('cancelBulkDecisionBtn').addEventListener('click', closeDecisionModal);
+        modal.addEventListener('click', event => { if (event.target === modal) closeDecisionModal(); });
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modal.hidden) closeDecisionModal(); });
+
+        document.getElementById('confirmBulkDecisionBtn').addEventListener('click', () => {
+            if (!pendingDecision) return;
+            const formId = pendingDecision === 'approve'
+                ? 'bulkApproveForm'
+                : pendingDecision === 'delete' ? 'bulkDeleteForm' : 'bulkRejectForm';
+            const form = document.getElementById(formId);
+            form.querySelectorAll('input[name="userIds"]').forEach(input => input.remove());
+            selectedCheckboxes().forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'userIds';
+                input.value = checkbox.dataset.id;
+                form.appendChild(input);
+            });
+            document.getElementById('confirmBulkDecisionBtn').disabled = true;
+            form.submit();
+        });
+    })();
 </script>
