@@ -11,6 +11,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -41,6 +42,8 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         private readonly IdValidationService _idValidationService;
         private readonly OcrService _ocrService;
         private readonly PrivateIdentityMediaStorage _privateIdentityMediaStorage;
+        private readonly AwsFaceVerificationService _awsFaceVerificationService;
+        private readonly RegistrationFaceTicketStore _faceTicketStore;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
@@ -53,7 +56,9 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             FaceVerificationService faceVerificationService,
             IdValidationService idValidationService,
             OcrService ocrService,
-            PrivateIdentityMediaStorage privateIdentityMediaStorage)
+            PrivateIdentityMediaStorage privateIdentityMediaStorage,
+            AwsFaceVerificationService awsFaceVerificationService,
+            RegistrationFaceTicketStore faceTicketStore)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -67,12 +72,16 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             _idValidationService = idValidationService;
             _ocrService = ocrService;
             _privateIdentityMediaStorage = privateIdentityMediaStorage;
+            _awsFaceVerificationService = awsFaceVerificationService;
+            _faceTicketStore = faceTicketStore;
         }
 
         [BindProperty]
         public InputModel Input { get; set; }
 
         public string ReturnUrl { get; set; }
+        public string AwsRegion => _awsFaceVerificationService.Region;
+        public string AwsIdentityPoolId => _awsFaceVerificationService.IdentityPoolId;
 
         // Canonicalizes a PH mobile number to "+63XXXXXXXXXX" regardless of how it
         // arrives (bare 10 digits from the form field, "+63"-prefixed from the
@@ -127,9 +136,11 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             [Display(Name = "ID Photo")]
             public IFormFile IdPhoto { get; set; }
 
-            [Required]
             [Display(Name = "Selfie Photo")]
             public IFormFile SelfiePhoto { get; set; }
+
+            [Required]
+            public string FaceVerificationToken { get; set; }
 
             [Required]
             [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
@@ -142,6 +153,95 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
             [Display(Name = "Confirm Password")]
             [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
             public string ConfirmPassword { get; set; }
+        }
+
+        private static async Task<(byte[] Bytes, string Hash)> ReadAndHashAsync(IFormFile file)
+        {
+            await using var stream = file.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var bytes = buffer.ToArray();
+            return (bytes, Convert.ToHexString(SHA256.HashData(bytes)));
+        }
+
+        public async Task<IActionResult> OnPostStartFaceLivenessAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_awsFaceVerificationService.IdentityPoolId))
+                return new JsonResult(new { success = false, error = "Face liveness is not configured." }) { StatusCode = 503 };
+
+            try
+            {
+                var sessionId = await _awsFaceVerificationService.CreateLivenessSessionAsync(HttpContext.RequestAborted);
+                return new JsonResult(new { success = true, sessionId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not create AWS face liveness session.");
+                return new JsonResult(new { success = false, error = "The liveness service is temporarily unavailable." }) { StatusCode = 503 };
+            }
+        }
+
+        public async Task<IActionResult> OnPostCompleteFaceLivenessAsync(
+            IFormFile idPhoto, string idType, string sessionId)
+        {
+            if (idPhoto is null || string.IsNullOrWhiteSpace(idType) || string.IsNullOrWhiteSpace(sessionId))
+                return new JsonResult(new { success = false, error = "ID photo, ID type, and liveness session are required." }) { StatusCode = 400 };
+
+            string tempIdPath = null;
+            try
+            {
+                var (idBytes, idHash) = await ReadAndHashAsync(idPhoto);
+                var tempFolder = Path.Combine(_environment.WebRootPath, "uploads", "temp");
+                Directory.CreateDirectory(tempFolder);
+                tempIdPath = Path.Combine(tempFolder, $"{Guid.NewGuid()}{Path.GetExtension(idPhoto.FileName)}");
+                await System.IO.File.WriteAllBytesAsync(tempIdPath, idBytes);
+
+                var (isValidId, reasonCode, reason) = await _idValidationService.ValidateIdAsync(tempIdPath, idType);
+                if (!isValidId)
+                    return new JsonResult(new { success = false, error = DescribeIdValidationFailure(reasonCode, reason), reasonCode });
+
+                var result = await _awsFaceVerificationService.VerifyAsync(idBytes, sessionId, HttpContext.RequestAborted);
+                if (!result.IsMatch || result.ReferenceImage is null)
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        error = result.Error ?? "Face verification failed.",
+                        metrics = _environment.IsDevelopment() ? new
+                        {
+                            liveness = Math.Round(result.LivenessConfidence, 1),
+                            similarity = Math.Round(result.Similarity, 1),
+                            requiredSimilarity = _awsFaceVerificationService.SimilarityThreshold
+                        } : null
+                    });
+
+                var token = _faceTicketStore.Create(new RegistrationFaceTicket(
+                    idHash,
+                    result.ReferenceImage,
+                    (decimal)(result.LivenessConfidence / 100f),
+                    (decimal)(result.Similarity / 100f),
+                    DateTimeOffset.UtcNow.AddMinutes(15)));
+
+                return new JsonResult(new
+                {
+                    success = true,
+                    verificationToken = token,
+                    metrics = _environment.IsDevelopment() ? new
+                    {
+                        liveness = Math.Round(result.LivenessConfidence, 1),
+                        similarity = Math.Round(result.Similarity, 1),
+                        requiredSimilarity = _awsFaceVerificationService.SimilarityThreshold
+                    } : null
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AWS face verification failed.");
+                return new JsonResult(new { success = false, error = "Identity verification is temporarily unavailable. Please retry." }) { StatusCode = 503 };
+            }
+            finally
+            {
+                if (tempIdPath is not null && System.IO.File.Exists(tempIdPath)) System.IO.File.Delete(tempIdPath);
+            }
         }
 
         // Mirrors the reason codes returned by /validate-id on the HF Space, mapped to a
@@ -293,6 +393,31 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
         public async Task<IActionResult> OnPostCreateAccountAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
+
+            RegistrationFaceTicket faceTicket = null;
+            if (Input?.IdPhoto is not null
+                && !string.IsNullOrWhiteSpace(Input.FaceVerificationToken)
+                && _faceTicketStore.TryGet(Input.FaceVerificationToken, out faceTicket))
+            {
+                var (_, submittedIdHash) = await ReadAndHashAsync(Input.IdPhoto);
+                if (!CryptographicOperations.FixedTimeEquals(
+                    Convert.FromHexString(faceTicket.IdImageHash),
+                    Convert.FromHexString(submittedIdHash)))
+                {
+                    faceTicket = null;
+                }
+            }
+
+            if (faceTicket is null)
+            {
+                ModelState.AddModelError(string.Empty, "Your face verification has expired or does not match this ID. Please complete it again.");
+            }
+            else
+            {
+                Input.SelfiePhoto = new FormFile(new MemoryStream(faceTicket.ReferenceImage), 0,
+                    faceTicket.ReferenceImage.Length, "Input.SelfiePhoto", "aws-liveness-reference.jpg")
+                { Headers = new HeaderDictionary(), ContentType = "image/jpeg" };
+            }
 
             if (ModelState.IsValid)
             {
@@ -541,7 +666,10 @@ if (savedFileName != null)
                     {
                         string idPhotoFullPathForFaceMatch = Path.Combine(IdentityDocumentStorage.IdsFolder(_environment), savedFileName);
                         string selfiePhotoFullPath = Path.Combine(IdentityDocumentStorage.SelfiesFolder(_environment), savedSelfieFileName);
-                        (isMatch, confidence) = await _faceVerificationService.VerifyFacesAsync(idPhotoFullPathForFaceMatch, selfiePhotoFullPath);
+                        isMatch = true;
+                        // The registration ticket has already normalized Rekognition's
+                        // 0-100 similarity to the application's canonical 0-1 scale.
+                        confidence = Math.Clamp(faceTicket.Similarity, 0m, 1m);
                     }
 
                     var faceVerification = new UserFaceVerification
@@ -551,12 +679,14 @@ if (savedFileName != null)
                         LiveSelfiePath = savedSelfieFileName,
                         LiveSelfieCloudinaryPublicId = privateSelfieUpload?.PublicId,
                         LiveSelfieCloudinaryFormat = privateSelfieUpload?.Format,
+                        LivenessConfidence = Math.Clamp(faceTicket.LivenessConfidence, 0m, 1m),
                         MatchConfidence = confidence,
                         VerificationStatus = isMatch ? "Verified" : "Failed",
                         VerifiedAt = DateTime.UtcNow,
                     };
                     _context.UserFaceVerifications.Add(faceVerification);
                     await _context.SaveChangesAsync();
+                    _faceTicketStore.Remove(Input.FaceVerificationToken);
 
                     if (cloudUploadErrors.Count == 0)
                     {

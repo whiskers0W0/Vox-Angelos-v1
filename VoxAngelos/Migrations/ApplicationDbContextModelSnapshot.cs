@@ -735,6 +735,9 @@ namespace VoxAngelos.Migrations
                     b.Property<string>("LiveSelfiePath")
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("LivenessConfidence")
+                        .HasColumnType("decimal(5,4)");
+
                     b.Property<decimal?>("MatchConfidence")
                         .HasColumnType("decimal(5,4)");
 

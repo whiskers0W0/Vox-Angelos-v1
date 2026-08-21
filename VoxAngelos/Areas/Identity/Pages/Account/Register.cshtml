@@ -12,6 +12,7 @@
     <title>Vox Angelos | Register</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/dist/liveness/vox-angelos-v1.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/register.css" asp-append-version="true" />
 </head>
 <body>
@@ -74,6 +75,7 @@
                         <div asp-validation-summary="ModelOnly" class="tech-validation-summary" role="alert"></div>
                         <input type="file" id="selfieHiddenInput" name="Input.SelfiePhoto" style="display:none;" accept="image/*" />
                         <input type="file" id="idPhotoHiddenInput" name="Input.IdPhoto" style="display:none;" accept="image/*" />
+                        <input type="hidden" id="faceVerificationToken" name="Input.FaceVerificationToken" />
 
                         <div id="step1">
                             <span class="eyebrow">Step 1 of 3</span>
@@ -214,19 +216,26 @@
                                 </div>
 
                                 <div class="mb-2">
-                                    <label class="form-text-label">Live Selfie</label>
-                                    <div id="cameraContainer" class="camera-container-neo">
-                                        <canvas id="capturedCanvas"></canvas>
-                                        <div id="selfiePreviewPlaceholder" class="selfie-preview-placeholder">
-                                            <span class="selfie-preview-icon">◉</span>
-                                            <span>Your captured selfie will appear here.</span>
+                                    <label class="form-text-label">Live Face Check</label>
+                                    <section class="face-check-card" id="faceCheckCard" aria-label="Secure live face verification">
+                                        <div class="face-check-card__header">
+                                            <span class="face-check-card__icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5.5 5.7v5.8c0 4.1 2.7 7.8 6.5 9.5 3.8-1.7 6.5-5.4 6.5-9.5V5.7L12 3Z" stroke="currentColor" stroke-width="1.7"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            </span>
+                                            <span class="face-check-card__copy">
+                                                <strong>Secure face verification</strong>
+                                                <small>A short guided video confirms you are present.</small>
+                                            </span>
+                                            <span class="face-check-card__badge">Secure</span>
                                         </div>
-                                    </div>
-                                    <div class="camera-controls" id="cameraControls">
-                                        <button type="button" id="btnStartCamera" onclick="startCamera()" class="btn-camera-text">▶ Open Camera</button>
-                                        <button type="button" id="btnRetake" onclick="retakePhoto()" class="btn-camera-text" style="display:none;">↺ Retake</button>
-                                    </div>
-                                    <div id="selfieStatus" class="selfie-status"></div>
+                                        <div id="awsLivenessRoot" class="aws-liveness-shell"
+                                             data-config='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { region = Model.AwsRegion, identityPoolId = Model.AwsIdentityPoolId }))'></div>
+                                        <div class="camera-controls" id="cameraControls">
+                                            <button type="button" id="btnStartCamera" onclick="startAwsLiveness()" class="face-check-start">Start secure face check <span aria-hidden="true">→</span></button>
+                                        </div>
+                                        <div id="selfieStatus" class="selfie-status" aria-live="polite"></div>
+                                        <p class="face-check-card__privacy">Your video is encrypted and used only for this identity check.</p>
+                                    </section>
                                 </div>
                             </div>
 
@@ -342,11 +351,12 @@
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/dist/liveness/liveness.js" defer></script>
     <partial name="_ValidationScriptsPartial" />
 
     <script>
         let cameraStream = null;
-        let selfieCaptured = false;
+        let livenessCompleted = false;
 
         // ── Privacy Consent Logic ─────────────────────────────────────
         document.getElementById('privacyConsent').addEventListener('change', function() {
@@ -381,6 +391,7 @@
         // `new FormData(form)` for the final account-creation POST, the same way
         // #selfieHiddenInput already works for the selfie capture.
         function syncIdHiddenInput(file) {
+        resetFaceVerification();
         const input = document.getElementById('idPhotoHiddenInput');
         if (file) {
         const dt = new DataTransfer(); dt.items.add(file);
@@ -389,6 +400,55 @@
         input.value = '';
         }
         }
+
+        function resetFaceVerification() {
+        livenessCompleted = false;
+        document.getElementById('faceVerificationToken').value = '';
+        setStatus('', '');
+        }
+
+        function startAwsLiveness() {
+        if (!idFile || !document.getElementById('idTypeSelect').value) {
+        return setStatus('Select and capture your ID before starting the face check.', 'error');
+        }
+        setStatus('Preparing secure liveness check…', '');
+        document.getElementById('faceCheckCard').classList.add('is-loading');
+        window.dispatchEvent(new Event('vox:start-liveness'));
+        }
+
+        window.addEventListener('vox:liveness-started', () => {
+        document.getElementById('faceCheckCard').classList.remove('is-loading');
+        document.getElementById('faceCheckCard').classList.add('is-active');
+        });
+
+        window.addEventListener('vox:liveness-ended', () => {
+        document.getElementById('faceCheckCard').classList.remove('is-loading', 'is-active');
+        });
+
+        window.addEventListener('vox:liveness-complete', async event => {
+        $('#loadingModal').css('display', 'flex');
+        const formData = new FormData();
+        formData.append('idType', document.getElementById('idTypeSelect').value);
+        formData.append('idPhoto', idFile);
+        formData.append('sessionId', event.detail.sessionId);
+        try {
+        const response = await fetch('?handler=CompleteFaceLiveness', {
+        method: 'POST', body: formData,
+        headers: { RequestVerificationToken: document.querySelector('input[name="__RequestVerificationToken"]').value }
+        });
+        const data = await response.json();
+        const metricText = data.metrics
+        ? ` Liveness: ${data.metrics.liveness}%. Face similarity: ${data.metrics.similarity}%. Required: ${data.metrics.requiredSimilarity}%.`
+        : '';
+        if (!response.ok || !data.success) throw new Error((data.error || 'Face verification failed.') + metricText);
+        document.getElementById('faceVerificationToken').value = data.verificationToken;
+        livenessCompleted = true;
+        setStatus('Live face verified against your ID.' + metricText, 'success');
+        } catch (error) {
+        resetFaceVerification();
+        setStatus(error.message, 'error');
+        } finally { $('#loadingModal').hide(); }
+        });
 
         function onIdTypeChange() {
         const val = document.getElementById('idTypeSelect').value;
@@ -572,35 +632,13 @@
         if (!idFile) {
         return showResultModal('error', 'Photo Required', 'Please scan or upload your ID photo.');
         }
-        if (!selfieCaptured) return setStatus('Live bio-capture required.', 'error');
+        if (!livenessCompleted || !document.getElementById('faceVerificationToken').value)
+        return setStatus('Complete the secure live face check before continuing.', 'error');
 
         const dimensionOk = await checkIdDimensions(idFile, cfg);
         if (!dimensionOk) return;
 
-        $('#loadingModal').css('display', 'flex');
-        setRegistrationInteractionLock(true);
-        const formData = new FormData();
-        formData.append('idType', idType);
-        formData.append('idPhoto', idFile);
-        formData.append('selfiePhoto', document.getElementById('selfieHiddenInput').files[0]);
-        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
-        try {
-        const res = await fetch('?handler=VerifyIdentity', {
-        method: 'POST',
-        body: formData,
-        headers: { 'RequestVerificationToken': token }
-        });
-        const data = await res.json();
-        $('#loadingModal').hide();
-        setRegistrationInteractionLock(false);
-        if (data.success) {
-        stopCamera();
         showResultModal('success', 'Verified', 'Identity check successful.', () => showStep(2, 3));
-        } else {
-        showResultModal('error', 'Failed', data.error || 'Identity could not be confirmed.');
-        }
-        } catch(e) { $('#loadingModal').hide(); setRegistrationInteractionLock(false); showResultModal('error', 'Error', 'Connection error.'); }
         }
 
         function normalizeImageOrientation(file) {

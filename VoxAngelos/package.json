@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "scripts": {
+    "build:liveness": "vite build"
+  },
+  "dependencies": {
+    "@aws-amplify/ui-react-liveness": "latest",
+    "@aws-sdk/client-cognito-identity": "latest",
+    "@aws-sdk/credential-provider-cognito-identity": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest"
+  }
+}

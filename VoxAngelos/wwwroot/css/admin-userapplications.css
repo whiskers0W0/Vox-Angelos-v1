@@ -223,6 +223,30 @@
     color: #ffffff;
 }
 
+.admin-applications-date-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(130px, 1fr)) auto;
+    align-items: end;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--applications-line);
+    background: #fff;
+}
+
+.admin-applications-date-filters label { display: grid; gap: 6px; }
+.admin-applications-date-filters label > span { color: var(--applications-muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-applications-date-filters label > span small { font:inherit; font-weight:600; letter-spacing:0; text-transform:none; }
+.admin-applications-date-filters select,
+.admin-applications-date-filters input { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid #d4dce8; border-radius: 6px; background:#fff; color:var(--applications-ink); font:inherit; font-size:11px; }
+.admin-applications-date-filters select:focus,
+.admin-applications-date-filters input:focus { border-color:var(--applications-blue); outline:3px solid rgba(22,70,160,.1); }
+.admin-applications-filter-actions { display:flex; align-items:center; gap:8px; }
+.admin-applications-filter-actions button,
+.admin-applications-filter-actions a { display:inline-flex; min-height:36px; align-items:center; justify-content:center; padding:0 12px; border-radius:6px; font-size:10px; font-weight:800; text-decoration:none; white-space:nowrap; }
+.admin-applications-filter-actions button { border:1px solid var(--applications-blue); background:var(--applications-blue); color:#fff; }
+.admin-applications-filter-actions a { border:1px solid #d4dce8; background:#fff; color:var(--applications-body); }
+.admin-applications-table time small { display:block; margin-top:2px; color:var(--applications-muted); font-size:9px; }
+
 .admin-applications-table-wrap {
     width: 100%;
     overflow-x: auto;
@@ -367,12 +391,15 @@
         padding-right: 16px;
         padding-left: 16px;
     }
+    .admin-applications-date-filters { grid-template-columns:1fr 1fr; padding-right:16px; padding-left:16px; }
 }
 
 @media (max-width: 560px) {
     .admin-applications-header h1 {
         font-size: 31px;
     }
+    .admin-applications-date-filters { grid-template-columns:1fr; }
+    .admin-applications-filter-actions > * { flex:1; }
 
     .admin-applications-table {
         min-width: 0;

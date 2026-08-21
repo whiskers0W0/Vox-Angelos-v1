@@ -88,6 +88,35 @@ input.tech-input { padding:0 13px; }
 .selfie-status { min-height:15px; margin-top:8px; color:#687488; font-size:9.5px; text-align:center; }
 .selfie-status.success,.pw-rule.met { color:var(--civic-green); }
 .selfie-status.error,.pw-rule { color:var(--civic-red); }
+.face-check-card { overflow:hidden; border:1px solid #dce4ef; border-radius:11px; background:linear-gradient(180deg,#fff 0%,#f8faff 100%); box-shadow:0 8px 22px rgba(23,55,112,.06); }
+.face-check-card__header { display:flex; align-items:center; gap:10px; padding:14px 15px; border-bottom:1px solid #e7ecf3; }
+.face-check-card__icon { display:grid; width:34px; min-width:34px; height:34px; place-items:center; border-radius:9px; background:var(--civic-blue-soft); color:var(--civic-blue); }
+.face-check-card__icon svg { width:20px; height:20px; }
+.face-check-card__copy { display:grid; min-width:0; flex:1; gap:2px; }
+.face-check-card__copy strong { color:var(--civic-ink); font-size:11px; font-weight:800; }
+.face-check-card__copy small { color:#6b778a; font-size:9px; line-height:1.35; }
+.face-check-card__badge { padding:4px 7px; border:1px solid #b9e1cc; border-radius:999px; background:#eefaf3; color:#197146; font-size:8px; font-weight:850; letter-spacing:.06em; text-transform:uppercase; }
+.aws-liveness-shell:empty { display:none; }
+.aws-liveness-shell:not(:empty) { width:min(100%,430px); margin:14px auto 0; padding:0 14px; }
+.aws-liveness-shell .amplify-liveness-camera-module { overflow:hidden; width:100%; min-height:0; aspect-ratio:4 / 3; border:3px solid #fff; border-radius:13px; background:#0b1220; box-shadow:0 0 0 3px #e7a933,0 12px 26px rgba(15,35,72,.16); transition:box-shadow .25s ease; }
+.aws-liveness-shell[data-guidance="ready"] .amplify-liveness-camera-module { box-shadow:0 0 0 3px #27a768,0 0 0 7px rgba(39,167,104,.14),0 12px 26px rgba(15,35,72,.16); }
+.aws-liveness-shell[data-guidance="error"] .amplify-liveness-camera-module { box-shadow:0 0 0 3px #cc3d4a,0 0 0 7px rgba(204,61,74,.13),0 12px 26px rgba(15,35,72,.16); }
+.aws-liveness-shell .amplify-liveness-video,.aws-liveness-shell .amplify-liveness-video-anchor { width:100%; height:100%; object-fit:cover; }
+.aws-liveness-shell .amplify-liveness-instruction-overlay { background:transparent; color:#fff; font-family:inherit; font-size:clamp(18px,4vw,27px); line-height:1.25; }
+.aws-liveness-shell .amplify-liveness-hint__text { padding:8px 14px; border:1px solid rgba(255,255,255,.3); border-radius:8px; background:rgba(15,23,42,.78); box-shadow:0 5px 16px rgba(0,0,0,.18); color:#fff; text-align:center; backdrop-filter:blur(5px); }
+.aws-liveness-shell[data-guidance="adjust"] .amplify-liveness-hint__text { background:rgba(151,97,10,.88); }
+.aws-liveness-shell[data-guidance="ready"] .amplify-liveness-hint__text { background:rgba(20,119,72,.9); }
+.aws-liveness-shell[data-guidance="error"] .amplify-liveness-hint__text { background:rgba(162,35,49,.9); }
+.aws-liveness-shell .amplify-liveness-cancel-button { top:12px; right:12px; width:36px; height:36px; border:1px solid rgba(255,255,255,.65); border-radius:50%; background:rgba(255,255,255,.94); color:var(--civic-blue-dark); box-shadow:0 5px 14px rgba(15,23,42,.18); }
+.aws-liveness-shell .amplify-liveness-recording-icon-container { color:#fff; }
+.face-check-card .camera-controls { margin:0; padding:16px 15px 8px; }
+.face-check-start { display:flex; min-height:39px; align-items:center; justify-content:center; gap:11px; padding:0 17px; border:1px solid var(--civic-blue); border-radius:7px; background:var(--civic-blue); color:#fff; font-size:9px; font-weight:850; letter-spacing:.06em; text-transform:uppercase; transition:background .16s ease,transform .16s ease,box-shadow .16s ease; }
+.face-check-start:hover { background:var(--civic-blue-dark); box-shadow:0 7px 16px rgba(22,70,160,.18); transform:translateY(-1px); }
+.face-check-card.is-loading .face-check-start { cursor:wait; opacity:.65; }
+.face-check-card.is-active .camera-controls { display:none; }
+.face-check-card .selfie-status { padding:0 15px; }
+.face-check-card__privacy { margin:8px 15px 13px; color:#7a8698; font-size:8.5px; line-height:1.4; text-align:center; }
+.face-check-card__privacy::before { content:'●'; margin-right:6px; color:var(--civic-green); font-size:7px; }
 .pw-guidelines { display:grid; gap:4px; margin-top:10px; padding:10px; border:1px solid #e7ebf1; border-radius:7px; background:#fbfcfd; }
 .pw-rule { font-size:9px; line-height:1.35; }
 .pw-rule-icon { display:inline-block; width:12px; font-weight:800; }
@@ -135,4 +164,4 @@ input.tech-input { padding:0 13px; }
 .id-guide { position:absolute; z-index:2; width:80%; aspect-ratio:var(--id-ratio, 1.585); border:2px solid rgba(255,255,255,.92); border-radius:12px; box-shadow:0 0 0 999px rgba(15,23,42,.12); pointer-events:none; }
 @keyframes spin { to { transform:rotate(360deg); } }
 @media (max-width:860px) { .main-viewport { padding:28px 0; } .tech-wrapper { width:min(540px,calc(100% - 32px)); min-height:0; } .tech-wrapper .row { display:block !important; min-height:0; } .glass-inner { padding:32px; } .portal-brand { margin-bottom:29px; } .portal-title { max-width:none; font-size:34px; } .tagline { max-width:460px; } .step-indicator { display:none; } .panel-right { padding:34px 28px; max-height:none; overflow:visible; } .top-part { width:100%; } }
-@media (max-width:480px) { .main-viewport { padding:0; } .tech-wrapper { width:100%; border-right:0; border-left:0; border-radius:0; } .glass-inner { padding:26px 20px; } .panel-right { padding:31px 20px; } .portal-brand { margin-bottom:25px; } .portal-title { font-size:31px; } .step-title { font-size:25px; } .privacy-agreement-card { padding:14px; } .privacy-terms { max-height:190px; } .camera-capture-modal { padding:0; } .camera-capture-dialog { width:100%; min-height:100dvh; max-height:100dvh; padding:24px 20px; border-radius:0; } .camera-capture-viewport { width:min(100%,390px); max-height:59dvh; } .camera-capture-actions { position:sticky; bottom:-24px; padding:14px 0 3px; background:#fff; } .camera-capture-actions button { flex:1; } }
+@media (max-width:480px) { .main-viewport { padding:0; } .tech-wrapper { width:100%; border-right:0; border-left:0; border-radius:0; } .glass-inner { padding:26px 20px; } .panel-right { padding:31px 20px; } .portal-brand { margin-bottom:25px; } .portal-title { font-size:31px; } .step-title { font-size:25px; } .privacy-agreement-card { padding:14px; } .privacy-terms { max-height:190px; } .camera-capture-modal { padding:0; } .camera-capture-dialog { width:100%; min-height:100dvh; max-height:100dvh; padding:24px 20px; border-radius:0; } .camera-capture-viewport { width:min(100%,390px); max-height:59dvh; } .camera-capture-actions { position:sticky; bottom:-24px; padding:14px 0 3px; background:#fff; } .camera-capture-actions button { flex:1; } .face-check-card__header { padding:12px; } .face-check-card__copy small { max-width:190px; } .aws-liveness-shell:not(:empty) { margin-top:12px; padding:0 10px; } .aws-liveness-shell .amplify-liveness-camera-module { border-radius:10px; } }

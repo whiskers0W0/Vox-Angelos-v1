@@ -35,18 +35,72 @@ namespace VoxAngelos.Pages.Admin
 
         public string FilterStatus { get; set; } = "All";
         public string FaceMatchFilter { get; set; } = "All";
+        public string DateRange { get; set; } = "All";
+        public DateOnly? DateFrom { get; set; }
+        public DateOnly? DateTo { get; set; }
+        public string SortOrder { get; set; } = "Newest";
 
-        public async Task OnGetAsync(string filterStatus = "All", string faceMatchFilter = "All")
+        public async Task OnGetAsync(
+            string filterStatus = "All",
+            string faceMatchFilter = "All",
+            string dateRange = "All",
+            DateOnly? dateFrom = null,
+            DateOnly? dateTo = null,
+            string sortOrder = "Newest")
         {
-            FilterStatus = filterStatus;
+            FilterStatus = new[] { "All", "Pending", "Approved", "Rejected" }.Contains(filterStatus)
+                ? filterStatus : "All";
             FaceMatchFilter = faceMatchFilter;
+            DateRange = new[] { "All", "Week", "Month", "Year" }.Contains(dateRange)
+                ? dateRange : "All";
+            DateFrom = dateFrom;
+            DateTo = dateTo;
+            if (DateFrom.HasValue && DateTo.HasValue && DateFrom > DateTo)
+                (DateFrom, DateTo) = (DateTo, DateFrom);
+            SortOrder = string.Equals(sortOrder, "Oldest", StringComparison.OrdinalIgnoreCase)
+                ? "Oldest" : "Newest";
 
             var citizenUsers = await _userManager.GetUsersInRoleAsync("User");
 
-            var query = citizenUsers.AsQueryable();
+            // GetUsersInRoleAsync has already materialized the users; continue with
+            // in-memory filtering so Manila-local calendar rules can be applied safely.
+            var query = citizenUsers.AsEnumerable();
 
-            if (filterStatus != "All")
-                query = query.Where(u => u.ApprovalStatus == filterStatus);
+            if (FilterStatus != "All")
+                query = query.Where(u => u.ApprovalStatus == FilterStatus);
+
+            var manilaZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaZone));
+            var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+
+            DateOnly ManilaDate(DateTime createdAt)
+            {
+                var utc = createdAt.Kind == DateTimeKind.Utc
+                    ? createdAt
+                    : DateTime.SpecifyKind(createdAt, DateTimeKind.Utc);
+                return DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utc, manilaZone));
+            }
+
+            bool MatchesDate(DateTime createdAt)
+            {
+                var appliedDate = ManilaDate(createdAt);
+                if (DateFrom.HasValue || DateTo.HasValue)
+                {
+                    var from = DateFrom ?? DateTo!.Value;
+                    var to = DateTo ?? DateFrom!.Value;
+                    return appliedDate >= from && appliedDate <= to;
+                }
+
+                return DateRange switch
+                {
+                    "Week" => appliedDate >= weekStart && appliedDate <= today,
+                    "Month" => appliedDate.Year == today.Year && appliedDate.Month == today.Month,
+                    "Year" => appliedDate.Year == today.Year,
+                    _ => true
+                };
+            }
+
+            query = query.Where(u => MatchesDate(u.CreatedAt));
 
             var userIds = query.Select(u => u.Id).ToList();
 
@@ -58,7 +112,7 @@ namespace VoxAngelos.Pages.Admin
                 .Where(f => userIds.Contains(f.UserId))
                 .ToListAsync();
 
-            foreach (var user in query.OrderBy(u => u.CreatedAt))
+            foreach (var user in query)
             {
                 var profile = profiles.FirstOrDefault(p => p.UserId == user.Id);
                 var face = faceVerifications.FirstOrDefault(f => f.UserId == user.Id);
@@ -71,9 +125,12 @@ namespace VoxAngelos.Pages.Admin
                         : user.Email,
                     Email = user.Email,
                     ContactNumber = user.PhoneNumber ?? "N/A",
-                    DateApplied = user.CreatedAt,
+                    DateApplied = ManilaDate(user.CreatedAt).ToDateTime(TimeOnly.FromDateTime(
+                        TimeZoneInfo.ConvertTimeFromUtc(
+                            user.CreatedAt.Kind == DateTimeKind.Utc ? user.CreatedAt : DateTime.SpecifyKind(user.CreatedAt, DateTimeKind.Utc),
+                            manilaZone))),
                     ApprovalStatus = user.ApprovalStatus,
-                    FaceMatchConfidence = face?.MatchConfidence,
+                    FaceMatchConfidence = FaceMatchConfidenceScale.Normalize(face?.MatchConfidence),
                     HasFaceVerification = face != null
                 });
             }
@@ -89,19 +146,24 @@ namespace VoxAngelos.Pages.Admin
                 && faceMatchFilter != "Attention"
                 && (filterStatus == "All" || filterStatus == "Pending"))
             {
-                Applications.Add(new CitizenApplicationViewModel
+                var mockCreatedAt = DateTime.UtcNow.AddDays(-1);
+                if (MatchesDate(mockCreatedAt)) Applications.Add(new CitizenApplicationViewModel
                 {
                     UserId = ReviewApplicationModel.DevelopmentMockCitizenId,
                     FullName = "Mock Citizen (Development)",
                     Email = "mock.citizen@example.test",
                     ContactNumber = "(000) 000-0000",
-                    DateApplied = DateTime.UtcNow.AddDays(-1),
+                    DateApplied = TimeZoneInfo.ConvertTimeFromUtc(mockCreatedAt, manilaZone),
                     ApprovalStatus = "Pending",
                     FaceMatchConfidence = 0.87m,
                     HasFaceVerification = true,
                     IsMock = true
                 });
             }
+
+            Applications = SortOrder == "Oldest"
+                ? Applications.OrderBy(a => a.DateApplied).ToList()
+                : Applications.OrderByDescending(a => a.DateApplied).ToList();
         }
 
         public async Task<IActionResult> OnPostApproveAsync(string userId)

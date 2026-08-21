@@ -1,0 +1,5 @@
+bin/
+obj/
+node_modules/
+appsettings.*.local.json
+wwwroot/uploads/temp/

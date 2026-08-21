@@ -43,15 +43,48 @@
                 <span>Verification queue</span>
                 <h2 id="applicationsQueueHeading">Citizen application records</h2>
             </div>
-            <p>Use a status filter to focus the review list.</p>
+            <p>Filter by status and application date, then choose how results are ordered.</p>
         </header>
 
         <nav class="admin-applications-filters" aria-label="Filter applications by status">
-            <a href="?filterStatus=All" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
-            <a href="?filterStatus=Pending" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
-            <a href="?filterStatus=Approved" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
-            <a href="?filterStatus=Rejected" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="All" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "All" ? "active" : "")">All</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Pending" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Pending" ? "active" : "")">Pending</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Approved" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Approved" ? "active" : "")">Approved</a>
+            <a asp-page="/Admin/UserApplications" asp-route-filterStatus="Rejected" asp-route-dateRange="@Model.DateRange" asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-sortOrder="@Model.SortOrder" class="admin-applications-filter @(Model.FilterStatus == "Rejected" ? "active" : "")">Rejected</a>
         </nav>
+
+        <form method="get" class="admin-applications-date-filters" id="applicationDateFilters">
+            <input type="hidden" name="filterStatus" value="@Model.FilterStatus" />
+            <input type="hidden" name="faceMatchFilter" value="@Model.FaceMatchFilter" />
+            <label>
+                <span>Date range</span>
+                <select name="dateRange" id="dateRangeFilter">
+                    <option value="All" selected="@(Model.DateRange == "All")">All dates</option>
+                    <option value="Week" selected="@(Model.DateRange == "Week")">This week</option>
+                    <option value="Month" selected="@(Model.DateRange == "Month")">This month</option>
+                    <option value="Year" selected="@(Model.DateRange == "Year")">This year</option>
+                </select>
+            </label>
+            <label>
+                <span>From date</span>
+                <input type="date" name="dateFrom" class="customDateFilter" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+            </label>
+            <label>
+                <span>To date <small>(optional)</small></span>
+                <input type="date" name="dateTo" class="customDateFilter" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+            </label>
+            <label>
+                <span>Sort by</span>
+                <select name="sortOrder">
+                    <option value="Newest" selected="@(Model.SortOrder == "Newest")">Newest first</option>
+                    <option value="Oldest" selected="@(Model.SortOrder == "Oldest")">Oldest first</option>
+                </select>
+            </label>
+            <div class="admin-applications-filter-actions">
+                <button type="submit">Apply filters</button>
+                <a asp-page="/Admin/UserApplications" asp-route-filterStatus="@Model.FilterStatus">Clear</a>
+            </div>
+        </form>
 
         <div class="admin-applications-table-wrap">
             <table class="admin-applications-table">
@@ -79,7 +112,7 @@
                             <td data-label="Applicant"><strong>@app.FullName</strong>@if (app.IsMock) { <span class="admin-applications-mock-label">Development mock</span> }</td>
                             <td data-label="Email address"><span class="admin-applications-email">@app.Email</span></td>
                             <td data-label="Contact number">@app.ContactNumber</td>
-                            <td data-label="Applied"><time datetime="@app.DateApplied.ToString("yyyy-MM-dd")">@app.DateApplied.ToString("MM/dd/yyyy")</time></td>
+                            <td data-label="Applied"><time datetime="@app.DateApplied.ToString("s")">@app.DateApplied.ToString("MMM dd, yyyy")<small>@app.DateApplied.ToString("h:mm tt")</small></time></td>
                             <td data-label="Face match">
                                 @if (!app.HasFaceVerification)
                                 {
@@ -109,6 +142,12 @@
 </div>
 
 <script>
+    document.getElementById('dateRangeFilter')?.addEventListener('change', event => {
+        if (event.target.value !== 'All') document.querySelectorAll('.customDateFilter').forEach(input => input.value = '');
+    });
+    document.querySelectorAll('.customDateFilter').forEach(input => input.addEventListener('change', event => {
+        if (event.target.value) document.getElementById('dateRangeFilter').value = 'All';
+    }));
     window.setTimeout(() => {
         document.querySelectorAll('.admin-action-toast').forEach(toast => toast.remove());
     }, 5000);
