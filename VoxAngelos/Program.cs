@@ -70,7 +70,7 @@ builder.Services.AddTransient<VoxAngelos.Services.ISmsSender, VoxAngelos.Service
 
 builder.Services.AddHttpClient(nameof(GeminiOcrService), c => c.Timeout = TimeSpan.FromSeconds(90));
 builder.Services.AddScoped<GeminiOcrService>();
-builder.Services.AddHttpClient(nameof(GeminiConcernClassifierService), c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient(nameof(GeminiConcernClassifierService), c => c.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddScoped<GeminiConcernClassifierService>();
 builder.Services.AddScoped<HfConcernClassifierService>();
 builder.Services.AddScoped<ConcernClassificationService>();

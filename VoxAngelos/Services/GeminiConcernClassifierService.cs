@@ -169,7 +169,12 @@ namespace VoxAngelos.Services
             sb.AppendLine("Departments and representative keywords:");
             foreach (var (department, keywords) in ConcernClassificationService.DefaultKeywordsByDepartment)
             {
-                sb.AppendLine($"- {department}: {string.Join(", ", keywords)}");
+                // Capped, not the full list (some departments carry 70+ EN/Tagalog/Kapampangan
+                // entries) — sending all of them roughly doubled this prompt's size for little
+                // benefit, since the numeric keyword-matching signal below is already scored
+                // against the complete list. This sample just needs to be representative enough
+                // to ground Gemini's sense of each department's scope.
+                sb.AppendLine($"- {department}: {string.Join(", ", keywords.Take(20))}");
             }
             sb.AppendLine();
             sb.AppendLine("LGU-specific routing rules that override generic keyword overlap — apply these");
@@ -254,6 +259,19 @@ namespace VoxAngelos.Services
 
             [JsonPropertyName("responseSchema")]
             public object ResponseSchema { get; set; } = new();
+
+            // Department routing is a short, low-ambiguity decision — not worth the model
+            // spending extended internal reasoning tokens on. Newer Gemini models default to
+            // dynamic thinking, which was very likely the dominant contributor to this call's
+            // latency (far more than prompt size). thinkingBudget: 0 disables it outright.
+            [JsonPropertyName("thinkingConfig")]
+            public GeminiThinkingConfig ThinkingConfig { get; set; } = new();
+        }
+
+        private class GeminiThinkingConfig
+        {
+            [JsonPropertyName("thinkingBudget")]
+            public int ThinkingBudget { get; set; } = 0;
         }
 
         private class GeminiResponse
