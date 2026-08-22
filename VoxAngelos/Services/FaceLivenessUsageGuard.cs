@@ -12,6 +12,8 @@ public sealed class FaceLivenessUsageGuard(IMemoryCache cache, IConfiguration co
 {
     private readonly object _gate = new();
 
+    private bool Enabled => configuration.GetValue("AWS:UsageLimits:Enabled", true);
+
     private int PerClientHourlyLimit => Math.Max(1,
         configuration.GetValue("AWS:UsageLimits:PerClientHourlySessions", 3));
 
@@ -26,6 +28,9 @@ public sealed class FaceLivenessUsageGuard(IMemoryCache cache, IConfiguration co
 
     public FaceLivenessLimitResult TryBegin(string clientKey, string ipKey)
     {
+        if (!Enabled)
+            return new(true);
+
         var now = DateTimeOffset.UtcNow;
         var clientHourKey = $"face-liveness:client-hour:{clientKey}";
         var ipHourKey = $"face-liveness:ip-hour:{ipKey}";
