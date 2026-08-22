@@ -40,6 +40,11 @@ function LivenessApp({ config }) {
     }
   };
 
+  const reportError = (message) => {
+    setError(message);
+    window.dispatchEvent(new CustomEvent('vox:liveness-error', { detail: { message } }));
+  };
+
   useEffect(() => {
     window.addEventListener('vox:start-liveness', async () => {
       setError(null);
@@ -54,10 +59,22 @@ function LivenessApp({ config }) {
         setSessionId(body.sessionId);
         window.dispatchEvent(new Event('vox:liveness-started'));
       } catch (e) {
-        setError(e.message);
+        reportError(e.message);
         window.dispatchEvent(new Event('vox:liveness-ended'));
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const cancelLiveness = async () => {
+      setSessionId(null);
+      await releaseActiveSession();
+      reportError('Face check cancelled. You can start a new check when you are ready.');
+      window.dispatchEvent(new Event('vox:liveness-ended'));
+    };
+
+    window.addEventListener('vox:cancel-liveness', cancelLiveness);
+    return () => window.removeEventListener('vox:cancel-liveness', cancelLiveness);
   }, []);
 
   useEffect(() => {
@@ -108,13 +125,13 @@ function LivenessApp({ config }) {
       // create a registration ticket and their reference image is never reused.
       setSessionId(null);
       await releaseActiveSession();
-      setError(friendlyLivenessError(e));
+      reportError(friendlyLivenessError(e));
       window.dispatchEvent(new Event('vox:liveness-ended'));
     }}
     onUserCancel={async () => {
       setSessionId(null);
       await releaseActiveSession();
-      setError('Face check cancelled. You can start a new check when you are ready.');
+      reportError('Face check cancelled. You can start a new check when you are ready.');
       window.dispatchEvent(new Event('vox:liveness-ended'));
     }}
   />;
