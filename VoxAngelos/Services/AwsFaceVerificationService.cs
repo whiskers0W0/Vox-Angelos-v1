@@ -28,7 +28,7 @@ public sealed class AwsFaceVerificationService
     public string Region => _configuration["AWS:Region"] ?? "ap-northeast-1";
     public string IdentityPoolId => _configuration["AWS:IdentityPoolId"] ?? string.Empty;
     public float LivenessThreshold => _configuration.GetValue("AWS:LivenessThreshold", 90f);
-    public float SimilarityThreshold => _configuration.GetValue("AWS:SimilarityThreshold", 95f);
+    public float SimilarityThreshold => _configuration.GetValue("AWS:SimilarityThreshold", 90f);
 
     public async Task<string> CreateLivenessSessionAsync(CancellationToken cancellationToken) =>
         (await _client.CreateFaceLivenessSessionAsync(new CreateFaceLivenessSessionRequest

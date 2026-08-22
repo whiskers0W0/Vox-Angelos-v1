@@ -32,6 +32,21 @@
         </div>
     </div>
 
+    <div id="faceLivenessModal" class="face-liveness-modal" role="dialog" aria-modal="true"
+         aria-label="Secure live face verification" hidden>
+        <div class="face-liveness-modal__panel">
+            <div class="face-liveness-modal__heading">
+                <span>
+                    <strong>Secure face verification</strong>
+                    <small>Follow the instructions and keep your face inside the frame.</small>
+                </span>
+                <button type="button" class="camera-close-button" onclick="cancelAwsLiveness()" aria-label="Close face verification">×</button>
+            </div>
+            <div id="awsLivenessRoot" class="aws-liveness-shell"
+                 data-config='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { region = Model.AwsRegion, identityPoolId = Model.AwsIdentityPoolId }))'></div>
+        </div>
+    </div>
+
     <div class="main-viewport d-flex align-items-center justify-content-center w-100">
         <div class="tech-wrapper">
             <div class="row g-0">
@@ -228,8 +243,6 @@
                                             </span>
                                             <span class="face-check-card__badge">Secure</span>
                                         </div>
-                                        <div id="awsLivenessRoot" class="aws-liveness-shell"
-                                             data-config='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { region = Model.AwsRegion, identityPoolId = Model.AwsIdentityPoolId }))'></div>
                                         <div id="faceVerificationSuccess" class="face-verification-success" role="status" aria-live="polite" hidden>
                                             <span class="face-verification-success__icon" aria-hidden="true">✓</span>
                                             <span>
@@ -438,13 +451,26 @@
         window.dispatchEvent(new Event('vox:start-liveness'));
         }
 
+        function cancelAwsLiveness() {
+        window.dispatchEvent(new Event('vox:cancel-liveness'));
+        }
+
         window.addEventListener('vox:liveness-started', () => {
         document.getElementById('faceCheckCard').classList.remove('is-loading');
         document.getElementById('faceCheckCard').classList.add('is-active');
+        const modal = document.getElementById('faceLivenessModal');
+        modal.hidden = false;
+        document.body.classList.add('face-liveness-open');
         });
 
         window.addEventListener('vox:liveness-ended', () => {
         document.getElementById('faceCheckCard').classList.remove('is-loading', 'is-active');
+        document.getElementById('faceLivenessModal').hidden = true;
+        document.body.classList.remove('face-liveness-open');
+        });
+
+        window.addEventListener('vox:liveness-error', event => {
+        setStatus(event.detail.message, 'error');
         });
 
         window.addEventListener('vox:liveness-complete', async event => {
