@@ -42,6 +42,10 @@ public sealed class AwsFaceVerificationService
             new GetFaceLivenessSessionResultsRequest { SessionId = sessionId }, cancellationToken);
 
         var livenessConfidence = liveness.Confidence ?? 0f;
+        _logger.LogInformation(
+            "AWS registration liveness result. Status: {Status}, Confidence: {Liveness:F1}, RequiredLiveness: {Threshold:F1}",
+            liveness.Status, livenessConfidence, LivenessThreshold);
+
         if (liveness.Status != LivenessSessionStatus.SUCCEEDED || livenessConfidence < LivenessThreshold)
             return AwsFaceResult.Failed(
                 "We couldn't confirm that a live person was in front of the camera. Use your live front camera in a well-lit area, keep your whole face visible, remove masks, hats, and sunglasses, then try again.",

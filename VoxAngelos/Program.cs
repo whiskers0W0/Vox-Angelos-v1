@@ -6,6 +6,7 @@ using VoxAngelos.Data;
 using VoxAngelos.Hubs;
 using VoxAngelos.Services; 
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -168,9 +169,71 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = maximumUploadRequestSize;
 });
 
+// Render terminates TLS at its reverse proxy and forwards the original request
+// scheme and client address. Trust only the nearest proxy hop so HTTPS-dependent
+// middleware (HSTS, redirects, secure links) sees the public request correctly.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+
+    // Render's proxy addresses are dynamic. The application port is not exposed
+    // directly in production, so the immediate connection is always Render's proxy.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = false;
+    options.Preload = false;
+});
+
 var app = builder.Build();
 
 // 6. HTTP Pipeline Configuration
+app.UseForwardedHeaders();
+
+// Development remains report-only so Visual Studio Browser Link and hot reload
+// keep working. Deployed environments enforce the tested policy.
+const string cspPolicy =
+    "default-src 'self'; " +
+    "base-uri 'self'; " +
+    "object-src 'none'; " +
+    "frame-ancestors 'none'; " +
+    "form-action 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://www.google.com https://www.gstatic.com https://maps.googleapis.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://www.gstatic.com; " +
+    "font-src 'self' data: https://fonts.gstatic.com; " +
+    "img-src 'self' data: blob: https://res.cloudinary.com https://maps.google.com https://maps.gstatic.com https://maps.googleapis.com https://*.googleusercontent.com; " +
+    "connect-src 'self' https://*.amazonaws.com wss://*.amazonaws.com https://*.google.com https://*.googleapis.com wss:; " +
+    "frame-src https://*.google.com; " +
+    "media-src 'self' blob: https://res.cloudinary.com; " +
+    "worker-src 'self' blob:;";
+
+// Apply baseline browser security headers to every response, including static
+// files, redirects, and error pages.
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["Permissions-Policy"] =
+            "camera=(self), geolocation=(self), microphone=()";
+        var cspHeaderName = app.Environment.IsDevelopment()
+            ? "Content-Security-Policy-Report-Only"
+            : "Content-Security-Policy";
+        context.Response.Headers[cspHeaderName] = cspPolicy;
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
@@ -238,28 +301,44 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Seed Admin account
+    // Seed the administrator only when credentials are supplied through secure
+    // configuration (for Render: SeedAdmin__Email and SeedAdmin__Password).
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-    var adminEmail = "carlostannnn29@gmail.com";
-    var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
-    if (existingAdmin == null)
+    var adminEmail = app.Configuration["SeedAdmin:Email"];
+    var adminPassword = app.Configuration["SeedAdmin:Password"];
+
+    if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
     {
-        var adminUser = new ApplicationUser
+        app.Logger.LogInformation(
+            "Administrator seeding skipped because SeedAdmin credentials are not configured.");
+    }
+    else
+    {
+        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+        if (existingAdmin == null)
         {
-            UserName = adminEmail,
-            Email = adminEmail,
-            EmailConfirmed = true,
-            EmployeeId = "ADMIN-001",
-            ApprovalStatus = "Approved",
-            CreatedAt = DateTime.UtcNow
-        };
-        var adminResult = await userManager.CreateAsync(adminUser, "Admin@123456");
-        if (adminResult.Succeeded)
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+            var adminUser = new ApplicationUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true,
+                EmployeeId = "ADMIN-001",
+                ApprovalStatus = "Approved",
+                CreatedAt = DateTime.UtcNow
+            };
+            var adminResult = await userManager.CreateAsync(adminUser, adminPassword);
+            if (adminResult.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+            }
+            else
+            {
+                app.Logger.LogError(
+                    "Administrator seeding failed: {Errors}",
+                    string.Join("; ", adminResult.Errors.Select(error => error.Description)));
+            }
         }
     }
-
     // Clear leftover LGU fields from plain User accounts
     var usersWithFields = userManager.Users
         .Where(u => u.Department != null || u.EmployeeId != null)
@@ -276,7 +355,9 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Seed LGU accounts
+    // Seed LGU accounts only when a password is supplied through secure
+    // configuration (for Render: SeedAccounts__LguPassword).
+    var lguSeedPassword = app.Configuration["SeedAccounts:LguPassword"];
     var lguAccounts = new[]
     {
         new { Email = "mikaellagomez102004@gmail.com",   EmployeeId = "LGU-EXT-001",   Department = "SWDO" },
@@ -288,8 +369,15 @@ using (var scope = app.Services.CreateScope())
         new { Email = "pwdao@voxangelos.gov.ph",         EmployeeId = "LGU-PWDAO-001", Department = "PWDAO" },
     };
 
-    foreach (var lgu in lguAccounts)
+    if (string.IsNullOrWhiteSpace(lguSeedPassword))
     {
+        app.Logger.LogInformation(
+            "LGU account seeding skipped because SeedAccounts:LguPassword is not configured.");
+    }
+    else
+    {
+        foreach (var lgu in lguAccounts)
+        {
         var existingLgu = await userManager.FindByEmailAsync(lgu.Email);
         if (existingLgu != null)
             continue;
@@ -310,20 +398,30 @@ using (var scope = app.Services.CreateScope())
             ApprovalStatus = "Approved",
             CreatedAt = DateTime.UtcNow
         };
-        var lguResult = await userManager.CreateAsync(lguUser, "Lgu@123456");
+        var lguResult = await userManager.CreateAsync(lguUser, lguSeedPassword);
         if (lguResult.Succeeded)
             await userManager.AddToRoleAsync(lguUser, "LGU");
+        }
     }
 
-    // Seed Citizen accounts
+    // Seed test citizen accounts only when a password is supplied through
+    // secure configuration (for Render: SeedAccounts__CitizenPassword).
+    var citizenSeedPassword = app.Configuration["SeedAccounts:CitizenPassword"];
     var citizenAccounts = new[]
     {
     new { Email = "juan@gmail.com", FirstName = "Juan", MiddleName = "Santos", LastName = "Dela Cruz", Barangay = "Sto. Rosario", City = "Angeles City" },
     new { Email = "maria@gmail.com", FirstName = "Maria", MiddleName = "Reyes", LastName = "Santos", Barangay = "Balibago", City = "Angeles City" },
 };
 
-    foreach (var citizen in citizenAccounts)
+    if (string.IsNullOrWhiteSpace(citizenSeedPassword))
     {
+        app.Logger.LogInformation(
+            "Citizen account seeding skipped because SeedAccounts:CitizenPassword is not configured.");
+    }
+    else
+    {
+        foreach (var citizen in citizenAccounts)
+        {
         var existing = await userManager.FindByEmailAsync(citizen.Email);
         if (existing == null)
         {
@@ -335,7 +433,7 @@ using (var scope = app.Services.CreateScope())
                 ApprovalStatus = "Approved",
                 CreatedAt = DateTime.UtcNow
             };
-            var citizenResult = await userManager.CreateAsync(citizenUser, "Citizen@123456");
+            var citizenResult = await userManager.CreateAsync(citizenUser, citizenSeedPassword);
             if (citizenResult.Succeeded)
             {
                 await userManager.AddToRoleAsync(citizenUser, "User");
@@ -352,6 +450,7 @@ using (var scope = app.Services.CreateScope())
                 });
 
             }
+        }
         }
     }
     await dbContext.SaveChangesAsync();

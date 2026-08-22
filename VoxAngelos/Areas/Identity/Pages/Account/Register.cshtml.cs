@@ -276,13 +276,10 @@ namespace VoxAngelos.Areas.Identity.Pages.Account
 
         private string GetFaceLivenessIpKey()
         {
-            // Render supplies the original client address in X-Forwarded-For. Include the
-            // direct peer as well so a forged header alone cannot collide with another host.
-            // Hashing avoids retaining the citizen's raw IP address in application memory.
-            var forwardedAddress = Request.Headers["X-Forwarded-For"]
-                .FirstOrDefault()?.Split(',')[0].Trim();
-            var directAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var address = $"{directAddress}|{forwardedAddress ?? directAddress}";
+            // ForwardedHeadersMiddleware replaces RemoteIpAddress with the original
+            // client address from Render's trusted nearest proxy hop. Hash it so the
+            // citizen's raw address is never retained in application memory.
+            var address = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(address)));
         }
         // Mirrors the reason codes returned by /validate-id on the HF Space, mapped to a
